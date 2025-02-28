@@ -5,10 +5,15 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import dev.reformator.stacktracedecoroutinator.runtime.DecoroutinatorRuntime
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import io.micrometer.prometheus.PrometheusConfig
+import io.micrometer.prometheus.PrometheusMeterRegistry
+
+val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
 fun main(args: Array<String>) {
     //if (getEnvVar("NAIS_CLUSTER_NAME", "local") != "prod-fss") {
@@ -24,6 +29,10 @@ fun main(args: Array<String>) {
 fun eventManagerModule(): Application.() -> Unit {
     return {
         install(ContentNegotiation) { json() }
+        install(MicrometerMetrics) {
+            registry = appMicrometerRegistry
+        }
         configureRouting()
+        configureNaisRouts(appMicrometerRegistry)
     }
 }
