@@ -1,13 +1,11 @@
 package no.nav
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.server.testing.*
+import io.ktor.client.request.get
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.testing.testApplication
+import no.nav.emottak.eventmanager.eventManagerModule
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import no.nav.emottak.eventmanager.eventManagerModule
 
 class ApplicationTest {
 
@@ -18,5 +16,4 @@ class ApplicationTest {
             assertEquals(HttpStatusCode.OK, status)
         }
     }
-
 }

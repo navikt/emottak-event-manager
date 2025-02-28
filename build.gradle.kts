@@ -4,9 +4,10 @@ val logback_version: String by project
 plugins {
     kotlin("jvm") version "2.1.10"
     id("io.ktor.plugin") version "3.1.1"
+    id("org.jlleitschuh.gradle.ktlint") version "11.6.1"
 }
 
-group = "no.nav"
+group = "no.nav.emottak"
 version = "0.0.1"
 
 application {
@@ -16,11 +17,26 @@ application {
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
 }
 
+tasks {
+    ktlintFormat {
+        this.enabled = true
+    }
+}
+
 repositories {
     mavenCentral()
+    maven {
+        name = "Emottak Utils"
+        url = uri("https://maven.pkg.github.com/navikt/ebxml-processor")
+        credentials {
+            username = "token"
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 dependencies {
+    implementation("no.nav.emottak:emottak-utils:0.0.4")
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
