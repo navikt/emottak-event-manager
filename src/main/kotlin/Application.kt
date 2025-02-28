@@ -24,10 +24,6 @@ fun main(args: Array<String>) {
 fun eventManagerModule(): Application.() -> Unit {
     return {
         install(ContentNegotiation) { json() }
-        routing {
-            get("/") {
-                call.respondText("Hello, World!")
-            }
-        }
+        configureRouting()
     }
 }
