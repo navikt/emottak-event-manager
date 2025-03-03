@@ -49,7 +49,6 @@ jobs:
           salsa: false
           tag: ${{ github.sha }}
           dockerfile: Dockerfile # optional, default Dockerfile
-          docker_context: emottak-event-manager # optional, default .
           image_suffix: emottak-event-manager
           project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }} # required, but is defined as an organization variable
           identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }} # required, but is defined as an organization secret
