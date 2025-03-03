@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-and-push:
-    name: Build and push Docker container preprod
+    name: Build and push Docker container
     runs-on: ubuntu-latest
     permissions:
       contents: "read"
