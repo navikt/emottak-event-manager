@@ -32,6 +32,14 @@ tasks {
     }
 }
 
+application {
+    mainClass.set("no.nav.emottak.eventmanager.ApplicationKt")
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
 repositories {
     mavenCentral()
     maven {
