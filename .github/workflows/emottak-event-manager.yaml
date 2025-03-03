@@ -66,5 +66,5 @@ jobs:
     - uses: nais/deploy/actions/deploy@v2
       env:
         CLUSTER: dev-fss
-        RESOURCE: .nais/emottak-event-manager.yaml
+        RESOURCE: .nais/emottak-event-manager-dev.yaml
         VAR: image=${{ needs.build-and-push.outputs.image }}
