@@ -10,14 +10,13 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import no.nav.emottak.utils.getEnvVar
 
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
 fun main(args: Array<String>) {
-    if (getEnvVar("NAIS_CLUSTER_NAME", "local") != "prod-fss") {
-        DecoroutinatorRuntime.load()
-    }
+//    if (getEnvVar("NAIS_CLUSTER_NAME", "local") != "prod-fss") {
+//        DecoroutinatorRuntime.load()
+//    }
     embeddedServer(
         factory = Netty,
         port = 8080,

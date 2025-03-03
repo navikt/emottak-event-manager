@@ -11,10 +11,7 @@ group = "no.nav.emottak"
 version = "0.0.1"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
-
-    val isDevelopment: Boolean = project.ext.has("development")
-    applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
+    mainClass = "no.nav.emottak.eventmanager.ApplicationKt"
 }
 
 tasks {
@@ -30,10 +27,6 @@ tasks {
     build {
         dependsOn("ktlintCheck")
     }
-}
-
-application {
-    mainClass.set("no.nav.emottak.eventmanager.ApplicationKt")
 }
 
 kotlin {
