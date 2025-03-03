@@ -18,8 +18,17 @@ application {
 }
 
 tasks {
+    shadowJar {
+        archiveFileName.set("app.jar")
+    }
     ktlintFormat {
         this.enabled = true
+    }
+    ktlintCheck {
+        dependsOn("ktlintFormat")
+    }
+    build {
+        dependsOn("ktlintCheck")
     }
 }
 
