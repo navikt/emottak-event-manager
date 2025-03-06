@@ -11,6 +11,7 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+val eventsService = EventsService()
 
 fun main(args: Array<String>) {
 //    if (getEnvVar("NAIS_CLUSTER_NAME", "local") != "prod-fss") {
@@ -30,6 +31,6 @@ fun eventManagerModule(): Application.() -> Unit {
             registry = appMicrometerRegistry
         }
         configureRouting()
-        configureNaisRouts(appMicrometerRegistry)
+        configureNaisRouts(appMicrometerRegistry, eventsService)
     }
 }
