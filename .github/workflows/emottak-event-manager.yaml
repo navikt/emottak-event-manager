@@ -2,6 +2,9 @@ name: Deploy eMottak Event Manager
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+    - main
 
 jobs:
   build-and-push:
@@ -46,7 +49,7 @@ jobs:
         id: docker-emottak-event-manager
         with:
           team: team-emottak # required
-          salsa: false
+          salsa: true
           tag: ${{ github.sha }}
           dockerfile: Dockerfile # optional, default Dockerfile
           image_suffix: emottak-event-manager
