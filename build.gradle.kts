@@ -27,6 +27,9 @@ tasks {
     build {
         dependsOn("ktlintCheck")
     }
+    test {
+        useJUnitPlatform()
+    }
 }
 
 kotlin {
@@ -51,11 +54,17 @@ dependencies {
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
-    implementation("io.ktor:ktor-server-content-negotiation:2.3.6")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.6")
-    implementation("io.ktor:ktor-server-metrics-micrometer:2.3.6")
+    implementation(libs.bundles.ktor)
     api("dev.reformator.stacktracedecoroutinator:stacktrace-decoroutinator-jvm:2.3.8")
     implementation("io.micrometer:micrometer-registry-prometheus:1.12.0")
+    implementation(libs.hikari)
+    implementation(libs.flyway.core)
+    implementation(libs.bundles.exposed)
+    implementation("com.bettercloud:vault-java-driver:5.1.0")
+    implementation("no.nav:vault-jdbc:1.3.10")
+
+    testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-test-host")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+    testImplementation("org.testcontainers:postgresql:1.18.0")
 }

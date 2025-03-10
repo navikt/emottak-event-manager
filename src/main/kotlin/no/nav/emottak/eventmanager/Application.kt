@@ -9,7 +9,9 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import org.slf4j.LoggerFactory
 
+val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
 fun main(args: Array<String>) {

@@ -38,3 +38,10 @@ spec:
       memory: "256Mi"
   ingresses:
     - "https://emottak-event-manager.intern.dev.nav.no"
+  env:
+    - name: VAULT_JDBC_URL
+      value: jdbc:postgresql://b27dbvl033.preprod.local:5432/
+    - name: MAX_CONNECTION_POOL_SIZE_FOR_USER
+      value: "4"
+    - name: MAX_CONNECTION_POOL_SIZE_FOR_ADMIN
+      value: "1"
