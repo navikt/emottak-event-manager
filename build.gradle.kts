@@ -1,5 +1,6 @@
 val kotlin_version: String by project
 val logback_version: String by project
+val logstash_version: String by project
 
 plugins {
     kotlin("jvm") version "2.1.10"
@@ -50,6 +51,7 @@ dependencies {
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("net.logstash.logback:logstash-logback-encoder:$logstash_version")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation("io.ktor:ktor-server-content-negotiation:2.3.6")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.6")
