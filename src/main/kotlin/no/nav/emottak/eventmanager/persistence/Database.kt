@@ -24,7 +24,11 @@ class Database(
                     it.locations("filesystem:src/main/resources/db/migration")
                 }
             }
+            .cleanDisabled(false)
             .load()
-            .migrate()
+            .apply {
+                clean()
+                migrate()
+            }
     }
 }
