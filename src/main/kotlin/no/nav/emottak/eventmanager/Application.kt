@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory
 
 val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+val eventsService = EventsService()
 
 fun main(args: Array<String>) {
 //    if (getEnvVar("NAIS_CLUSTER_NAME", "local") != "prod-fss") {
@@ -32,6 +33,6 @@ fun eventManagerModule(): Application.() -> Unit {
             registry = appMicrometerRegistry
         }
         configureRouting()
-        configureNaisRouts(appMicrometerRegistry)
+        configureNaisRouts(appMicrometerRegistry, eventsService)
     }
 }

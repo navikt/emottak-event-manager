@@ -1,14 +1,12 @@
-name: Deploy eMottak Event Manager
+name: "Build and test pull request"
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-    - main
+  pull_request:
 
 jobs:
-  build-and-push:
-    name: Build and push Docker container
+  build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
     permissions:
       contents: "read"
@@ -44,30 +42,4 @@ jobs:
           ORG_GRADLE_PROJECT_githubUser: x-access-token
           ORG_GRADLE_PROJECT_githubPassword: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Docker build and push emottak-event-manager
-        uses: nais/docker-build-push@v0
-        id: docker-emottak-event-manager
-        with:
-          team: team-emottak # required
-          salsa: true
-          tag: ${{ github.sha }}
-          dockerfile: Dockerfile # optional, default Dockerfile
-          image_suffix: emottak-event-manager
-          project_id: ${{ vars.NAIS_MANAGEMENT_PROJECT_ID }} # required, but is defined as an organization variable
-          identity_provider: ${{ secrets.NAIS_WORKLOAD_IDENTITY_PROVIDER }} # required, but is defined as an organization secret
-    outputs:
-        image: ${{ steps.docker-emottak-event-manager.outputs.image }}
-  deploy-emottak-event-manager:
-    name: Deploy emottak-event-manager til dev-miljø
-    needs: build-and-push
-    permissions:
-      contents: "read"
-      id-token: "write"
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: nais/deploy/actions/deploy@v2
-      env:
-        CLUSTER: dev-fss
-        RESOURCE: .nais/emottak-event-manager-dev.yaml
-        VAR: image=${{ needs.build-and-push.outputs.image }}
+          
