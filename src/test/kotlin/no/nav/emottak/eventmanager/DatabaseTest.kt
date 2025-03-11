@@ -2,7 +2,7 @@ package no.nav.emottak.eventmanager
 
 import com.zaxxer.hikari.HikariConfig
 import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EBMS_DB_NAME
+import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
@@ -48,7 +48,7 @@ class DatabaseTest {
 
         private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
             PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EBMS_DB_NAME-admin")
+                withUsername("$EVENT_DB_NAME-admin")
                 withReuse(true)
                 withLabel("app-navn", "ebms-provider")
                 start()

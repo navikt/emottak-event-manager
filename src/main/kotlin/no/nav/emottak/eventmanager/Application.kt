@@ -9,10 +9,10 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
 import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
-import no.nav.emottak.eventmanager.configuration.config
 import org.slf4j.LoggerFactory
 
 val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
@@ -21,9 +21,6 @@ val eventsService = EventsService()
 val config = config()
 
 fun main(args: Array<String>) {
-//    if (getEnvVar("NAIS_CLUSTER_NAME", "local") != "prod-fss") {
-//        DecoroutinatorRuntime.load()
-//    }
     embeddedServer(
         factory = Netty,
         port = 8080,
@@ -33,8 +30,10 @@ fun main(args: Array<String>) {
 
 fun eventManagerModule(): Application.() -> Unit {
     return {
-        val database = Database(eventDbConfig.value)
-        database.migrate(eventMigrationConfig.value)
+        if (config.environment.naisClusterName.value != "local") {
+            val database = Database(eventDbConfig.value)
+            database.migrate(eventMigrationConfig.value)
+        }
 
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {

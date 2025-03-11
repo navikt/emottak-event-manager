@@ -2,8 +2,8 @@ package no.nav.emottak.eventmanager.persistence
 
 import com.bettercloud.vault.response.LogicalResponse
 import com.zaxxer.hikari.HikariConfig
+import no.nav.emottak.eventmanager.config
 import no.nav.emottak.eventmanager.log
-import no.nav.emottak.utils.getEnvVar
 import no.nav.vault.jdbc.hikaricp.HikariCPVaultUtil
 import no.nav.vault.jdbc.hikaricp.VaultUtil
 
@@ -15,17 +15,20 @@ val eventMigrationConfig = lazy { VaultConfig().configure("admin") }
 
 data class VaultConfig(
     val databaseName: String = EVENT_DB_NAME,
-    val jdbcUrl: String = getEnvVar("VAULT_JDBC_URL", "jdbc:postgresql://b27dbvl033.preprod.local:5432/").also {
+    val jdbcUrl: String = config.database.vaultJdbcUrl.value.also {
         log.info("vault jdbc url set til: $it")
     },
-    val vaultMountPath: String = ("postgresql/prod-fss".takeIf { getEnvVar("NAIS_CLUSTER_NAME", "local") == "prod-fss" } ?: "postgresql/preprod-fss").also {
-        log.info("vaultMountPath satt til $it")
-    }
+    val vaultMountPath: String = (
+        "postgresql/prod-fss".takeIf { config.environment.naisClusterName.value == "prod-fss" } ?: "postgresql/preprod-fss"
+        )
+        .also {
+            log.info("vaultMountPath satt til $it")
+        }
 )
 
 fun VaultConfig.configure(role: String): HikariConfig {
-    val maxPoolSizeForUser = getEnvVar("MAX_CONNECTION_POOL_SIZE_FOR_USER", "4").toInt()
-    val maxPoolSizeForAdmin = getEnvVar("MAX_CONNECTION_POOL_SIZE_FOR_ADMIN", "1").toInt()
+    val maxPoolSizeForUser = config.database.maxConnectionPoolSizeForUser.value
+    val maxPoolSizeForAdmin = config.database.maxConnectionPoolSizeForAdmin.value
 
     val hikariConfig = HikariConfig().apply {
         jdbcUrl = this@configure.jdbcUrl + databaseName
