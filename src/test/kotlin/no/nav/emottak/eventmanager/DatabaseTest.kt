@@ -50,11 +50,8 @@ class DatabaseTest {
             PostgreSQLContainer<Nothing>("postgres:15").apply {
                 withUsername("$EVENT_DB_NAME-admin")
                 withReuse(true)
-                withLabel("app-navn", "ebms-provider")
+                withLabel("app-name", "emottak-event-manager")
                 start()
-                println(
-                    "EBMS-databasen er startet opp, portnummer: $firstMappedPort, jdbcUrl: jdbc:postgresql://localhost:$firstMappedPort/test, credentials: test og test"
-                )
             }
     }
 

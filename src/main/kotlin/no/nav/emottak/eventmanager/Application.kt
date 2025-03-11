@@ -1,5 +1,6 @@
 package no.nav.emottak.eventmanager
 
+import com.zaxxer.hikari.HikariConfig
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -24,16 +25,20 @@ fun main(args: Array<String>) {
     embeddedServer(
         factory = Netty,
         port = 8080,
-        module = eventManagerModule()
+        module = eventManagerModule(
+            eventDbConfig.value,
+            eventMigrationConfig.value
+        )
     ).start(wait = true)
 }
 
-fun eventManagerModule(): Application.() -> Unit {
+fun eventManagerModule(
+    dbConfig: HikariConfig,
+    migrationDbConfig: HikariConfig
+): Application.() -> Unit {
     return {
-        if (config.environment.naisClusterName.value != "local") {
-            val database = Database(eventDbConfig.value)
-            database.migrate(eventMigrationConfig.value)
-        }
+        val database = Database(dbConfig)
+        database.migrate(migrationDbConfig)
 
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {
