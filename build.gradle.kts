@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.bundles.exposed)
     implementation("com.bettercloud:vault-java-driver:5.1.0")
     implementation("no.nav:vault-jdbc:1.3.10")
+    implementation(libs.bundles.hoplite)
 
     testImplementation(kotlin("test"))
     testImplementation("io.ktor:ktor-server-test-host")

@@ -7,16 +7,14 @@ import no.nav.emottak.utils.getEnvVar
 import no.nav.vault.jdbc.hikaricp.HikariCPVaultUtil
 import no.nav.vault.jdbc.hikaricp.VaultUtil
 
-const val EBMS_DB_NAME = "emottak-event-manager-db"
+const val EVENT_DB_NAME = "emottak-event-manager-db"
 
-private val cluster = getEnvVar("NAIS_CLUSTER_NAME")
+val eventDbConfig = lazy { VaultConfig().configure("user") }
 
-val ebmsDbConfig = lazy { VaultConfig().configure("user") }
-
-val ebmsMigrationConfig = lazy { VaultConfig().configure("admin") }
+val eventMigrationConfig = lazy { VaultConfig().configure("admin") }
 
 data class VaultConfig(
-    val databaseName: String = EBMS_DB_NAME,
+    val databaseName: String = EVENT_DB_NAME,
     val jdbcUrl: String = getEnvVar("VAULT_JDBC_URL", "jdbc:postgresql://b27dbvl033.preprod.local:5432/").also {
         log.info("vault jdbc url set til: $it")
     },

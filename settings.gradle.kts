@@ -5,6 +5,7 @@ dependencyResolutionManagement {
         create("libs") {
             version("exposed", "0.47.0")
             version("ktor", "2.3.6")
+            version("hoplite", "2.8.2")
 
             library("hikari", "com.zaxxer:HikariCP:5.0.1")
 
@@ -18,8 +19,12 @@ dependencyResolutionManagement {
             library("serialization-json", "io.ktor", "ktor-serialization-kotlinx-json").versionRef("ktor")
             library("micrometer", "io.ktor", "ktor-server-metrics-micrometer").versionRef("ktor")
 
+            library("hoplite-core", "com.sksamuel.hoplite", "hoplite-core").versionRef("hoplite")
+            library("hoplite-hocon", "com.sksamuel.hoplite", "hoplite-hocon").versionRef("hoplite")
+
             bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc"))
             bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer"))
+            bundle("hoplite", listOf("hoplite-core", "hoplite-hocon"))
         }
     }
 }

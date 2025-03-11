@@ -16,7 +16,7 @@ class Database(
     fun migrate(migrationConfig: HikariConfig) {
         Flyway.configure()
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
-            .initSql("SET ROLE \"$EBMS_DB_NAME-admin\"")
+            .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
             .lockRetryCount(50)
             .cleanDisabled(false)
             .load()
