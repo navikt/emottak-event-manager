@@ -26,5 +26,14 @@ dependencyResolutionManagement {
             bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer"))
             bundle("hoplite", listOf("hoplite-core", "hoplite-hocon"))
         }
+
+        create("testLibs") {
+            version("kotest", "5.9.1")
+
+            library("kotest-runner", "io.kotest", "kotest-runner-junit5").versionRef("kotest")
+            library("kotest-assertions", "io.kotest", "kotest-assertions-core").versionRef("kotest")
+
+            bundle("kotest", listOf("kotest-runner", "kotest-assertions"))
+        }
     }
 }

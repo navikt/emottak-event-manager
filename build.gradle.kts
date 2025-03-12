@@ -67,7 +67,7 @@ dependencies {
     implementation(libs.bundles.hoplite)
 
     testImplementation(kotlin("test"))
+    testImplementation(testLibs.bundles.kotest)
     testImplementation("io.ktor:ktor-server-test-host")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
     testImplementation("org.testcontainers:postgresql:1.18.0")
 }

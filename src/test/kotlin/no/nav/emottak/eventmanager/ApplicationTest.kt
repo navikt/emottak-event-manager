@@ -1,34 +1,42 @@
 package no.nav.emottak.eventmanager
 
 import com.zaxxer.hikari.HikariConfig
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
 import org.testcontainers.containers.PostgreSQLContainer
-import kotlin.test.assertEquals
 
-class ApplicationTest {
+class ApplicationTest : StringSpec({
 
+    lateinit var dbContainer: PostgreSQLContainer<Nothing>
+
+    beforeSpec {
+        dbContainer = buildDatabaseContainer()
+        dbContainer.start()
+    }
+
+    afterSpec {
+        dbContainer.stop()
+    }
+
+    "Root endpoint should return OK" {
+        testApplication {
+            application(
+                eventManagerModule(
+                    dbContainer.testConfiguration(),
+                    dbContainer.testConfiguration()
+                )
+            )
+            client.get("/").apply {
+                status shouldBe HttpStatusCode.OK
+            }
+        }
+    }
+}) {
     companion object {
-        lateinit var dbContainer: PostgreSQLContainer<Nothing>
-
-        @JvmStatic
-        @BeforeAll
-        fun setup() {
-            dbContainer = buildDatabaseContainer()
-            dbContainer.start()
-        }
-
-        @JvmStatic
-        @AfterAll
-        fun tearDown() {
-            dbContainer.stop()
-        }
-
         fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
             return HikariConfig().apply {
                 jdbcUrl = this@testConfiguration.jdbcUrl
@@ -50,18 +58,5 @@ class ApplicationTest {
                 withLabel("app-name", "emottak-event-manager")
                 start()
             }
-    }
-
-    @Test
-    fun testRoot() = testApplication {
-        application(
-            eventManagerModule(
-                dbContainer.testConfiguration(),
-                dbContainer.testConfiguration()
-            )
-        )
-        client.get("/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-        }
     }
 }
