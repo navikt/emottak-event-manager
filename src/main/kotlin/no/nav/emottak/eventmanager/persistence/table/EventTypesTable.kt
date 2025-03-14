@@ -4,7 +4,7 @@ import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 
 object EventTypesTable : Table("event_types") {
-    val eventTypeId: Column<Int> = integer("event_type_id").autoIncrement()
+    val eventTypeId: Column<Int> = integer("event_type_id")
     val description: Column<String> = varchar("description", 256)
     val status: Column<EventStatusEnum> = customEnumeration(
         "status",
