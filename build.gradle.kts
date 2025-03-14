@@ -51,6 +51,7 @@ repositories {
 
 dependencies {
     implementation("no.nav.emottak:emottak-utils:0.0.4")
+    implementation("io.ktor:ktor-serialization-jackson:2.1.10")
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
