@@ -48,6 +48,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             log.info("Henter hendelser fra events endepunktet til ebms ...")
             val events = eventsService.fetchevents(fom, tom)
             log.info("Antall hendelser fra endepunktet : ${events.size}")
+            log.info("Henter siste hendelse : ${events.last()}")
             call.respond(events)
         }
     }

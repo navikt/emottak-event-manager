@@ -1,5 +1,8 @@
 package no.nav.emottak.eventmanager
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class EventInfo(
     val hendelsedato: String,
     val hendelsedeskr: String,
