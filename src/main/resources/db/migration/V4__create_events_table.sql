@@ -5,7 +5,7 @@ CREATE TABLE "events" (
     "content_id" VARCHAR(256),
     "message_id" VARCHAR(256) NOT NULL,
     "event_data" JSON,
-    "created_at" TIMESTAMP DEFAULT 'now()'
+    "created_at" TIMESTAMP DEFAULT now()
 );
 
 CREATE INDEX ON "events" ("request_id");
