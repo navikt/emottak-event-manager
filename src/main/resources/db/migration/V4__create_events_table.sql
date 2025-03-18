@@ -7,3 +7,5 @@ CREATE TABLE "events" (
     "event_data" JSON,
     "created_at" TIMESTAMP DEFAULT 'now()'
 );
+
+CREATE INDEX ON "events" ("request_id");
