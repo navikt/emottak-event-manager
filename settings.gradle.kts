@@ -14,6 +14,8 @@ dependencyResolutionManagement {
             library("exposed-core", "org.jetbrains.exposed", "exposed-core").versionRef("exposed")
             library("exposed-dao", "org.jetbrains.exposed", "exposed-dao").versionRef("exposed")
             library("exposed-jdbc", "org.jetbrains.exposed", "exposed-jdbc").versionRef("exposed")
+            library("exposed-time", "org.jetbrains.exposed", "exposed-java-time").versionRef("exposed")
+            library("exposed-json", "org.jetbrains.exposed", "exposed-json").versionRef("exposed")
 
             library("content-negotiation", "io.ktor", "ktor-server-content-negotiation").versionRef("ktor")
             library("serialization-json", "io.ktor", "ktor-serialization-kotlinx-json").versionRef("ktor")
@@ -22,7 +24,7 @@ dependencyResolutionManagement {
             library("hoplite-core", "com.sksamuel.hoplite", "hoplite-core").versionRef("hoplite")
             library("hoplite-hocon", "com.sksamuel.hoplite", "hoplite-hocon").versionRef("hoplite")
 
-            bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc"))
+            bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc", "exposed-time", "exposed-json"))
             bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer"))
             bundle("hoplite", listOf("hoplite-core", "hoplite-hocon"))
         }

@@ -51,7 +51,7 @@ repositories {
 }
 
 dependencies {
-    implementation("no.nav.emottak:emottak-utils:0.0.4")
+    implementation("no.nav.emottak:emottak-utils:0.0.7")
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
