@@ -74,16 +74,14 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             )
             var message = ""
             try {
-                repeat(5) {
-                    producer.send(
-                        testEvent.requestId.toString(),
-                        testEvent.toByteArray()
-                    )
-                }
-                message = "Kafka tes: Sent 5 messages to Kafka"
+                producer.send(
+                    testEvent.requestId.toString(),
+                    testEvent.toByteArray()
+                )
+                message = "Kafka test: Sent 5 messages to Kafka"
             } catch (e: Exception) {
                 log.error("Kafka test: Exception while reading messages from queue", e)
-                message = "Kafka test: Failed to send messages to Kafka"
+                message = "Kafka test: Failed to send messages to Kafka: ${e.message}"
             }
             log.debug("Kafka test: done: $message")
 

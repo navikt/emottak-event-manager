@@ -21,16 +21,11 @@ class EventProducer(private val topic: String) {
     }
 
     suspend fun send(key: String, value: ByteArray) {
-        try {
-            val record = ProducerRecord(topic, key, value)
-            publisher.publishScope {
-                publishCatching(record)
-            }
-                .onSuccess { log.info("Event is published to: $topic") }
-                .onFailure { log.error("Failed to publish event to: $topic") }
-            log.info("Message sent successfully to topic $topic")
-        } catch (e: Exception) {
-            log.error("Failed to send message: ${e.message}", e)
+        val record = ProducerRecord(topic, key, value)
+        publisher.publishScope {
+            publishCatching(record)
         }
+            .onSuccess { log.info("Event is published to: $topic") }
+            .onFailure { log.error("Failed to publish event to: $topic ${it.message}") }
     }
 }
