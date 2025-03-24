@@ -28,7 +28,7 @@ fun Application.configureRouting() {
     }
 }
 
-@OptIn(InternalAPI::class)
+@OptIn(InternalAPI::class, ExperimentalUuidApi::class)
 fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, eventsService: EventsService) {
     routing {
         get("/internal/health/liveness") {
@@ -61,7 +61,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
         }
 
         get("/kafkatest_write") {
-            log.debug("Kafka test write: start")
+            log.debug("Kafka test: start")
 
             val producer = EventProducer("team-emottak.common.topic.for.development")
 
@@ -72,7 +72,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
                 messageId = "test-message-id",
                 eventData = "{\"key\":\"value\"}"
             )
-
+            var message = ""
             try {
                 repeat(5) {
                     producer.send(
@@ -80,12 +80,14 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
                         testEvent.toByteArray()
                     )
                 }
+                message = "Kafka tes: Sent 5 messages to Kafka"
             } catch (e: Exception) {
-                log.error("Kafka test write: Exception while reading messages from queue", e)
+                log.error("Kafka test: Exception while reading messages from queue", e)
+                message = "Kafka test: Failed to send messages to Kafka"
             }
-            log.debug("Kafka test write: done")
+            log.debug("Kafka test: done: $message")
 
-            call.respondText("Kafka works!")
+            call.respondText(message)
         }
     }
 }
