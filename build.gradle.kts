@@ -51,7 +51,7 @@ repositories {
 }
 
 dependencies {
-    implementation("no.nav.emottak:emottak-utils:0.0.7")
+    implementation("no.nav.emottak:emottak-utils:0.0.9")
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
@@ -66,6 +66,8 @@ dependencies {
     implementation("com.bettercloud:vault-java-driver:5.1.0")
     implementation("no.nav:vault-jdbc:1.3.10")
     implementation(libs.bundles.hoplite)
+    implementation("io.github.nomisrev:kotlin-kafka:0.4.1")
+    implementation("com.sksamuel.hoplite:hoplite-core:2.8.2")
 
     testImplementation(kotlin("test"))
     testImplementation(testLibs.bundles.kotest)

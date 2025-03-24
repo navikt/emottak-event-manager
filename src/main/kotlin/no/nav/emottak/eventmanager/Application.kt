@@ -10,10 +10,15 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import no.nav.emottak.eventmanager.configuration.config
+import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
 import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
+import no.nav.emottak.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
 
 val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
@@ -21,7 +26,7 @@ val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val eventsService = EventsService()
 val config = config()
 
-fun main(args: Array<String>) {
+fun main(args: Array<String>) = runBlocking {
     embeddedServer(
         factory = Netty,
         port = 8080,
@@ -30,6 +35,13 @@ fun main(args: Array<String>) {
             eventMigrationConfig.value
         )
     ).start(wait = true)
+
+    if (config.eventConsumer.active) {
+        launch(Dispatchers.IO) {
+            val eventService = EventService()
+            startEventReceiver(config.eventConsumer.eventTopic, eventService)
+        }
+    }
 }
 
 fun eventManagerModule(

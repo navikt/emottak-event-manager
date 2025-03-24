@@ -40,3 +40,8 @@ spec:
     - "https://emottak-event-manager.intern.dev.nav.no"
   vault:
     enabled: true
+  kafka:
+    pool: nav-dev
+  env:
+    - name: ENABLE_EVENT_RECEIVER
+      value: "true"

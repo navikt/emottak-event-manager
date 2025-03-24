@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package no.nav.emottak.eventmanager
 
 import io.ktor.http.HttpStatusCode
@@ -10,7 +12,13 @@ import io.ktor.server.routing.routing
 import io.ktor.server.util.toLocalDateTime
 import io.ktor.utils.io.InternalAPI
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import no.nav.emottak.eventmanager.kafka.EventProducer
+import no.nav.emottak.utils.events.model.Event
+import no.nav.emottak.utils.events.model.EventType
 import java.text.SimpleDateFormat
+import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.toKotlinUuid
 
 fun Application.configureRouting() {
     routing {
@@ -50,6 +58,34 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             log.info("Antall hendelser fra endepunktet : ${events.size}")
             log.info("Henter siste hendelse : ${events.last()}")
             call.respond(events)
+        }
+
+        get("/kafkatest_write") {
+            log.debug("Kafka test write: start")
+
+            val producer = EventProducer("team-emottak.common.topic.for.development")
+
+            val testEvent = Event(
+                eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
+                requestId = UUID.randomUUID().toKotlinUuid(),
+                contentId = "test-content-id",
+                messageId = "test-message-id",
+                eventData = "{\"key\":\"value\"}"
+            )
+
+            try {
+                repeat(5) {
+                    producer.send(
+                        testEvent.requestId.toString(),
+                        testEvent.toByteArray()
+                    )
+                }
+            } catch (e: Exception) {
+                log.error("Kafka test write: Exception while reading messages from queue", e)
+            }
+            log.debug("Kafka test write: done")
+
+            call.respondText("Kafka works!")
         }
     }
 }
