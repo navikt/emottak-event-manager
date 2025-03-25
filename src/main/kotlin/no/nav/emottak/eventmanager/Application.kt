@@ -36,7 +36,7 @@ fun main(args: Array<String>) = runBlocking {
         )
     ).start(wait = true)
 
-    log.info("Configuration: $config")
+    log.debug("Configuration: $config")
     if (config.eventConsumer.active) {
         log.info("Starting event receiver")
         launch(Dispatchers.IO) {
