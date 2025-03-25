@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.kafka
 import io.github.nomisRev.kafka.publisher.KafkaPublisher
 import io.github.nomisRev.kafka.publisher.PublisherSettings
 import no.nav.emottak.eventmanager.config
+import no.nav.emottak.eventmanager.configuration.toProperties
 import no.nav.emottak.eventmanager.log
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
@@ -15,7 +16,8 @@ class EventProducer(private val topic: String) {
         val producerSettings = PublisherSettings<String, ByteArray>(
             config.kafka.bootstrapServers,
             StringSerializer(),
-            ByteArraySerializer()
+            ByteArraySerializer(),
+            properties = config.kafka.toProperties()
         )
         publisher = KafkaPublisher(producerSettings)
     }
