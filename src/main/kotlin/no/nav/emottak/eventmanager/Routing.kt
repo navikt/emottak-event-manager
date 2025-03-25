@@ -61,7 +61,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
         }
 
         get("/kafkatest_write") {
-            log.debug("Kafka test: start")
+            log.info("Kafka test: start")
 
             val publisher = EventPublisher("team-emottak.common.topic.for.development")
 
@@ -83,7 +83,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
                 log.error("Kafka test: Exception while reading messages from queue", e)
                 message = "Kafka test: Failed to send messages to Kafka: ${e.message}"
             }
-            log.debug("Kafka test: done: $message")
+            log.info("Kafka test: done: $message")
 
             call.respondText(message)
         }

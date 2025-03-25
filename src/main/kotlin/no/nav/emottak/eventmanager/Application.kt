@@ -36,9 +36,9 @@ fun main(args: Array<String>) = runBlocking {
         )
     ).start(wait = true)
 
-    log.info(config.toString())
+    log.info("Configuration: $config")
     if (config.eventConsumer.active) {
-        log.debug("Starting event receiver")
+        log.info("Starting event receiver")
         launch(Dispatchers.IO) {
             val eventService = EventService()
             startEventReceiver(config.eventConsumer.eventTopic, eventService)
