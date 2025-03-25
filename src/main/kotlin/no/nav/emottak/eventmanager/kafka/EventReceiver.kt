@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.kafka
 import io.github.nomisRev.kafka.AutoOffsetReset
 import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.nomisRev.kafka.receiver.ReceiverSettings
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import no.nav.emottak.eventmanager.config
@@ -12,7 +13,6 @@ import no.nav.emottak.eventmanager.service.EventService
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.delay
 
 suspend fun startEventReceiver(topic: String, eventService: EventService) {
     log.info("Starting event receiver on topic $topic")

@@ -1,6 +1,6 @@
 package no.nav.emottak.eventmanager.configuration
 
-import no.nav.emottak.utils.config.Masked
+import com.sksamuel.hoplite.Masked
 import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
 import org.apache.kafka.common.config.SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG
 import org.apache.kafka.common.config.SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG
