@@ -12,6 +12,7 @@ import no.nav.emottak.eventmanager.service.EventService
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 
 suspend fun startEventReceiver(topic: String, eventService: EventService) {
     log.info("Starting event receiver on topic $topic")
@@ -35,7 +36,7 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
         }
 
     while (true) {
-        Thread.sleep(10000)
+        delay(10000)
         log.info("Collecting records")
         receiver.collect()
     }
