@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.kafka
 import io.github.nomisRev.kafka.AutoOffsetReset
 import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.nomisRev.kafka.receiver.ReceiverSettings
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import no.nav.emottak.eventmanager.config
 import no.nav.emottak.eventmanager.configuration.toProperties
@@ -20,16 +21,22 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
             keyDeserializer = StringDeserializer(),
             valueDeserializer = ByteArrayDeserializer(),
             groupId = config.eventConsumer.consumerGroupId,
-            autoOffsetReset = AutoOffsetReset.Latest,
+            autoOffsetReset = AutoOffsetReset.Earliest,
             pollTimeout = 10.seconds,
             properties = config.kafka.toProperties()
         )
 
-    KafkaReceiver(receiverSettings)
+    val receiver = KafkaReceiver(receiverSettings)
         .receive(topic)
         .map { record ->
             log.info("Processing record: $record")
             eventService.process(record.key(), record.value())
             record.offset.acknowledge()
         }
+
+    while (true) {
+        Thread.sleep(10000)
+        log.info("Collecting records")
+        receiver.collect()
+    }
 }
