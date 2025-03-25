@@ -12,7 +12,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.util.toLocalDateTime
 import io.ktor.utils.io.InternalAPI
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import no.nav.emottak.eventmanager.kafka.EventProducer
+import no.nav.emottak.eventmanager.kafka.EventPublisher
 import no.nav.emottak.utils.events.model.Event
 import no.nav.emottak.utils.events.model.EventType
 import java.text.SimpleDateFormat
@@ -63,7 +63,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
         get("/kafkatest_write") {
             log.debug("Kafka test: start")
 
-            val producer = EventProducer("team-emottak.common.topic.for.development")
+            val publisher = EventPublisher("team-emottak.common.topic.for.development")
 
             val testEvent = Event(
                 eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
@@ -74,11 +74,11 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             )
             var message = ""
             try {
-                producer.send(
+                publisher.send(
                     testEvent.requestId.toString(),
                     testEvent.toByteArray()
                 )
-                message = "Kafka test: Sent 5 messages to Kafka"
+                message = "Kafka test: message is sent to Kafka"
             } catch (e: Exception) {
                 log.error("Kafka test: Exception while reading messages from queue", e)
                 message = "Kafka test: Failed to send messages to Kafka: ${e.message}"

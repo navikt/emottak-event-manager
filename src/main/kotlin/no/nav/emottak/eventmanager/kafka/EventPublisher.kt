@@ -9,7 +9,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 
-class EventProducer(private val topic: String) {
+class EventPublisher(private val topic: String) {
     private var publisher: KafkaPublisher<String, ByteArray>
 
     init {

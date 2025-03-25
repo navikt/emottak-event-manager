@@ -36,13 +36,14 @@ fun main(args: Array<String>) = runBlocking {
         )
     ).start(wait = true)
 
-    if (config.eventConsumer.active) {
-        log.debug("Starting event receiver")
-        launch(Dispatchers.IO) {
-            val eventService = EventService()
-            startEventReceiver(config.eventConsumer.eventTopic, eventService)
-        }
+    log.info(config.toString())
+    // if (config.eventConsumer.active) {
+    log.debug("Starting event receiver")
+    launch(Dispatchers.IO) {
+        val eventService = EventService()
+        startEventReceiver(config.eventConsumer.eventTopic, eventService)
     }
+    // }
 }
 
 fun eventManagerModule(
