@@ -1,5 +1,6 @@
 package no.nav.emottak.eventmanager
 
+import arrow.continuations.SuspendApp
 import com.zaxxer.hikari.HikariConfig
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -12,7 +13,6 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
@@ -26,7 +26,7 @@ val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val eventsService = EventsService()
 val config = config()
 
-fun main(args: Array<String>) = runBlocking {
+fun main(args: Array<String>) = SuspendApp {
     embeddedServer(
         factory = Netty,
         port = 8080,
