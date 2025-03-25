@@ -68,7 +68,6 @@ dependencies {
     implementation(libs.bundles.hoplite)
     implementation("io.github.nomisrev:kotlin-kafka:0.4.1")
     implementation("com.sksamuel.hoplite:hoplite-core:2.8.2")
-    implementation(libs.arrow.suspendapp)
 
     testImplementation(kotlin("test"))
     testImplementation(testLibs.bundles.kotest)
