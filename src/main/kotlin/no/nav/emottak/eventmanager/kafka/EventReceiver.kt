@@ -31,6 +31,7 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
         .map { record ->
             log.info("Processing record: $record")
             eventService.process(record.key(), record.value())
+            record.offset.acknowledge()
         }.collect()
 
     log.info("Event receiver started")
