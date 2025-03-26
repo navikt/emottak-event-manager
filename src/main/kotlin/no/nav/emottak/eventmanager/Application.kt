@@ -1,5 +1,8 @@
 package no.nav.emottak.eventmanager
 
+import arrow.continuations.SuspendApp
+import arrow.core.raise.result
+import arrow.fx.coroutines.resourceScope
 import com.zaxxer.hikari.HikariConfig
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -11,8 +14,8 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
@@ -26,22 +29,28 @@ val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val eventsService = EventsService()
 val config = config()
 
-fun main(args: Array<String>) = runBlocking {
-    embeddedServer(
-        factory = Netty,
-        port = 8080,
-        module = eventManagerModule(
-            eventDbConfig.value,
-            eventMigrationConfig.value
-        )
-    ).start(wait = true)
+fun main(args: Array<String>) = SuspendApp {
+    result {
+        resourceScope {
+            embeddedServer(
+                factory = Netty,
+                port = 8080,
+                module = eventManagerModule(
+                    eventDbConfig.value,
+                    eventMigrationConfig.value
+                )
+            ).start(wait = true)
 
-    log.debug("Configuration: $config")
-    if (config.eventConsumer.active) {
-        log.info("Starting event receiver")
-        launch(Dispatchers.IO) {
-            val eventService = EventService()
-            startEventReceiver(config.eventConsumer.eventTopic, eventService)
+            log.debug("Configuration: $config")
+            if (config.eventConsumer.active) {
+                log.info("Starting event receiver")
+                launch(Dispatchers.IO) {
+                    val eventService = EventService()
+                    startEventReceiver(config.eventConsumer.eventTopic, eventService)
+                }
+            }
+
+            awaitCancellation()
         }
     }
 }
