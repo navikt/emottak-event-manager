@@ -29,10 +29,8 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
     KafkaReceiver(receiverSettings)
         .receive(topic)
         .map { record ->
-            log.info("Processing record: $record")
+            log.debug("Processing record: $record")
             eventService.process(record.key(), record.value())
             record.offset.acknowledge()
         }.collect()
-
-    log.info("Event receiver started")
 }
