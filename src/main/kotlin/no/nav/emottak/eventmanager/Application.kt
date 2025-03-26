@@ -1,13 +1,13 @@
 package no.nav.emottak.eventmanager
 
 import arrow.continuations.SuspendApp
+import arrow.continuations.ktor.server
 import arrow.core.raise.result
 import arrow.fx.coroutines.resourceScope
 import com.zaxxer.hikari.HikariConfig
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import io.ktor.server.engine.embeddedServer
 import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
@@ -32,6 +32,15 @@ val config = config()
 fun main(args: Array<String>) = SuspendApp {
     result {
         resourceScope {
+            server(
+                factory = Netty,
+                port = 8080,
+                module = eventManagerModule(
+                    eventDbConfig.value,
+                    eventMigrationConfig.value
+                )
+            )
+
             log.debug("Configuration: $config")
             if (config.eventConsumer.active) {
                 log.info("Starting event receiver")
@@ -40,15 +49,6 @@ fun main(args: Array<String>) = SuspendApp {
                     startEventReceiver(config.eventConsumer.eventTopic, eventService)
                 }
             }
-
-            embeddedServer(
-                factory = Netty,
-                port = 8080,
-                module = eventManagerModule(
-                    eventDbConfig.value,
-                    eventMigrationConfig.value
-                )
-            ).start(wait = true)
 
             awaitCancellation()
         }

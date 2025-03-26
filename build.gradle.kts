@@ -69,6 +69,7 @@ dependencies {
     implementation("io.github.nomisrev:kotlin-kafka:0.4.1")
     implementation("com.sksamuel.hoplite:hoplite-core:2.8.2")
     implementation(libs.arrow.suspendapp)
+    implementation(libs.arrow.suspendapp.ktor)
     implementation(libs.arrow.core)
     implementation(libs.arrow.fx.coroutines)
 
