@@ -32,15 +32,6 @@ val config = config()
 fun main(args: Array<String>) = SuspendApp {
     result {
         resourceScope {
-            embeddedServer(
-                factory = Netty,
-                port = 8080,
-                module = eventManagerModule(
-                    eventDbConfig.value,
-                    eventMigrationConfig.value
-                )
-            ).start(wait = true)
-
             log.debug("Configuration: $config")
             if (config.eventConsumer.active) {
                 log.info("Starting event receiver")
@@ -49,6 +40,15 @@ fun main(args: Array<String>) = SuspendApp {
                     startEventReceiver(config.eventConsumer.eventTopic, eventService)
                 }
             }
+
+            embeddedServer(
+                factory = Netty,
+                port = 8080,
+                module = eventManagerModule(
+                    eventDbConfig.value,
+                    eventMigrationConfig.value
+                )
+            ).start(wait = true)
 
             awaitCancellation()
         }
