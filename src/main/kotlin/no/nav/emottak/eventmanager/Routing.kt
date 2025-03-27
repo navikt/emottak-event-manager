@@ -12,13 +12,8 @@ import io.ktor.server.routing.routing
 import io.ktor.server.util.toLocalDateTime
 import io.ktor.utils.io.InternalAPI
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import no.nav.emottak.eventmanager.kafka.EventPublisher
-import no.nav.emottak.utils.events.model.Event
-import no.nav.emottak.utils.events.model.EventType
 import java.text.SimpleDateFormat
-import java.util.UUID
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.toKotlinUuid
 
 fun Application.configureRouting() {
     routing {
@@ -28,7 +23,7 @@ fun Application.configureRouting() {
     }
 }
 
-@OptIn(InternalAPI::class, ExperimentalUuidApi::class)
+@OptIn(InternalAPI::class)
 fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, eventsService: EventsService) {
     routing {
         get("/internal/health/liveness") {
@@ -58,34 +53,6 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             log.info("Antall hendelser fra endepunktet : ${events.size}")
             log.info("Henter siste hendelse : ${events.last()}")
             call.respond(events)
-        }
-
-        get("/kafkatest_write") {
-            log.info("Kafka test: start")
-
-            val publisher = EventPublisher("team-emottak.common.topic.for.development")
-
-            val testEvent = Event(
-                eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-                requestId = UUID.randomUUID().toKotlinUuid(),
-                contentId = "test-content-id",
-                messageId = "test-message-id",
-                eventData = "{\"key\":\"value\"}"
-            )
-            var message = ""
-            try {
-                publisher.send(
-                    testEvent.requestId.toString(),
-                    testEvent.toByteArray()
-                )
-                message = "Kafka test: message is sent to Kafka"
-            } catch (e: Exception) {
-                log.error("Kafka test: Exception while reading messages from queue", e)
-                message = "Kafka test: Failed to send messages to Kafka: ${e.message}"
-            }
-            log.info("Kafka test: done: $message")
-
-            call.respondText(message)
         }
     }
 }

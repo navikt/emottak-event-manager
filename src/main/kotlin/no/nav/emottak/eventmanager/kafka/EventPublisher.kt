@@ -27,7 +27,7 @@ class EventPublisher(private val topic: String) {
         publisher.publishScope {
             publishCatching(record)
         }
-            .onSuccess { log.info("Event is published to: $topic") }
-            .onFailure { log.error("Failed to publish event to: $topic ${it.message}") }
+            .onSuccess { log.info("Event $key is published to: $topic") }
+            .onFailure { log.error("Failed to publish event $key to: $topic ${it.message}") }
     }
 }
