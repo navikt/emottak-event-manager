@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EventsTable
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.contentId
+import no.nav.emottak.eventmanager.persistence.table.EventsTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.messageId
@@ -33,6 +34,7 @@ class EventsRepository(private val database: Database) {
                 it[eventData] = event.eventData?.let { jsonData ->
                     Json.decodeFromString<Map<String, String>>(jsonData)
                 } ?: emptyMap()
+                it[createdAt] = event.createdAt
             }
         }
         return newEventId.toKotlinUuid()
@@ -48,7 +50,8 @@ class EventsRepository(private val database: Database) {
                         requestId = it[requestIdColumn].toKotlinUuid(),
                         contentId = it[contentId],
                         messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData])
+                        eventData = Json.encodeToString(it[eventData]),
+                        createdAt = it[createdAt]
                     )
                 }
                 .singleOrNull()
@@ -65,7 +68,8 @@ class EventsRepository(private val database: Database) {
                         requestId = it[requestIdColumn].toKotlinUuid(),
                         contentId = it[contentId],
                         messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData])
+                        eventData = Json.encodeToString(it[eventData]),
+                        createdAt = it[createdAt]
                     )
                 }
                 .toList()

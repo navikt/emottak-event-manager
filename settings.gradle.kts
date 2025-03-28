@@ -6,6 +6,8 @@ dependencyResolutionManagement {
             version("exposed", "0.47.0")
             version("ktor", "2.3.6")
             version("hoplite", "2.8.2")
+            version("suspendapp", "0.5.0")
+            version("arrow", "1.2.4")
 
             library("hikari", "com.zaxxer:HikariCP:5.0.1")
 
@@ -23,6 +25,12 @@ dependencyResolutionManagement {
 
             library("hoplite-core", "com.sksamuel.hoplite", "hoplite-core").versionRef("hoplite")
             library("hoplite-hocon", "com.sksamuel.hoplite", "hoplite-hocon").versionRef("hoplite")
+
+            library("arrow-core", "io.arrow-kt", "arrow-core").versionRef("arrow")
+            library("arrow-fx-coroutines", "io.arrow-kt", "arrow-fx-coroutines").versionRef("arrow")
+
+            library("arrow-suspendapp", "io.arrow-kt", "suspendapp").versionRef("suspendapp")
+            library("arrow-suspendapp-ktor", "io.arrow-kt", "suspendapp-ktor").versionRef("suspendapp")
 
             bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc", "exposed-time", "exposed-json"))
             bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer"))

@@ -36,12 +36,12 @@ class EventsRepositoryTest : StringSpec({
 
     "Should retrieve an event by eventId" {
         val testEvent = Event(
-            eventType = EventType.MESSAGE_SENT,
+            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
             requestId = UUID.randomUUID().toKotlinUuid(),
             contentId = "test-content-id",
             messageId = "test-message-id",
             eventData = "{\"key\":\"value\"}"
-        )
+        ).unifyDateFormat()
 
         val eventId = eventRepository.insert(testEvent)
         val retrievedEvent = eventRepository.findEventById(eventId)
@@ -53,20 +53,20 @@ class EventsRepositoryTest : StringSpec({
         val sharedRequestId = Uuid.random()
 
         val event1 = Event(
-            eventType = EventType.MESSAGE_SENT,
+            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
             requestId = sharedRequestId,
             contentId = "content-1",
             messageId = "message-1",
             eventData = "{\"key1\":\"value1\"}"
-        )
+        ).unifyDateFormat()
 
         val event2 = Event(
-            eventType = EventType.MESSAGE_SENT,
+            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
             requestId = sharedRequestId,
             contentId = "content-2",
             messageId = "message-2",
             eventData = "{\"key2\":\"value2\"}"
-        )
+        ).unifyDateFormat()
 
         eventRepository.insert(event1)
         eventRepository.insert(event2)
@@ -99,4 +99,9 @@ class EventsRepositoryTest : StringSpec({
                 start()
             }
     }
+}
+
+@OptIn(ExperimentalUuidApi::class)
+fun Event.unifyDateFormat(): Event {
+    return this.copy(createdAt = this.createdAt.minusNanos(this.createdAt.nano.toLong()))
 }

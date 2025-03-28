@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package no.nav.emottak.eventmanager
 
 import io.ktor.http.HttpStatusCode
@@ -11,6 +13,7 @@ import io.ktor.server.util.toLocalDateTime
 import io.ktor.utils.io.InternalAPI
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import java.text.SimpleDateFormat
+import kotlin.uuid.ExperimentalUuidApi
 
 fun Application.configureRouting() {
     routing {
