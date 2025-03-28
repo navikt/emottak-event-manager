@@ -28,6 +28,7 @@ val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val eventsService = EventsService()
 val config = config()
+val eventService = EventService()
 
 fun main(args: Array<String>) = SuspendApp {
     result {
@@ -45,7 +46,6 @@ fun main(args: Array<String>) = SuspendApp {
             if (config.eventConsumer.active) {
                 log.info("Starting event receiver")
                 launch(Dispatchers.IO) {
-                    val eventService = EventService()
                     startEventReceiver(config.eventConsumer.eventTopic, eventService)
                 }
             }
