@@ -23,6 +23,16 @@ spec:
     initialDelay: 30
     timeout: 10
     failureThreshold: 10
+  observability:
+    autoInstrumentation:
+      enabled: true
+      runtime: java
+      destinations:
+        - id: "grafana-lgtm"
+        - id: "elastic-apm"
+    logging:
+      destinations:
+        - id: elastic
   prometheus:
     enabled: true
     path: /internal/prometheus
@@ -40,3 +50,10 @@ spec:
     - "https://emottak-event-manager.intern.dev.nav.no"
   vault:
     enabled: true
+  kafka:
+    pool: nav-dev
+  env:
+    - name: ENABLE_EVENT_RECEIVER
+      value: "true"
+    - name: EMOTTAK_LOGGING_LEVEL
+      value: DEBUG

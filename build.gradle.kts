@@ -42,7 +42,7 @@ repositories {
     mavenCentral()
     maven {
         name = "Emottak Utils"
-        url = uri("https://maven.pkg.github.com/navikt/ebxml-processor")
+        url = uri("https://maven.pkg.github.com/navikt/emottak-utils")
         credentials {
             username = "token"
             password = System.getenv("GITHUB_TOKEN")
@@ -51,7 +51,7 @@ repositories {
 }
 
 dependencies {
-    implementation("no.nav.emottak:emottak-utils:0.0.7")
+    implementation("no.nav.emottak:emottak-utils:0.1.0")
     implementation("io.ktor:ktor-server-core")
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
@@ -66,6 +66,12 @@ dependencies {
     implementation("com.bettercloud:vault-java-driver:5.1.0")
     implementation("no.nav:vault-jdbc:1.3.10")
     implementation(libs.bundles.hoplite)
+    implementation("io.github.nomisrev:kotlin-kafka:0.4.1")
+    implementation("com.sksamuel.hoplite:hoplite-core:2.8.2")
+    implementation(libs.arrow.suspendapp)
+    implementation(libs.arrow.suspendapp.ktor)
+    implementation(libs.arrow.core)
+    implementation(libs.arrow.fx.coroutines)
 
     testImplementation(kotlin("test"))
     testImplementation(testLibs.bundles.kotest)

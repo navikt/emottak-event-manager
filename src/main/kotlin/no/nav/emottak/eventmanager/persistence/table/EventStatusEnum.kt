@@ -1,13 +1,13 @@
 package no.nav.emottak.eventmanager.persistence.table
 
 enum class EventStatusEnum(val dbValue: String) {
-    OPPRETTET("Opprettet"),
-    INFORMASJON("Informasjon"),
-    MANUELL_BEHANDLING("Manuell behandling"),
-    ADVARSEL("Advarsel"),
-    FEIL("Feil"),
-    FATAL_FEIL("Fatal feil"),
-    FERDIGBEHANDLET("Ferdigbehandlet");
+    CREATED("Opprettet"),
+    INFORMATION("Informasjon"),
+    MANUAL_PROCESSING("Manuell behandling"),
+    WARNING("Advarsel"),
+    ERROR("Feil"),
+    FATAL_ERROR("Fatal feil"),
+    PROCESSING_COMPLETED("Ferdigbehandlet");
 
     companion object {
         fun fromDbValue(value: String): EventStatusEnum {
