@@ -4,9 +4,7 @@ import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.events.model.Event
-import kotlin.uuid.ExperimentalUuidApi
 
-@OptIn(ExperimentalUuidApi::class)
 class EventService(val eventsRepository: EventsRepository) {
     suspend fun process(key: String, value: ByteArray) {
         try {

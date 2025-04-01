@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package no.nav.emottak.eventmanager
 
 import io.ktor.http.HttpStatusCode
@@ -10,10 +8,8 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.util.toLocalDateTime
-import io.ktor.utils.io.InternalAPI
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import java.text.SimpleDateFormat
-import kotlin.uuid.ExperimentalUuidApi
 
 fun Application.configureRouting() {
     routing {
@@ -23,7 +19,6 @@ fun Application.configureRouting() {
     }
 }
 
-@OptIn(InternalAPI::class)
 fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, eventsService: EventsService) {
     routing {
         get("/internal/health/liveness") {

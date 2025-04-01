@@ -34,6 +34,12 @@ tasks {
     }
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
+    compilerOptions {
+        freeCompilerArgs = listOf("-opt-in=kotlin.uuid.ExperimentalUuidApi,com.sksamuel.hoplite.ExperimentalHoplite,io.ktor.utils.io.InternalAPI")
+    }
+}
+
 kotlin {
     jvmToolchain(21)
 }

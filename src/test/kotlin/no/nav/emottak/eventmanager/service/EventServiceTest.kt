@@ -8,11 +8,9 @@ import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.events.model.Event
 import no.nav.emottak.utils.events.model.EventType
 import java.util.UUID
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
-@OptIn(ExperimentalUuidApi::class)
 class EventServiceTest : StringSpec({
 
     val eventsRepository = mockk<EventsRepository>()

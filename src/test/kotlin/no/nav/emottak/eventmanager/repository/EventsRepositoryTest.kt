@@ -11,11 +11,9 @@ import no.nav.emottak.utils.events.model.Event
 import no.nav.emottak.utils.events.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.util.UUID
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
-@OptIn(ExperimentalUuidApi::class)
 class EventsRepositoryTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
@@ -101,7 +99,6 @@ class EventsRepositoryTest : StringSpec({
     }
 }
 
-@OptIn(ExperimentalUuidApi::class)
 fun Event.unifyDateFormat(): Event {
     return this.copy(createdAt = this.createdAt.minusNanos(this.createdAt.nano.toLong()))
 }
