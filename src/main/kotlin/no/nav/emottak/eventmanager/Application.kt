@@ -30,13 +30,13 @@ val eventsService = EventsService()
 val config = config()
 
 fun main(args: Array<String>) = SuspendApp {
-    val database = Database(eventDbConfig.value)
-    database.migrate(eventMigrationConfig.value)
-    val eventsRepository = EventsRepository(database)
-    val eventService = EventService(eventsRepository)
-
     result {
         resourceScope {
+            val database = Database(eventDbConfig.value)
+            database.migrate(eventMigrationConfig.value)
+            val eventsRepository = EventsRepository(database)
+            val eventService = EventService(eventsRepository)
+
             server(
                 factory = Netty,
                 port = 8080,

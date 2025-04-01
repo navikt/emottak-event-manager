@@ -25,7 +25,7 @@ class EventServiceTest : StringSpec({
             requestId = UUID.randomUUID().toKotlinUuid(),
             contentId = "test-content-id",
             messageId = "test-message-id",
-            eventData = "{\"key\":\"value\"}"
+            eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
         )
 
         every { eventsRepository.insert(testEvent) } returns testEvent.requestId

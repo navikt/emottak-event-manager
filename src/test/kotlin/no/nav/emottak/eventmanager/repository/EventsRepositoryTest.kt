@@ -40,7 +40,7 @@ class EventsRepositoryTest : StringSpec({
             requestId = UUID.randomUUID().toKotlinUuid(),
             contentId = "test-content-id",
             messageId = "test-message-id",
-            eventData = "{\"key\":\"value\"}"
+            eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
         ).unifyDateFormat()
 
         val eventId = eventRepository.insert(testEvent)
@@ -57,7 +57,7 @@ class EventsRepositoryTest : StringSpec({
             requestId = sharedRequestId,
             contentId = "content-1",
             messageId = "message-1",
-            eventData = "{\"key1\":\"value1\"}"
+            eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
         ).unifyDateFormat()
 
         val event2 = Event(
@@ -65,7 +65,7 @@ class EventsRepositoryTest : StringSpec({
             requestId = sharedRequestId,
             contentId = "content-2",
             messageId = "message-2",
-            eventData = "{\"key2\":\"value2\"}"
+            eventData = "{\"juridisk_logg_id\":\"2_msg_20250401145445386\"}"
         ).unifyDateFormat()
 
         eventRepository.insert(event1)
