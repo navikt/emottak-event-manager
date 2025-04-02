@@ -8,6 +8,13 @@ dependencyResolutionManagement {
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
             version("arrow", "1.2.4")
+            version("emottak-utils", "0.1.0")
+            version("kotlin-kafka", "0.4.1")
+            version("logback", "1.5.18")
+            version("logstash", "8.0")
+            version("prometheus", "1.12.4")
+            version("vault-java-driver", "5.1.0")
+            version("vault-jdbc", "1.3.10")
 
             library("hikari", "com.zaxxer:HikariCP:5.0.1")
 
@@ -21,7 +28,14 @@ dependencyResolutionManagement {
 
             library("content-negotiation", "io.ktor", "ktor-server-content-negotiation").versionRef("ktor")
             library("serialization-json", "io.ktor", "ktor-serialization-kotlinx-json").versionRef("ktor")
+            library("server-config-yaml", "io.ktor", "ktor-server-config-yaml").versionRef("ktor")
             library("micrometer", "io.ktor", "ktor-server-metrics-micrometer").versionRef("ktor")
+            library("server-core", "io.ktor", "ktor-server-core").versionRef("ktor")
+            library("server-netty", "io.ktor", "ktor-server-netty").versionRef("ktor")
+
+            library("kotlin-kafka", "io.github.nomisrev", "kotlin-kafka").versionRef("kotlin-kafka")
+
+            library("micrometer-registry-prometheus", "io.micrometer", "micrometer-registry-prometheus").versionRef("prometheus")
 
             library("hoplite-core", "com.sksamuel.hoplite", "hoplite-core").versionRef("hoplite")
             library("hoplite-hocon", "com.sksamuel.hoplite", "hoplite-hocon").versionRef("hoplite")
@@ -32,16 +46,35 @@ dependencyResolutionManagement {
             library("arrow-suspendapp", "io.arrow-kt", "suspendapp").versionRef("suspendapp")
             library("arrow-suspendapp-ktor", "io.arrow-kt", "suspendapp-ktor").versionRef("suspendapp")
 
+            library("emottak-utils", "no.nav.emottak", "emottak-utils").versionRef("emottak-utils")
+
+            library("logback", "ch.qos.logback", "logback-classic").versionRef("logback")
+            library("logstash", "net.logstash.logback", "logstash-logback-encoder").versionRef("logstash")
+
+            library("vault-java-driver", "com.bettercloud", "vault-java-driver").versionRef("vault-java-driver")
+            library("vault-jdbc", "no.nav", "vault-jdbc").versionRef("vault-jdbc")
+
+            bundle("suspendapp", listOf("arrow-suspendapp", "arrow-suspendapp-ktor"))
             bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc", "exposed-time", "exposed-json"))
-            bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer"))
+            bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer", "server-core", "server-netty", "server-config-yaml"))
             bundle("hoplite", listOf("hoplite-core", "hoplite-hocon"))
+            bundle("arrow", listOf("arrow-core", "arrow-fx-coroutines"))
         }
 
         create("testLibs") {
             version("kotest", "5.9.1")
+            version("ktor-test", "1.1.5")
+            version("testcontainers", "1.18.1")
+            version("mockk", "1.13.17")
 
             library("kotest-runner", "io.kotest", "kotest-runner-junit5").versionRef("kotest")
             library("kotest-assertions", "io.kotest", "kotest-assertions-core").versionRef("kotest")
+
+            library("ktor-server-test", "io.ktor", "ktor-server-test-host").versionRef("ktor-test")
+
+            library("testcontainers-postgresql", "org.testcontainers", "postgresql").versionRef("testcontainers")
+
+            library("mockk", "io.mockk", "mockk").versionRef("mockk")
 
             bundle("kotest", listOf("kotest-runner", "kotest-assertions"))
         }
