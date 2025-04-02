@@ -13,13 +13,11 @@ import no.nav.emottak.utils.events.model.EventType
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.requestId as requestIdColumn
 
-@OptIn(ExperimentalUuidApi::class)
 class EventsRepository(private val database: Database) {
 
     fun insert(event: Event): Uuid {

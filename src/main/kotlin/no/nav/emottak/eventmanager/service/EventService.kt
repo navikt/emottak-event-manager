@@ -1,13 +1,20 @@
 package no.nav.emottak.eventmanager.service
 
+import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.utils.events.model.Event
 
-class EventService {
+class EventService(val eventsRepository: EventsRepository) {
     suspend fun process(key: String, value: ByteArray) {
         try {
-            log.info("Kafka test: Message received key:$key, value:${String(value)}")
+            log.info("Event read from Kafka: key:$key, value:${String(value)}")
+
+            val event: Event = Json.decodeFromString(String(value))
+            eventsRepository.insert(event)
+            log.info("Event processed successfully: key:$key")
         } catch (e: Exception) {
-            log.error("Kafka test: Exception while receiving messages from queue", e)
+            log.error("Exception while processing event key:$key, value:${String(value)}", e)
         }
     }
 }

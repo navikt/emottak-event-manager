@@ -25,10 +25,7 @@ class ApplicationTest : StringSpec({
     "Root endpoint should return OK" {
         testApplication {
             application(
-                eventManagerModule(
-                    dbContainer.testConfiguration(),
-                    dbContainer.testConfiguration()
-                )
+                eventManagerModule()
             )
             client.get("/").apply {
                 status shouldBe HttpStatusCode.OK

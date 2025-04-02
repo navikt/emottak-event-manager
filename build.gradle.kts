@@ -34,6 +34,12 @@ tasks {
     }
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
+    compilerOptions {
+        freeCompilerArgs = listOf("-opt-in=kotlin.uuid.ExperimentalUuidApi,com.sksamuel.hoplite.ExperimentalHoplite,io.ktor.utils.io.InternalAPI")
+    }
+}
+
 kotlin {
     jvmToolchain(21)
 }
@@ -58,7 +64,6 @@ dependencies {
     implementation("net.logstash.logback:logstash-logback-encoder:$logstash_version")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation(libs.bundles.ktor)
-    api("dev.reformator.stacktracedecoroutinator:stacktrace-decoroutinator-jvm:2.3.8")
     implementation("io.micrometer:micrometer-registry-prometheus:1.12.0")
     implementation(libs.hikari)
     implementation(libs.flyway.core)
@@ -77,4 +82,5 @@ dependencies {
     testImplementation(testLibs.bundles.kotest)
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.testcontainers:postgresql:1.18.0")
+    testImplementation("io.mockk:mockk:1.13.17")
 }
