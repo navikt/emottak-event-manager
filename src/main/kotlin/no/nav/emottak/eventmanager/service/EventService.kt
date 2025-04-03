@@ -3,7 +3,7 @@ package no.nav.emottak.eventmanager.service
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.utils.events.model.Event
+import no.nav.emottak.utils.kafka.model.Event
 
 class EventService(private val eventsRepository: EventsRepository) {
     suspend fun process(key: String, value: ByteArray) {

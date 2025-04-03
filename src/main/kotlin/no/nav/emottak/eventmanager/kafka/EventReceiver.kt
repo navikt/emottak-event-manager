@@ -1,6 +1,6 @@
 package no.nav.emottak.eventmanager.kafka
 
-import io.github.nomisRev.kafka.AutoOffsetReset
+import io.github.nomisRev.kafka.receiver.AutoOffsetReset
 import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.nomisRev.kafka.receiver.ReceiverSettings
 import kotlinx.coroutines.flow.collect
@@ -29,7 +29,7 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
     KafkaReceiver(receiverSettings)
         .receive(topic)
         .map { record ->
-            log.debug("Processing record: $record")
+            log.debug("Processing record: {}", record)
             eventService.process(record.key(), record.value())
             record.offset.acknowledge()
         }.collect()

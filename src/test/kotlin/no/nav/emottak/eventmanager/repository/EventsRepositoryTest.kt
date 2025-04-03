@@ -7,8 +7,8 @@ import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.utils.events.model.Event
-import no.nav.emottak.utils.events.model.EventType
+import no.nav.emottak.utils.kafka.model.Event
+import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.util.UUID
 import kotlin.uuid.Uuid
