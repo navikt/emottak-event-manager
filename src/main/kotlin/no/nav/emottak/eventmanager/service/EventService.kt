@@ -5,7 +5,7 @@ import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.Event
-import java.time.LocalDateTime
+import java.time.Instant
 
 class EventService(private val eventsRepository: EventsRepository) {
     suspend fun process(key: String, value: ByteArray) {
@@ -20,7 +20,7 @@ class EventService(private val eventsRepository: EventsRepository) {
         }
     }
 
-    suspend fun fetchEvents(from: LocalDateTime, to: LocalDateTime): List<EventInfo> {
+    suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
         return eventsRepository.findEventByTimeInterval(from, to).map {
             EventInfo(
                 hendelsedato = it.createdAt.toString(),

@@ -7,7 +7,6 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
-import io.ktor.server.util.toLocalDateTime
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.service.EventService
 import java.text.SimpleDateFormat
@@ -38,12 +37,12 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
                 log.info("Mangler parameter: fromDate")
                 call.respond(HttpStatusCode.BadRequest)
             }
-            val fromDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(fromDateParam).toLocalDateTime()
+            val fromDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(fromDateParam).toInstant()
             if (toDateParam.isNullOrEmpty()) {
                 log.info("Mangler parameter: toDate")
                 call.respond(HttpStatusCode.BadRequest)
             }
-            val toDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(toDateParam).toLocalDateTime()
+            val toDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(toDateParam).toInstant()
             log.info("Henter hendelser fra events endepunktet...")
             val events = eventService.fetchEvents(fromDate, toDate)
             log.info("Antall hendelser fra endepunktet : ${events.size}")

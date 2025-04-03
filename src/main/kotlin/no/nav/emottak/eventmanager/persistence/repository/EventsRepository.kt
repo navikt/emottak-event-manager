@@ -14,7 +14,7 @@ import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -77,7 +77,7 @@ class EventsRepository(private val database: Database) {
         }
     }
 
-    suspend fun findEventByTimeInterval(from: LocalDateTime, to: LocalDateTime): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findEventByTimeInterval(from: Instant, to: Instant): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventsTable.select(EventsTable.columns)
                 .where { createdAt.between(from, to) }
