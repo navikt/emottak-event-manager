@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory
 
 val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
-val eventsService = EventsService()
 val config = config()
 
 fun main(args: Array<String>) = SuspendApp {
@@ -40,7 +39,7 @@ fun main(args: Array<String>) = SuspendApp {
             server(
                 factory = Netty,
                 port = 8080,
-                module = eventManagerModule()
+                module = eventManagerModule(eventService)
             )
 
             log.debug("Configuration: $config")
@@ -56,13 +55,13 @@ fun main(args: Array<String>) = SuspendApp {
     }
 }
 
-fun eventManagerModule(): Application.() -> Unit {
+fun eventManagerModule(eventService: EventService): Application.() -> Unit {
     return {
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {
             registry = appMicrometerRegistry
         }
         configureRouting()
-        configureNaisRouts(appMicrometerRegistry, eventsService)
+        configureNaisRouts(appMicrometerRegistry, eventService)
     }
 }

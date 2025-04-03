@@ -6,16 +6,26 @@ import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.service.EventService
 import org.testcontainers.containers.PostgreSQLContainer
 
 class ApplicationTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
+    lateinit var db: Database
+    lateinit var eventRepository: EventsRepository
+    lateinit var eventService: EventService
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
+        db = Database(dbContainer.testConfiguration())
+        db.migrate(db.dataSource)
+        eventRepository = EventsRepository(db)
+        eventService = EventService(eventRepository)
     }
 
     afterSpec {
@@ -25,7 +35,7 @@ class ApplicationTest : StringSpec({
     "Root endpoint should return OK" {
         testApplication {
             application(
-                eventManagerModule()
+                eventManagerModule(eventService)
             )
             client.get("/").apply {
                 status shouldBe HttpStatusCode.OK

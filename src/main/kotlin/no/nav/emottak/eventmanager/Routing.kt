@@ -9,6 +9,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.util.toLocalDateTime
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import no.nav.emottak.eventmanager.service.EventService
 import java.text.SimpleDateFormat
 
 fun Application.configureRouting() {
@@ -19,7 +20,7 @@ fun Application.configureRouting() {
     }
 }
 
-fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, eventsService: EventsService) {
+fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, eventService: EventService) {
     routing {
         get("/internal/health/liveness") {
             call.respondText("I'm alive! :)")
@@ -31,20 +32,20 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             call.respond(collectorRegistry.scrape())
         }
         get("/fetchevents") {
-            val fromDate = call.request.queryParameters.get("fromDate")
-            val toDate = call.request.queryParameters.get("toDate")
-            if (fromDate.isNullOrEmpty()) {
-                log.info("Mangler parameter: from date")
+            val fromDateParam = call.request.queryParameters.get("fromDate")
+            val toDateParam = call.request.queryParameters.get("toDate")
+            if (fromDateParam.isNullOrEmpty()) {
+                log.info("Mangler parameter: fromDate")
                 call.respond(HttpStatusCode.BadRequest)
             }
-            val fom = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(fromDate).toLocalDateTime()
-            if (toDate.isNullOrEmpty()) {
-                log.info("Mangler parameter: to date")
+            val fromDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(fromDateParam).toLocalDateTime()
+            if (toDateParam.isNullOrEmpty()) {
+                log.info("Mangler parameter: toDate")
                 call.respond(HttpStatusCode.BadRequest)
             }
-            val tom = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(toDate).toLocalDateTime()
-            log.info("Henter hendelser fra events endepunktet til ebms ...")
-            val events = eventsService.fetchevents(fom, tom)
+            val toDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(toDateParam).toLocalDateTime()
+            log.info("Henter hendelser fra events endepunktet...")
+            val events = eventService.fetchEvents(fromDate, toDate)
             log.info("Antall hendelser fra endepunktet : ${events.size}")
             log.info("Henter siste hendelse : ${events.last()}")
             call.respond(events)
