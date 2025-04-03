@@ -1,5 +1,7 @@
 package no.nav.emottak.eventmanager.persistence.repository
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EventsTable
@@ -20,7 +22,7 @@ import no.nav.emottak.eventmanager.persistence.table.EventsTable.requestId as re
 
 class EventsRepository(private val database: Database) {
 
-    fun insert(event: Event): Uuid {
+    suspend fun insert(event: Event): Uuid = withContext(Dispatchers.IO) {
         val newEventId = UUID.randomUUID()
         transaction(database.db) {
             EventsTable.insert {
@@ -35,11 +37,11 @@ class EventsRepository(private val database: Database) {
                 it[createdAt] = event.createdAt
             }
         }
-        return newEventId.toKotlinUuid()
+        newEventId.toKotlinUuid()
     }
 
-    fun findEventById(eventId: Uuid): Event? {
-        return transaction {
+    suspend fun findEventById(eventId: Uuid): Event? = withContext(Dispatchers.IO) {
+        transaction {
             EventsTable.select(EventsTable.columns)
                 .where { EventsTable.eventId eq eventId.toJavaUuid() }
                 .mapNotNull {
@@ -56,8 +58,8 @@ class EventsRepository(private val database: Database) {
         }
     }
 
-    fun findEventByRequestId(requestId: Uuid): List<Event> {
-        return transaction {
+    suspend fun findEventByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
+        transaction {
             EventsTable.select(EventsTable.columns)
                 .where { EventsTable.requestId eq requestId.toJavaUuid() }
                 .mapNotNull {
