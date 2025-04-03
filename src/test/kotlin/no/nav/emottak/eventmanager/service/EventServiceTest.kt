@@ -1,9 +1,9 @@
 package no.nav.emottak.eventmanager.service
 
 import io.kotest.core.spec.style.StringSpec
-import io.mockk.every
+import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
-import io.mockk.verify
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.events.model.Event
 import no.nav.emottak.utils.events.model.EventType
@@ -26,10 +26,10 @@ class EventServiceTest : StringSpec({
             eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
         )
 
-        every { eventsRepository.insert(testEvent) } returns testEvent.requestId
+        coEvery { eventsRepository.insert(testEvent) } returns testEvent.requestId
 
         eventService.process(Uuid.random().toString(), testEvent.toByteArray())
 
-        verify { eventsRepository.insert(testEvent) }
+        coVerify { eventsRepository.insert(testEvent) }
     }
 })
