@@ -5,8 +5,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.utils.events.model.Event
-import no.nav.emottak.utils.events.model.EventType
+import no.nav.emottak.utils.kafka.model.Event
+import no.nav.emottak.utils.kafka.model.EventType
 import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid

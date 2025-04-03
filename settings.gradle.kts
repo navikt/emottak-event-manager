@@ -4,11 +4,11 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             version("exposed", "0.47.0")
-            version("ktor", "2.3.6")
+            version("ktor", "3.1.2")
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
-            version("arrow", "1.2.4")
-            version("emottak-utils", "0.1.0")
+            version("arrow", "2.0.1")
+            version("emottak-utils", "0.2.0")
             version("kotlin-kafka", "0.4.1")
             version("logback", "1.5.18")
             version("logstash", "8.0")

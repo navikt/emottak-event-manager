@@ -10,8 +10,8 @@ import no.nav.emottak.eventmanager.persistence.table.EventsTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventsTable.messageId
-import no.nav.emottak.utils.events.model.Event
-import no.nav.emottak.utils.events.model.EventType
+import no.nav.emottak.utils.kafka.model.Event
+import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.UUID
