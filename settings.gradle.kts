@@ -26,7 +26,8 @@ dependencyResolutionManagement {
             library("exposed-time", "org.jetbrains.exposed", "exposed-java-time").versionRef("exposed")
             library("exposed-json", "org.jetbrains.exposed", "exposed-json").versionRef("exposed")
 
-            library("content-negotiation", "io.ktor", "ktor-server-content-negotiation").versionRef("ktor")
+            library("server-content-negotiation", "io.ktor", "ktor-server-content-negotiation").versionRef("ktor")
+            library("client-content-negotiation", "io.ktor", "ktor-client-content-negotiation").versionRef("ktor")
             library("serialization-json", "io.ktor", "ktor-serialization-kotlinx-json").versionRef("ktor")
             library("server-config-yaml", "io.ktor", "ktor-server-config-yaml").versionRef("ktor")
             library("micrometer", "io.ktor", "ktor-server-metrics-micrometer").versionRef("ktor")
@@ -56,7 +57,7 @@ dependencyResolutionManagement {
 
             bundle("suspendapp", listOf("arrow-suspendapp", "arrow-suspendapp-ktor"))
             bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc", "exposed-time", "exposed-json"))
-            bundle("ktor", listOf("content-negotiation", "serialization-json", "micrometer", "server-core", "server-netty", "server-config-yaml"))
+            bundle("ktor", listOf("server-content-negotiation", "client-content-negotiation", "serialization-json", "micrometer", "server-core", "server-netty", "server-config-yaml"))
             bundle("hoplite", listOf("hoplite-core", "hoplite-hocon"))
             bundle("arrow", listOf("arrow-core", "arrow-fx-coroutines"))
         }

@@ -9,7 +9,9 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.service.EventService
-import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 fun Application.configureRouting() {
     routing {
@@ -31,22 +33,27 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             call.respond(collectorRegistry.scrape())
         }
         get("/fetchevents") {
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
             val fromDateParam = call.request.queryParameters.get("fromDate")
             val toDateParam = call.request.queryParameters.get("toDate")
             if (fromDateParam.isNullOrEmpty()) {
                 log.info("Mangler parameter: fromDate")
                 call.respond(HttpStatusCode.BadRequest)
             }
-            val fromDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(fromDateParam).toInstant()
+            val fromDate = LocalDateTime.parse(fromDateParam, formatter)
+                .atZone(ZoneId.of("UTC"))
+                .toInstant()
             if (toDateParam.isNullOrEmpty()) {
                 log.info("Mangler parameter: toDate")
                 call.respond(HttpStatusCode.BadRequest)
             }
-            val toDate = SimpleDateFormat("yyyy-MM-dd HH:mm").parse(toDateParam).toInstant()
-            log.info("Henter hendelser fra events endepunktet...")
+            val toDate = LocalDateTime.parse(toDateParam, formatter)
+                .atZone(ZoneId.of("UTC"))
+                .toInstant()
+            log.debug("Henter hendelser fra events endepunktet...")
             val events = eventService.fetchEvents(fromDate, toDate)
-            log.info("Antall hendelser fra endepunktet : ${events.size}")
-            log.info("Henter siste hendelse : ${events.last()}")
+            log.debug("Antall hendelser fra endepunktet : ${events.size}")
+            log.debug("Henter siste hendelse : ${events.lastOrNull()}")
             call.respond(events)
         }
     }

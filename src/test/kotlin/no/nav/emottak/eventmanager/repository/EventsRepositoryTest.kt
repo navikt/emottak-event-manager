@@ -77,11 +77,9 @@ class EventsRepositoryTest : StringSpec({
     }
 
     "Should find events by time interval" {
-        val sharedRequestId = Uuid.random()
-
         val eventInTimeInterval = Event(
             eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = sharedRequestId,
+            requestId = Uuid.random(),
             contentId = "content-1",
             messageId = "message-1",
             eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
@@ -90,7 +88,7 @@ class EventsRepositoryTest : StringSpec({
 
         val eventOutOfTimeInterval = Event(
             eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = sharedRequestId,
+            requestId = Uuid.random(),
             contentId = "content-2",
             messageId = "message-2",
             eventData = "{\"juridisk_logg_id\":\"2_msg_20250401155445386\"}",
