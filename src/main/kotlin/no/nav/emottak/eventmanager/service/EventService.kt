@@ -6,7 +6,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.Event
 
 class EventService(private val eventsRepository: EventsRepository) {
-    suspend fun process(key: String, value: ByteArray) {
+    suspend fun process(key: String?, value: ByteArray) {
         try {
             log.info("Event read from Kafka: key:$key, value:${String(value)}")
 

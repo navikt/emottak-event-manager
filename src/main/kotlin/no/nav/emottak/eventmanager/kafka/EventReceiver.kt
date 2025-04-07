@@ -15,7 +15,7 @@ import kotlin.time.Duration.Companion.seconds
 
 suspend fun startEventReceiver(topic: String, eventService: EventService) {
     log.info("Starting event receiver on topic $topic")
-    val receiverSettings: ReceiverSettings<String, ByteArray> =
+    val receiverSettings: ReceiverSettings<String?, ByteArray> =
         ReceiverSettings(
             bootstrapServers = config.kafka.bootstrapServers,
             keyDeserializer = StringDeserializer(),
