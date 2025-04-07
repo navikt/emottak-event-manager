@@ -15,7 +15,7 @@ import kotlin.time.Duration.Companion.seconds
 
 suspend fun startEventReceiver(topic: String, eventService: EventService) {
     log.info("Starting event receiver on topic $topic")
-    val receiverSettings: ReceiverSettings<String, ByteArray> =
+    val receiverSettings: ReceiverSettings<String?, ByteArray> =
         ReceiverSettings(
             bootstrapServers = config.kafka.bootstrapServers,
             keyDeserializer = StringDeserializer(),
@@ -30,7 +30,7 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
         .receive(topic)
         .map { record ->
             log.debug("Processing record: {}", record)
-            eventService.process(record.key(), record.value())
+            eventService.process(record.value())
             record.offset.acknowledge()
         }.collect()
 }

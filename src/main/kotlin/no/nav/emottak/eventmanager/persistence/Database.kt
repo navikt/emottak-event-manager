@@ -18,10 +18,8 @@ class Database(
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
             .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
             .lockRetryCount(50)
-            .cleanDisabled(false)
             .load()
             .apply {
-                clean()
                 migrate()
             }
     }

@@ -8,7 +8,6 @@ import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import java.util.UUID
-import kotlin.uuid.Uuid
 import kotlin.uuid.toKotlinUuid
 
 class EventServiceTest : StringSpec({
@@ -28,7 +27,7 @@ class EventServiceTest : StringSpec({
 
         coEvery { eventsRepository.insert(testEvent) } returns testEvent.requestId
 
-        eventService.process(Uuid.random().toString(), testEvent.toByteArray())
+        eventService.process(testEvent.toByteArray())
 
         coVerify { eventsRepository.insert(testEvent) }
     }
