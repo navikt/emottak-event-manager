@@ -30,7 +30,7 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
         .receive(topic)
         .map { record ->
             log.debug("Processing record: {}", record)
-            eventService.process(record.key(), record.value())
+            eventService.process(record.value())
             record.offset.acknowledge()
         }.collect()
 }
