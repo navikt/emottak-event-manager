@@ -21,6 +21,9 @@ spec:
       application: ebms-provider
       team: team-emottak
     - access: write
+      application: ebms-async
+      team: team-emottak
+    - access: write
       application: ebms-payload
       team: team-emottak
     - access: write

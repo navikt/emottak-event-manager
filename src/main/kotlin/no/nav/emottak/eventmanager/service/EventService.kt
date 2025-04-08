@@ -8,15 +8,15 @@ import no.nav.emottak.utils.kafka.model.Event
 import java.time.Instant
 
 class EventService(private val eventsRepository: EventsRepository) {
-    suspend fun process(key: String, value: ByteArray) {
+    suspend fun process(value: ByteArray) {
         try {
-            log.info("Event read from Kafka: key:$key, value:${String(value)}")
+            log.info("Event read from Kafka: ${String(value)}")
 
             val event: Event = Json.decodeFromString(String(value))
             eventsRepository.insert(event)
-            log.info("Event processed successfully: key:$key")
+            log.info("Event processed successfully: $event")
         } catch (e: Exception) {
-            log.error("Exception while processing event key:$key, value:${String(value)}", e)
+            log.error("Exception while processing event:${String(value)}", e)
         }
     }
 
