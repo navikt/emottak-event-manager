@@ -1,4 +1,4 @@
-package no.nav.emottak.eventmanager
+package no.nav.emottak.eventmanager.model
 
 import kotlinx.serialization.Serializable
 
