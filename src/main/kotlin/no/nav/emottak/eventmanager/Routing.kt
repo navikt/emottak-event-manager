@@ -36,7 +36,7 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
         get("/fetchevents") {
             val fromDateParam = call.request.queryParameters.get("fromDate")
             val toDateParam = call.request.queryParameters.get("toDate")
-            log.info("fromDate: $fromDateParam, toDate: $toDateParam)")
+            log.info("fromDate: $fromDateParam, toDate: $toDateParam")
 
             if (fromDateParam.isNullOrEmpty()) {
                 log.info("Mangler parameter: fromDate")
@@ -60,9 +60,9 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
     }
 }
 
-fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd HH:mm"): Instant {
+fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
     val formatter = DateTimeFormatter.ofPattern(dateFormatString)
     return LocalDateTime.parse(dateString, formatter)
-        .atZone(ZoneId.of("UTC"))
+        .atZone(ZoneId.of(ZoneId.systemDefault().id))
         .toInstant()
 }

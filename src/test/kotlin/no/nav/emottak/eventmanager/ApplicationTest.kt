@@ -70,7 +70,7 @@ class ApplicationTest : StringSpec({
             val event = buildTestEvent()
             eventRepository.insert(event)
 
-            val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-01%2014:00&toDate=2025-04-01%2015:00")
+            val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-01T14:00&toDate=2025-04-01T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<EventInfo> = httpResponse.body()
@@ -93,7 +93,7 @@ class ApplicationTest : StringSpec({
             val event = buildTestEvent()
             eventRepository.insert(event)
 
-            val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-02%2014:00&toDate=2025-04-02%2015:00")
+            val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-02T14:00&toDate=2025-04-02T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<EventInfo> = httpResponse.body()
@@ -117,8 +117,8 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(event)
 
             forAll(
-                row("/fetchevents?toDate=2025-04-02%2015:00"),
-                row("/fetchevents?fromDate=2025-04-02%2014:00"),
+                row("/fetchevents?toDate=2025-04-02T15:00"),
+                row("/fetchevents?fromDate=2025-04-02T14:00"),
                 row("/fetchevents")
             ) { url ->
                 val httpResponse = httpClient.get(url)
@@ -158,5 +158,5 @@ fun buildTestEvent(): Event = Event(
     contentId = "content-1",
     messageId = "message-1",
     eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
-    createdAt = Instant.parse("2025-04-01T14:54:45.386Z")
+    createdAt = Instant.parse("2025-04-01T12:54:45.386Z")
 )
