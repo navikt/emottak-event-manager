@@ -34,8 +34,10 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
             call.respond(collectorRegistry.scrape())
         }
         get("/fetchevents") {
+
             val fromDateParam = call.request.queryParameters.get("fromDate")
             val toDateParam = call.request.queryParameters.get("toDate")
+            log.info("fromDate: $fromDateParam, toDate: $toDateParam)")
 
             if (fromDateParam.isNullOrEmpty()) {
                 log.info("Mangler parameter: fromDate")
