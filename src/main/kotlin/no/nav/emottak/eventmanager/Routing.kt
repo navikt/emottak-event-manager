@@ -63,6 +63,6 @@ fun Application.configureNaisRouts(collectorRegistry: PrometheusMeterRegistry, e
 fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
     val formatter = DateTimeFormatter.ofPattern(dateFormatString)
     return LocalDateTime.parse(dateString, formatter)
-        .atZone(ZoneId.of(ZoneId.systemDefault().id))
+        .atZone(ZoneId.of("Europe/Oslo"))
         .toInstant()
 }
