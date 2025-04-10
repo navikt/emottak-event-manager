@@ -6,6 +6,7 @@ import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.Event
 import java.time.Instant
+import java.time.ZoneId
 
 class EventService(private val eventsRepository: EventsRepository) {
     suspend fun process(value: ByteArray) {
@@ -23,7 +24,7 @@ class EventService(private val eventsRepository: EventsRepository) {
     suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
         return eventsRepository.findEventByTimeInterval(from, to).map {
             EventInfo(
-                hendelsedato = it.createdAt.toString(),
+                hendelsedato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
                 hendelsedeskr = it.eventType.toString(),
                 tillegsinfo = it.eventData.toString(),
                 mottakid = it.requestId.toString()
