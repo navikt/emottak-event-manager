@@ -84,19 +84,19 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
                 withLabel("app-name", "emottak-event-manager")
                 start()
             }
-
-        private fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
-            return EbmsMessageDetails(
-                requestId = Uuid.random(),
-                cpaId = "test-cpa-id",
-                conversationId = "test-conversation-id",
-                messageId = "test-message-id",
-                fromPartyId = "test-from-party-id",
-                toPartyId = "test-to-party-id",
-                service = "test-service",
-                action = "test-action",
-                savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
-            )
-        }
     }
+}
+
+fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
+    return EbmsMessageDetails(
+        requestId = Uuid.random(),
+        cpaId = "test-cpa-id",
+        conversationId = "test-conversation-id",
+        messageId = "test-message-id",
+        fromPartyId = "test-from-party-id",
+        toPartyId = "test-to-party-id",
+        service = "test-service",
+        action = "test-action",
+        savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
+    )
 }

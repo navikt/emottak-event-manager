@@ -105,15 +105,15 @@ class EventsRepositoryTest : StringSpec({
                 withLabel("app-name", "emottak-event-manager")
                 start()
             }
-
-        private fun buildTestEvent(): Event =
-            Event(
-                eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-                requestId = Uuid.random(),
-                contentId = "test-content-id",
-                messageId = "test-message-id",
-                eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
-                createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
-            )
     }
 }
+
+fun buildTestEvent(): Event =
+    Event(
+        eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
+        requestId = Uuid.random(),
+        contentId = "test-content-id",
+        messageId = "test-message-id",
+        eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
+        createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
+    )

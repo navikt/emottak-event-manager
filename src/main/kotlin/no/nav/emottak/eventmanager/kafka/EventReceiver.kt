@@ -8,13 +8,18 @@ import kotlinx.coroutines.flow.map
 import no.nav.emottak.eventmanager.config
 import no.nav.emottak.eventmanager.configuration.toProperties
 import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import kotlin.time.Duration.Companion.seconds
 
-suspend fun startEventReceiver(topic: String, eventService: EventService) {
-    log.info("Starting event receiver on topic $topic")
+suspend fun startEventReceiver(
+    topics: List<String>,
+    eventService: EventService,
+    ebmsMessageDetailsService: EbmsMessageDetailsService
+) {
+    log.info("Starting event receiver on topics $topics")
     val receiverSettings: ReceiverSettings<String?, ByteArray> =
         ReceiverSettings(
             bootstrapServers = config.kafka.bootstrapServers,
@@ -27,10 +32,14 @@ suspend fun startEventReceiver(topic: String, eventService: EventService) {
         )
 
     KafkaReceiver(receiverSettings)
-        .receive(topic)
+        .receive(topics)
         .map { record ->
             log.debug("Processing record: {}", record)
-            eventService.process(record.value())
+            when (record.topic()) {
+                config.eventConsumer.eventTopic -> eventService.process(record.value())
+                config.eventConsumer.messageDetailsTopic -> ebmsMessageDetailsService.process(record.value())
+                else -> log.warn("Record received from an unknown topic ${record.topic()}: ${record.value()}")
+            }
             record.offset.acknowledge()
         }.collect()
 }
