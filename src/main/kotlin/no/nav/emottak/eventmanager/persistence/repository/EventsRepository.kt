@@ -15,6 +15,7 @@ import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -35,7 +36,7 @@ class EventsRepository(private val database: Database) {
                 it[eventData] = event.eventData?.let { jsonData ->
                     Json.decodeFromString<Map<String, String>>(jsonData)
                 } ?: emptyMap()
-                it[createdAt] = event.createdAt
+                it[createdAt] = event.createdAt.truncatedTo(ChronoUnit.MICROS)
             }
         }
         newEventId.toKotlinUuid()
