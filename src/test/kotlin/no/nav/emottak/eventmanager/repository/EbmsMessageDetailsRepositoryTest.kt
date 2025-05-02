@@ -10,6 +10,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepo
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
@@ -94,14 +95,8 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
                 toPartyId = "test-to-party-id",
                 service = "test-service",
                 action = "test-action",
-                savedAt = Instant.now()
-            ).unifyDateFormat()
+                savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
+            )
         }
     }
-}
-
-// Instant.now() produces nanoseconds precision, but PostgreSQL only supports microseconds precision.
-// This function removes fractional seconds from the Instant to ensure compatibility with TIMESTAMP datatype.
-fun EbmsMessageDetails.unifyDateFormat(): EbmsMessageDetails {
-    return this.copy(savedAt = this.savedAt.minusNanos(this.savedAt.nano.toLong()))
 }

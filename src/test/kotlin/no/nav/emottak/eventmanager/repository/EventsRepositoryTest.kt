@@ -12,9 +12,8 @@ import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
-import java.util.UUID
+import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
-import kotlin.uuid.toKotlinUuid
 
 class EventsRepositoryTest : StringSpec({
 
@@ -35,13 +34,7 @@ class EventsRepositoryTest : StringSpec({
     }
 
     "Should retrieve an event by eventId" {
-        val testEvent = Event(
-            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = UUID.randomUUID().toKotlinUuid(),
-            contentId = "test-content-id",
-            messageId = "test-message-id",
-            eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
-        ).unifyDateFormat()
+        val testEvent = buildTestEvent()
 
         val eventId = eventRepository.insert(testEvent)
         val retrievedEvent = eventRepository.findEventById(eventId)
@@ -52,21 +45,13 @@ class EventsRepositoryTest : StringSpec({
     "Should insert multiple Events with same requestId and retrieve them" {
         val sharedRequestId = Uuid.random()
 
-        val event1 = Event(
-            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = sharedRequestId,
-            contentId = "content-1",
-            messageId = "message-1",
-            eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
-        ).unifyDateFormat()
+        val event1 = buildTestEvent().copy(
+            requestId = sharedRequestId
+        )
 
-        val event2 = Event(
-            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = sharedRequestId,
-            contentId = "content-2",
-            messageId = "message-2",
-            eventData = "{\"juridisk_logg_id\":\"2_msg_20250401145445386\"}"
-        ).unifyDateFormat()
+        val event2 = buildTestEvent().copy(
+            requestId = sharedRequestId
+        )
 
         eventRepository.insert(event1)
         eventRepository.insert(event2)
@@ -77,21 +62,12 @@ class EventsRepositoryTest : StringSpec({
     }
 
     "Should find events by time interval" {
-        val eventInTimeInterval = Event(
-            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = Uuid.random(),
-            contentId = "content-1",
-            messageId = "message-1",
-            eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
+
+        val eventInTimeInterval = buildTestEvent().copy(
             createdAt = Instant.parse("2025-04-01T14:54:45.386Z")
         )
 
-        val eventOutOfTimeInterval = Event(
-            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = Uuid.random(),
-            contentId = "content-2",
-            messageId = "message-2",
-            eventData = "{\"juridisk_logg_id\":\"2_msg_20250401155445386\"}",
+        val eventOutOfTimeInterval = buildTestEvent().copy(
             createdAt = Instant.parse("2025-04-01T15:54:45.386Z")
         )
 
@@ -129,11 +105,15 @@ class EventsRepositoryTest : StringSpec({
                 withLabel("app-name", "emottak-event-manager")
                 start()
             }
-    }
-}
 
-// Instant.now() produces nanoseconds precision, but PostgreSQL only supports microseconds precision.
-// This function removes fractional seconds from the Instant to ensure compatibility with TIMESTAMP datatype.
-fun Event.unifyDateFormat(): Event {
-    return this.copy(createdAt = this.createdAt.minusNanos(this.createdAt.nano.toLong()))
+        private fun buildTestEvent(): Event =
+            Event(
+                eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
+                requestId = Uuid.random(),
+                contentId = "test-content-id",
+                messageId = "test-message-id",
+                eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
+                createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
+            )
+    }
 }

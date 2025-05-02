@@ -23,6 +23,7 @@ import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -46,8 +47,8 @@ class EbmsMessageDetailsRepository(private val database: Database) {
                 it[action] = ebmsMessageDetails.action
                 it[refParam] = ebmsMessageDetails.refParam
                 it[sender] = ebmsMessageDetails.sender
-                it[sentAt] = ebmsMessageDetails.sentAt
-                it[savedAt] = ebmsMessageDetails.savedAt
+                it[sentAt] = ebmsMessageDetails.sentAt?.truncatedTo(ChronoUnit.MICROS)
+                it[savedAt] = ebmsMessageDetails.savedAt.truncatedTo(ChronoUnit.MICROS)
             }
         }
         ebmsMessageDetails.requestId
