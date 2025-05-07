@@ -12,7 +12,6 @@ import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 
 class EventsRepositoryTest : StringSpec({
@@ -35,6 +34,20 @@ class EventsRepositoryTest : StringSpec({
 
     "Should retrieve an event by eventId" {
         val testEvent = buildTestEvent()
+
+        val eventId = eventRepository.insert(testEvent)
+        val retrievedEvent = eventRepository.findEventById(eventId)
+
+        retrievedEvent shouldBe testEvent.copy()
+    }
+
+    "Should retrieve an event with empty eventData by eventId" {
+        val testEvent = Event(
+            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
+            requestId = Uuid.random(),
+            contentId = "test-content-id",
+            messageId = "test-message-id"
+        )
 
         val eventId = eventRepository.insert(testEvent)
         val retrievedEvent = eventRepository.findEventById(eventId)
@@ -114,6 +127,5 @@ fun buildTestEvent(): Event =
         requestId = Uuid.random(),
         contentId = "test-content-id",
         messageId = "test-message-id",
-        eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
-        createdAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
+        eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}"
     )
