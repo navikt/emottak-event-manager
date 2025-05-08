@@ -26,7 +26,7 @@ class EventService(private val eventsRepository: EventsRepository) {
             EventInfo(
                 hendelsedato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
                 hendelsedeskr = it.eventType.toString(),
-                tillegsinfo = it.eventData.toString(),
+                tillegsinfo = it.eventData,
                 mottakid = it.requestId.toString()
             )
         }

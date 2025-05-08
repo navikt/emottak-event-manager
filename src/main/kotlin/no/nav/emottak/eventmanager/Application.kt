@@ -44,7 +44,7 @@ fun main(args: Array<String>) = SuspendApp {
             server(
                 factory = Netty,
                 port = 8080,
-                module = eventManagerModule(eventService)
+                module = eventManagerModule(eventService, ebmsMessageDetailsService)
             )
 
             log.debug("Configuration: $config")
@@ -67,13 +67,13 @@ fun main(args: Array<String>) = SuspendApp {
     }
 }
 
-fun eventManagerModule(eventService: EventService): Application.() -> Unit {
+fun eventManagerModule(eventService: EventService, ebmsMessageDetailsService: EbmsMessageDetailsService): Application.() -> Unit {
     return {
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {
             registry = appMicrometerRegistry
         }
         configureRouting()
-        configureNaisRouts(appMicrometerRegistry, eventService)
+        configureNaisRouts(appMicrometerRegistry, eventService, ebmsMessageDetailsService)
     }
 }

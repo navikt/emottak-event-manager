@@ -15,7 +15,9 @@ import io.ktor.server.testing.testApplication
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
@@ -27,8 +29,13 @@ class ApplicationTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
+
     lateinit var eventRepository: EventsRepository
+    lateinit var ebmsMessageDetailsRepository: EbmsMessageDetailsRepository
+
     lateinit var eventService: EventService
+    lateinit var ebmsMessageDetailsService: EbmsMessageDetailsService
+
     lateinit var httpClient: HttpClient
 
     beforeSpec {
@@ -38,6 +45,9 @@ class ApplicationTest : StringSpec({
         db.migrate(db.dataSource)
         eventRepository = EventsRepository(db)
         eventService = EventService(eventRepository)
+
+        ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(db)
+        ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
     }
 
     afterSpec {
@@ -47,7 +57,7 @@ class ApplicationTest : StringSpec({
     "Root endpoint should return OK" {
         testApplication {
             application(
-                eventManagerModule(eventService)
+                eventManagerModule(eventService, ebmsMessageDetailsService)
             )
             client.get("/").apply {
                 status shouldBe HttpStatusCode.OK
@@ -58,7 +68,7 @@ class ApplicationTest : StringSpec({
     "fetchevents endpoint should return list of events" {
         testApplication {
             application(
-                eventManagerModule(eventService)
+                eventManagerModule(eventService, ebmsMessageDetailsService)
             )
 
             val httpClient = createClient {
@@ -81,7 +91,7 @@ class ApplicationTest : StringSpec({
     "fetchevents endpoint should return empty list if no events found" {
         testApplication {
             application(
-                eventManagerModule(eventService)
+                eventManagerModule(eventService, ebmsMessageDetailsService)
             )
 
             val httpClient = createClient {
@@ -104,7 +114,7 @@ class ApplicationTest : StringSpec({
     "fetchevents endpoint should return BadRequest if required parameters are missing" {
         testApplication {
             application(
-                eventManagerModule(eventService)
+                eventManagerModule(eventService, ebmsMessageDetailsService)
             )
 
             val httpClient = createClient {
