@@ -13,16 +13,19 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import no.nav.emottak.eventmanager.model.EventInfo
+import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
+import java.time.ZoneId
 import kotlin.uuid.Uuid
 
 class ApplicationTest : StringSpec({
@@ -123,13 +126,86 @@ class ApplicationTest : StringSpec({
                 }
             }
 
-            val event = buildTestEvent()
-            eventRepository.insert(event)
-
             forAll(
                 row("/fetchevents?toDate=2025-04-02T15:00"),
                 row("/fetchevents?fromDate=2025-04-02T14:00"),
                 row("/fetchevents")
+            ) { url ->
+                val httpResponse = httpClient.get(url)
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+            }
+        }
+    }
+
+    "fetchMessageDetails endpoint should return list of message details" {
+        testApplication {
+            application(
+                eventManagerModule(eventService, ebmsMessageDetailsService)
+            )
+
+            val httpClient = createClient {
+                install(ContentNegotiation) {
+                    json()
+                }
+            }
+
+            val messageDetails = buildTestEbmsMessageDetails()
+            ebmsMessageDetailsRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.get("/fetchMessageDetails?fromDate=2025-05-08T14:00&toDate=2025-05-08T15:00")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MessageInfo> = httpResponse.body()
+            messageInfoList[0].mottakidliste shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].role shouldBe messageDetails.fromRole
+            messageInfoList[0].service shouldBe messageDetails.service
+            messageInfoList[0].action shouldBe messageDetails.action
+            messageInfoList[0].referanse shouldBe messageDetails.refParam
+            messageInfoList[0].avsender shouldBe messageDetails.sender
+        }
+    }
+
+    "fetchMessageDetails endpoint should return empty list if no message details found" {
+        testApplication {
+            application(
+                eventManagerModule(eventService, ebmsMessageDetailsService)
+            )
+
+            val httpClient = createClient {
+                install(ContentNegotiation) {
+                    json()
+                }
+            }
+
+            val messageDetails = buildTestEbmsMessageDetails()
+            ebmsMessageDetailsRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.get("/fetchMessageDetails?fromDate=2025-05-09T14:00&toDate=2025-05-09T15:00")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+            val events: List<MessageInfo> = httpResponse.body()
+            events.size shouldBe 0
+        }
+    }
+
+    "fetchMessageDetails endpoint should return BadRequest if required parameters are missing" {
+        testApplication {
+            application(
+                eventManagerModule(eventService, ebmsMessageDetailsService)
+            )
+
+            val httpClient = createClient {
+                install(ContentNegotiation) {
+                    json()
+                }
+            }
+
+            forAll(
+                row("/fetchMessageDetails?toDate=2025-05-08T15:00"),
+                row("/fetchMessageDetails?fromDate=2025-05-08T14:00"),
+                row("/fetchMessageDetails")
             ) { url ->
                 val httpResponse = httpClient.get(url)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
@@ -170,3 +246,21 @@ fun buildTestEvent(): Event = Event(
     eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
     createdAt = Instant.parse("2025-04-01T12:54:45.386Z")
 )
+
+fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
+    return EbmsMessageDetails(
+        requestId = Uuid.random(),
+        cpaId = "test-cpa-id",
+        conversationId = "test-conversation-id",
+        messageId = "test-message-id",
+        fromPartyId = "test-from-party-id",
+        fromRole = "test-from-role",
+        toPartyId = "test-to-party-id",
+        toRole = "test-to-role",
+        service = "test-service",
+        action = "test-action",
+        refParam = "test-ref-param",
+        sender = "test-sender",
+        savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
+    )
+}

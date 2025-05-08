@@ -28,7 +28,7 @@ class EbmsMessageDetailsService(private val ebmsMessageDetailsRepository: EbmsMe
                 mottakidliste = it.requestId.toString(),
                 role = it.fromRole,
                 service = it.service,
-                action = it.service,
+                action = it.action,
                 referanse = it.refParam,
                 avsender = it.sender,
                 cpaid = it.cpaId,
