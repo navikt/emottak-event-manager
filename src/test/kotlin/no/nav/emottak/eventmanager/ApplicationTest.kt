@@ -39,7 +39,21 @@ class ApplicationTest : StringSpec({
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailsService: EbmsMessageDetailsService
 
-    lateinit var httpClient: HttpClient
+    val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
+        testApplication {
+            application(
+                eventManagerModule(eventService, ebmsMessageDetailsService)
+            )
+
+            val httpClient = createClient {
+                install(ContentNegotiation) {
+                    json()
+                }
+            }
+
+            testBlock(httpClient)
+        }
+    }
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
@@ -69,17 +83,7 @@ class ApplicationTest : StringSpec({
     }
 
     "fetchevents endpoint should return list of events" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
-            )
-
-            val httpClient = createClient {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }
-
+        withTestApplication { httpClient ->
             val event = buildTestEvent()
             eventRepository.insert(event)
 
@@ -92,17 +96,7 @@ class ApplicationTest : StringSpec({
     }
 
     "fetchevents endpoint should return empty list if no events found" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
-            )
-
-            val httpClient = createClient {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }
-
+        withTestApplication { httpClient ->
             val event = buildTestEvent()
             eventRepository.insert(event)
 
@@ -115,17 +109,7 @@ class ApplicationTest : StringSpec({
     }
 
     "fetchevents endpoint should return BadRequest if required parameters are missing" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
-            )
-
-            val httpClient = createClient {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }
-
+        withTestApplication { httpClient ->
             forAll(
                 row("/fetchevents?toDate=2025-04-02T15:00"),
                 row("/fetchevents?fromDate=2025-04-02T14:00"),
@@ -138,17 +122,7 @@ class ApplicationTest : StringSpec({
     }
 
     "fetchMessageDetails endpoint should return list of message details" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
-            )
-
-            val httpClient = createClient {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }
-
+        withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetails()
             ebmsMessageDetailsRepository.insert(messageDetails)
 
@@ -168,17 +142,7 @@ class ApplicationTest : StringSpec({
     }
 
     "fetchMessageDetails endpoint should return empty list if no message details found" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
-            )
-
-            val httpClient = createClient {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }
-
+        withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetails()
             ebmsMessageDetailsRepository.insert(messageDetails)
 
@@ -191,17 +155,7 @@ class ApplicationTest : StringSpec({
     }
 
     "fetchMessageDetails endpoint should return BadRequest if required parameters are missing" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
-            )
-
-            val httpClient = createClient {
-                install(ContentNegotiation) {
-                    json()
-                }
-            }
-
+        withTestApplication { httpClient ->
             forAll(
                 row("/fetchMessageDetails?toDate=2025-05-08T15:00"),
                 row("/fetchMessageDetails?fromDate=2025-05-08T14:00"),
