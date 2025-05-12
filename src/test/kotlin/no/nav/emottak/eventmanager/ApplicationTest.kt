@@ -60,10 +60,11 @@ class ApplicationTest : StringSpec({
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
-        eventRepository = EventsRepository(db)
-        eventService = EventService(eventRepository)
 
+        eventRepository = EventsRepository(db)
         ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(db)
+
+        eventService = EventService(eventRepository, ebmsMessageDetailsRepository)
         ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
     }
 

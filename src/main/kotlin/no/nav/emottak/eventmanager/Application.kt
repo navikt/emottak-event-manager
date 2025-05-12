@@ -35,10 +35,11 @@ fun main(args: Array<String>) = SuspendApp {
         resourceScope {
             val database = Database(eventDbConfig.value)
             database.migrate(eventMigrationConfig.value)
-            val eventsRepository = EventsRepository(database)
-            val eventService = EventService(eventsRepository)
 
+            val eventsRepository = EventsRepository(database)
             val ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(database)
+
+            val eventService = EventService(eventsRepository, ebmsMessageDetailsRepository)
             val ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
 
             server(
