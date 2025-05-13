@@ -72,6 +72,13 @@ class ApplicationTest : StringSpec({
         dbContainer.stop()
     }
 
+    afterTest {
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().execute("DELETE FROM events")
+            conn.createStatement().execute("DELETE FROM ebms_message_details")
+        }
+    }
+
     "Root endpoint should return OK" {
         testApplication {
             application(
@@ -85,21 +92,61 @@ class ApplicationTest : StringSpec({
 
     "fetchevents endpoint should return list of events" {
         withTestApplication { httpClient ->
-            val event = buildTestEvent()
-            eventRepository.insert(event)
+            val commonRequestId = Uuid.random()
+            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testMessageDetails = buildTestEbmsMessageDetails().copy(requestId = commonRequestId)
+
+            eventRepository.insert(testEvent)
+            ebmsMessageDetailsRepository.insert(testMessageDetails)
 
             val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-01T14:00&toDate=2025-04-01T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
+
             val events: List<EventInfo> = httpResponse.body()
-            events[0].mottakid shouldBe event.requestId.toString()
+            events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            events[0].hendelsedeskr shouldBe testEvent.eventType.toString()
+            events[0].tillegsinfo shouldBe testEvent.eventData
+            events[0].mottakid shouldBe testEvent.requestId.toString()
+            events[0].role shouldBe testMessageDetails.fromRole
+            events[0].service shouldBe testMessageDetails.service
+            events[0].action shouldBe testMessageDetails.action
+            events[0].referanse shouldBe testMessageDetails.refParam
+            events[0].avsender shouldBe testMessageDetails.sender
+        }
+    }
+
+    "fetchevents endpoint should return list of events when message details are not found" {
+        withTestApplication { httpClient ->
+            val testEvent = buildTestEvent()
+
+            eventRepository.insert(testEvent)
+
+            val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-01T14:00&toDate=2025-04-01T15:00")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val events: List<EventInfo> = httpResponse.body()
+            events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            events[0].hendelsedeskr shouldBe testEvent.eventType.toString()
+            events[0].tillegsinfo shouldBe testEvent.eventData
+            events[0].mottakid shouldBe testEvent.requestId.toString()
+            events[0].role shouldBe null
+            events[0].service shouldBe null
+            events[0].action shouldBe null
+            events[0].referanse shouldBe null
+            events[0].avsender shouldBe null
         }
     }
 
     "fetchevents endpoint should return empty list if no events found" {
         withTestApplication { httpClient ->
-            val event = buildTestEvent()
-            eventRepository.insert(event)
+            val commonRequestId = Uuid.random()
+            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testMessageDetails = buildTestEbmsMessageDetails().copy(requestId = commonRequestId)
+
+            eventRepository.insert(testEvent)
+            ebmsMessageDetailsRepository.insert(testMessageDetails)
 
             val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-02T14:00&toDate=2025-04-02T15:00")
 
