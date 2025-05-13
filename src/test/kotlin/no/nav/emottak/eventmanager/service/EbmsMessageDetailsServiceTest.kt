@@ -16,6 +16,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
     val ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
 
     "Should call database repository on processing EBMS message details" {
+
         val testDetails = buildTestEbmsMessageDetails()
         val testDetailsJson = Json.encodeToString(EbmsMessageDetails.serializer(), testDetails)
 
