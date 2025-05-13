@@ -33,9 +33,7 @@ class EventsRepository(private val database: Database) {
                 it[requestId] = event.requestId.toJavaUuid()
                 it[contentId] = event.contentId
                 it[messageId] = event.messageId
-                it[eventData] = event.eventData?.let { jsonData ->
-                    Json.decodeFromString<Map<String, String>>(jsonData)
-                } ?: emptyMap()
+                it[eventData] = Json.decodeFromString<Map<String, String>>(event.eventData)
                 it[createdAt] = event.createdAt.truncatedTo(ChronoUnit.MICROS)
             }
         }

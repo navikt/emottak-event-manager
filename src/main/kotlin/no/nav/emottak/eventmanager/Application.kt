@@ -20,7 +20,9 @@ import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
 import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
 
@@ -36,6 +38,9 @@ fun main(args: Array<String>) = SuspendApp {
             val eventsRepository = EventsRepository(database)
             val eventService = EventService(eventsRepository)
 
+            val ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(database)
+            val ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
+
             server(
                 factory = Netty,
                 port = 8080,
@@ -46,7 +51,14 @@ fun main(args: Array<String>) = SuspendApp {
             if (config.eventConsumer.active) {
                 log.info("Starting event receiver")
                 launch(Dispatchers.IO) {
-                    startEventReceiver(config.eventConsumer.eventTopic, eventService)
+                    startEventReceiver(
+                        listOf(
+                            config.eventConsumer.eventTopic,
+                            config.eventConsumer.messageDetailsTopic
+                        ),
+                        eventService,
+                        ebmsMessageDetailsService
+                    )
                 }
             }
 

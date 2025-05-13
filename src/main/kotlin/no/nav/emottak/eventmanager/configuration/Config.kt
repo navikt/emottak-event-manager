@@ -41,6 +41,7 @@ data class Kafka(
 data class EventConsumer(
     val active: Boolean,
     val eventTopic: String,
+    val messageDetailsTopic: String,
     val consumerGroupId: String
 )
 
