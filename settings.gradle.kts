@@ -13,7 +13,6 @@ dependencyResolutionManagement {
             version("logback", "1.5.18")
             version("logstash", "8.0")
             version("prometheus", "1.12.4")
-            version("vault-java-driver", "5.1.0")
             version("vault-jdbc", "1.3.10")
 
             library("hikari", "com.zaxxer:HikariCP:5.0.1")
@@ -52,7 +51,6 @@ dependencyResolutionManagement {
             library("logback", "ch.qos.logback", "logback-classic").versionRef("logback")
             library("logstash", "net.logstash.logback", "logstash-logback-encoder").versionRef("logstash")
 
-            library("vault-java-driver", "com.bettercloud", "vault-java-driver").versionRef("vault-java-driver")
             library("vault-jdbc", "no.nav", "vault-jdbc").versionRef("vault-jdbc")
 
             bundle("suspendapp", listOf("arrow-suspendapp", "arrow-suspendapp-ktor"))
