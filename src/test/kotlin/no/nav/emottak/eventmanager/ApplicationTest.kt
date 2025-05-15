@@ -161,6 +161,8 @@ class ApplicationTest : StringSpec({
             forAll(
                 row("/fetchevents?toDate=2025-04-02T15:00"),
                 row("/fetchevents?fromDate=2025-04-02T14:00"),
+                row("/fetchevents?fromDate=2025-4-01T14:00&toDate=2025-04-01T15:00"),
+                row("/fetchevents?fromDate=2025-04-01T14:00&toDate=2025-04-1T15:00"),
                 row("/fetchevents")
             ) { url ->
                 val httpResponse = httpClient.get(url)
@@ -207,6 +209,8 @@ class ApplicationTest : StringSpec({
             forAll(
                 row("/fetchMessageDetails?toDate=2025-05-08T15:00"),
                 row("/fetchMessageDetails?fromDate=2025-05-08T14:00"),
+                row("/fetchMessageDetails?fromDate=2025-5-08T14:00&toDate=2025-05-08T15:00\""),
+                row("/fetchMessageDetails?fromDate=2025-05-08T14:00&toDate=2025-05-8T15:00\""),
                 row("/fetchMessageDetails")
             ) { url ->
                 val httpResponse = httpClient.get(url)

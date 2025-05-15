@@ -5,8 +5,10 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.log
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import io.ktor.util.logging.error
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
@@ -39,21 +41,10 @@ fun Application.configureNaisRouts(
             call.respond(collectorRegistry.scrape())
         }
         get("/fetchevents") {
-            val fromDateParam = call.request.queryParameters.get("fromDate")
-            val toDateParam = call.request.queryParameters.get("toDate")
-            log.info("fromDate: $fromDateParam, toDate: $toDateParam")
+            if (!validateDateRangeRequest(call)) return@get
 
-            if (fromDateParam.isNullOrEmpty()) {
-                log.info("Request parameter is missing: fromDate")
-                call.respond(HttpStatusCode.BadRequest)
-            }
-            if (toDateParam.isNullOrEmpty()) {
-                log.info("Request parameter is missing: toDate")
-                call.respond(HttpStatusCode.BadRequest)
-            }
-
-            val fromDate = parseDate(fromDateParam!!)
-            val toDate = parseDate(toDateParam!!)
+            val fromDate = parseDate(call.request.queryParameters.get("fromDate")!!)
+            val toDate = parseDate(call.request.queryParameters.get("toDate")!!)
 
             log.debug("Retrieving events from database")
             val events = eventService.fetchEvents(fromDate, toDate)
@@ -64,30 +55,59 @@ fun Application.configureNaisRouts(
         }
 
         get("/fetchMessageDetails") {
-            val fromDateParam = call.request.queryParameters.get("fromDate")
-            val toDateParam = call.request.queryParameters.get("toDate")
-            log.info("fromDate: $fromDateParam, toDate: $toDateParam")
+            if (!validateDateRangeRequest(call)) return@get
 
-            if (fromDateParam.isNullOrEmpty()) {
-                log.info("Request parameter is missing: fromDate")
-                call.respond(HttpStatusCode.BadRequest)
-            }
-            if (toDateParam.isNullOrEmpty()) {
-                log.info("Request parameter is missing: toDate")
-                call.respond(HttpStatusCode.BadRequest)
-            }
-
-            val fromDate = parseDate(fromDateParam!!)
-            val toDate = parseDate(toDateParam!!)
+            val fromDate = parseDate(call.request.queryParameters.get("fromDate")!!)
+            val toDate = parseDate(call.request.queryParameters.get("toDate")!!)
 
             log.debug("Retrieving message details from database")
-            val events = ebmsMessageDetailsService.fetchEbmsMessageDetails(fromDate, toDate)
-            log.debug("Events retrieved: ${events.size}")
-            log.debug("The last event: ${events.lastOrNull()}")
+            val messageDetails = ebmsMessageDetailsService.fetchEbmsMessageDetails(fromDate, toDate)
+            log.debug("Message details retrieved: ${messageDetails.size}")
+            log.debug("The last message details retrieved: ${messageDetails.lastOrNull()}")
 
-            call.respond(events)
+            call.respond(messageDetails)
         }
     }
+}
+
+suspend fun validateDateRangeRequest(call: RoutingCall): Boolean {
+    val parameters = call.request.queryParameters
+    log.info("Validating date range request parameters: $parameters")
+
+    val fromDateParam = parameters["fromDate"]
+    val toDateParam = parameters["toDate"]
+
+    var errorMessage = ""
+    if (fromDateParam.isNullOrEmpty()) {
+        errorMessage = "Request parameter is missing: fromDate"
+        log.error(IllegalArgumentException(errorMessage))
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+    if (toDateParam.isNullOrEmpty()) {
+        errorMessage = "Request parameter is missing: toDate"
+        log.error(IllegalArgumentException(errorMessage))
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+
+    try {
+        parseDate(fromDateParam)
+    } catch (e: Exception) {
+        errorMessage = "Invalid date format for fromDate: $fromDateParam"
+        log.error(errorMessage, e)
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+    try {
+        parseDate(toDateParam)
+    } catch (e: Exception) {
+        errorMessage = "Invalid date format for toDate: $toDateParam"
+        log.error(errorMessage, e)
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+    return true
 }
 
 fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
