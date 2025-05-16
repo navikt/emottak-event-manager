@@ -35,16 +35,17 @@ fun main(args: Array<String>) = SuspendApp {
         resourceScope {
             val database = Database(eventDbConfig.value)
             database.migrate(eventMigrationConfig.value)
-            val eventsRepository = EventsRepository(database)
-            val eventService = EventService(eventsRepository)
 
+            val eventsRepository = EventsRepository(database)
             val ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(database)
-            val ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
+
+            val eventService = EventService(eventsRepository, ebmsMessageDetailsRepository)
+            val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository)
 
             server(
                 factory = Netty,
                 port = 8080,
-                module = eventManagerModule(eventService)
+                module = eventManagerModule(eventService, ebmsMessageDetailsService)
             )
 
             log.debug("Configuration: $config")
@@ -67,13 +68,13 @@ fun main(args: Array<String>) = SuspendApp {
     }
 }
 
-fun eventManagerModule(eventService: EventService): Application.() -> Unit {
+fun eventManagerModule(eventService: EventService, ebmsMessageDetailsService: EbmsMessageDetailsService): Application.() -> Unit {
     return {
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {
             registry = appMicrometerRegistry
         }
         configureRouting()
-        configureNaisRouts(appMicrometerRegistry, eventService)
+        configureNaisRouts(appMicrometerRegistry, eventService, ebmsMessageDetailsService)
     }
 }

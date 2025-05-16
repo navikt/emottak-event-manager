@@ -6,13 +6,16 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
+import java.time.Instant
 
 class EbmsMessageDetailsServiceTest : StringSpec({
 
+    val eventsRepository = mockk<EventsRepository>()
     val ebmsMessageDetailsRepository = mockk<EbmsMessageDetailsRepository>()
-    val ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
+    val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository)
 
     "Should call database repository on processing EBMS message details" {
 
@@ -24,5 +27,18 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         ebmsMessageDetailsService.process(testDetailsJson.toByteArray())
 
         coVerify { ebmsMessageDetailsRepository.insert(testDetails) }
+    }
+
+    "Should call database repository on fetching EBMS message details" {
+        val testDetails = buildTestEbmsMessageDetails()
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns listOf()
+
+        ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
+
+        coVerify { ebmsMessageDetailsRepository.findByTimeInterval(from, to) }
     }
 })

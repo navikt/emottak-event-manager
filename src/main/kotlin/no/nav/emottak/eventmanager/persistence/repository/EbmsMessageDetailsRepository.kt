@@ -82,6 +82,35 @@ class EbmsMessageDetailsRepository(private val database: Database) {
         }
     }
 
+    suspend fun findByRequestIds(requestIds: List<Uuid>): Map<Uuid, EbmsMessageDetails> = withContext(Dispatchers.IO) {
+        transaction {
+            EbmsMessageDetailsTable
+                .select(EbmsMessageDetailsTable.columns)
+                .where { requestId.inList(requestIds.map { it.toJavaUuid() }) }
+                .mapNotNull {
+                    EbmsMessageDetails(
+                        requestId = it[requestId].toKotlinUuid(),
+                        cpaId = it[cpaId],
+                        conversationId = it[conversationId],
+                        messageId = it[messageId],
+                        refToMessageId = it[refToMessageId],
+                        fromPartyId = it[fromPartyId],
+                        fromRole = it[fromRole],
+                        toPartyId = it[toPartyId],
+                        toRole = it[toRole],
+                        service = it[service],
+                        action = it[action],
+                        refParam = it[refParam],
+                        sender = it[sender],
+                        sentAt = it[sentAt],
+                        savedAt = it[savedAt]
+                    )
+                }
+                .toList()
+                .associateBy { it.requestId }
+        }
+    }
+
     suspend fun findByTimeInterval(from: Instant, to: Instant): List<EbmsMessageDetails> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailsTable
