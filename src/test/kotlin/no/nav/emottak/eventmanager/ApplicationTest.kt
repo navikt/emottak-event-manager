@@ -65,7 +65,7 @@ class ApplicationTest : StringSpec({
         ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(db)
 
         eventService = EventService(eventRepository, ebmsMessageDetailsRepository)
-        ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
+        ebmsMessageDetailsService = EbmsMessageDetailsService(eventRepository, ebmsMessageDetailsRepository)
     }
 
     afterSpec {
@@ -174,7 +174,10 @@ class ApplicationTest : StringSpec({
     "fetchMessageDetails endpoint should return list of message details" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetails()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+
             ebmsMessageDetailsRepository.insert(messageDetails)
+            eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.get("/fetchMessageDetails?fromDate=2025-05-08T14:00&toDate=2025-05-08T15:00")
 
@@ -188,6 +191,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].action shouldBe messageDetails.action
             messageInfoList[0].referanse shouldBe messageDetails.refParam
             messageInfoList[0].avsender shouldBe messageDetails.sender
+            messageInfoList[0].cpaid shouldBe messageDetails.cpaId
+            messageInfoList[0].antall shouldBe 1
         }
     }
 

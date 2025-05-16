@@ -4,11 +4,15 @@ import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import java.time.Instant
 import java.time.ZoneId
 
-class EbmsMessageDetailsService(private val ebmsMessageDetailsRepository: EbmsMessageDetailsRepository) {
+class EbmsMessageDetailsService(
+    private val eventRepository: EventsRepository,
+    private val ebmsMessageDetailsRepository: EbmsMessageDetailsRepository
+) {
     suspend fun process(value: ByteArray) {
         try {
             log.info("EBMS message details read from Kafka: ${String(value)}")
@@ -23,6 +27,8 @@ class EbmsMessageDetailsService(private val ebmsMessageDetailsRepository: EbmsMe
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
         return ebmsMessageDetailsRepository.findByTimeInterval(from, to).map {
+            val relatedEvents = eventRepository.findEventByRequestId(it.requestId)
+
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
                 mottakidliste = it.requestId.toString(),
@@ -32,7 +38,7 @@ class EbmsMessageDetailsService(private val ebmsMessageDetailsRepository: EbmsMe
                 referanse = it.refParam,
                 avsender = it.sender,
                 cpaid = it.cpaId,
-                antall = 0,
+                antall = relatedEvents.count(),
                 status = "Unimplemented"
             )
         }

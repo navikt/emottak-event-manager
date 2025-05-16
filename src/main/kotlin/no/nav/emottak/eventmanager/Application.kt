@@ -40,7 +40,7 @@ fun main(args: Array<String>) = SuspendApp {
             val ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(database)
 
             val eventService = EventService(eventsRepository, ebmsMessageDetailsRepository)
-            val ebmsMessageDetailsService = EbmsMessageDetailsService(ebmsMessageDetailsRepository)
+            val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository)
 
             server(
                 factory = Netty,
