@@ -6,7 +6,6 @@ import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EventTypesTable
 import no.nav.emottak.eventmanager.persistence.table.EventTypesTable.description
-import no.nav.emottak.eventmanager.persistence.table.EventsTable
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 
