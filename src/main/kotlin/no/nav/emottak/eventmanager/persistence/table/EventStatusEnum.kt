@@ -2,12 +2,12 @@ package no.nav.emottak.eventmanager.persistence.table
 
 enum class EventStatusEnum(val dbValue: String, val description: String) {
     CREATED("Opprettet", "*Statusen er ikke i bruk nå"),
-    INFORMATION("Informasjon", "Melding er under behandling"),
+    INFORMATION("Informasjon", "Meldingen er under behandling"),
     MANUAL_PROCESSING("Manuell behandling", "*Statusen er ikke i bruk nå"),
     WARNING("Advarsel", "*Statusen er ikke i bruk nå"),
-    ERROR("Feil", "Melding feilet under behandling"),
+    ERROR("Feil", "Meldingen feilet under behandling"),
     FATAL_ERROR("Fatal feil", "*Statusen er ikke i bruk nå"),
-    PROCESSING_COMPLETED("Ferdigbehandlet", "Melding er ferdigbehandlet") ;
+    PROCESSING_COMPLETED("Ferdigbehandlet", "Meldingen er ferdigbehandlet") ;
 
     companion object {
         fun fromDbValue(value: String): EventStatusEnum {
