@@ -2,62 +2,56 @@ package no.nav.emottak.eventmanager.repository
 
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
-import no.nav.emottak.eventmanager.buildTestEbmsMessageDetails
+import io.kotest.matchers.shouldNotBe
+import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import org.testcontainers.containers.PostgreSQLContainer
-import java.time.Instant
-import kotlin.uuid.toJavaUuid
 
-class EbmsMessageDetailsRepositoryTest : StringSpec({
+class EventTypesRepositoryTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
-    lateinit var repository: EbmsMessageDetailsRepository
+    lateinit var eventTypesRepository: EventTypesRepository
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
-        repository = EbmsMessageDetailsRepository(db)
+        eventTypesRepository = EventTypesRepository(db)
     }
 
     afterSpec {
         dbContainer.stop()
     }
 
-    "Should insert and retrieve message details by requestId" {
-        val messageDetails = buildTestEbmsMessageDetails()
+    "Should retrieve an event type by event type ID" {
 
-        repository.insert(messageDetails)
-        val retrievedDetails = repository.findByRequestId(messageDetails.requestId.toJavaUuid())
+        val retrievedEventType = eventTypesRepository.findEventTypeById(1)
 
-        retrievedDetails shouldBe messageDetails.copy()
+        retrievedEventType shouldNotBe null
+        // These values are from the migration script
+        retrievedEventType?.eventTypeId shouldBe 1
+        retrievedEventType?.description shouldBe "Melding mottatt via SMTP"
+        retrievedEventType?.status shouldBe EventStatusEnum.INFORMATION
     }
 
-    "Should retrieve records by time interval" {
-        val messageDetailsInInterval = buildTestEbmsMessageDetails().copy(
-            savedAt = Instant.parse("2025-04-30T12:54:45.386Z")
+    "Should retrieve a list of event types by a list of event type IDs" {
+
+        val retrievedEventTypes = eventTypesRepository.findEventTypesByIds(listOf(1, 2, 3))
+
+        retrievedEventTypes.size shouldBe 3
+        // These values are from the migration script
+        retrievedEventTypes shouldContainExactlyInAnyOrder listOf(
+            EventType(1, "Melding mottatt via SMTP", EventStatusEnum.INFORMATION),
+            EventType(2, "Feil ved mottak av melding via SMTP", EventStatusEnum.ERROR),
+            EventType(3, "Melding sendt via SMTP", EventStatusEnum.PROCESSING_COMPLETED)
         )
-
-        val messageDetailsOutOfInterval = buildTestEbmsMessageDetails().copy(
-            savedAt = Instant.parse("2025-04-30T15:54:45.386Z")
-        )
-
-        repository.insert(messageDetailsInInterval)
-        repository.insert(messageDetailsOutOfInterval)
-
-        val retrievedDetails = repository.findByTimeInterval(
-            Instant.parse("2025-04-30T12:00:00Z"),
-            Instant.parse("2025-04-30T13:00:00Z")
-        )
-
-        retrievedDetails.size shouldBe 1
-        retrievedDetails shouldContain messageDetailsInInterval
     }
 }) {
     companion object {
