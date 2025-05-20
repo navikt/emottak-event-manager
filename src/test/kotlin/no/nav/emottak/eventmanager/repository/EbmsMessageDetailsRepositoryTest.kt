@@ -4,14 +4,12 @@ import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
+import no.nav.emottak.eventmanager.buildTestEbmsMessageDetails
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
-import java.time.temporal.ChronoUnit
-import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 
 class EbmsMessageDetailsRepositoryTest : StringSpec({
@@ -85,18 +83,4 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
                 start()
             }
     }
-}
-
-fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
-    return EbmsMessageDetails(
-        requestId = Uuid.random(),
-        cpaId = "test-cpa-id",
-        conversationId = "test-conversation-id",
-        messageId = "test-message-id",
-        fromPartyId = "test-from-party-id",
-        toPartyId = "test-to-party-id",
-        service = "test-service",
-        action = "test-action",
-        savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
-    )
 }

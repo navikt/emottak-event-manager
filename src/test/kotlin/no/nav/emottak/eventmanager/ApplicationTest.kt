@@ -196,6 +196,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].avsender shouldBe messageDetails.sender
             messageInfoList[0].cpaid shouldBe messageDetails.cpaId
             messageInfoList[0].antall shouldBe 1
+            messageInfoList[0].status shouldBe "Melding er under behandling"
         }
     }
 
