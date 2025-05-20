@@ -6,6 +6,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
@@ -15,7 +16,8 @@ class EbmsMessageDetailsServiceTest : StringSpec({
 
     val eventsRepository = mockk<EventsRepository>()
     val ebmsMessageDetailsRepository = mockk<EbmsMessageDetailsRepository>()
-    val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository)
+    val eventTypesRepository = mockk<EventTypesRepository>(relaxed = true)
+    val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository, eventTypesRepository)
 
     "Should call database repository on processing EBMS message details" {
 

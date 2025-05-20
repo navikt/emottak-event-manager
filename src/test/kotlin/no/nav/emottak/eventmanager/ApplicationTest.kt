@@ -17,6 +17,7 @@ import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
@@ -35,6 +36,7 @@ class ApplicationTest : StringSpec({
 
     lateinit var eventRepository: EventsRepository
     lateinit var ebmsMessageDetailsRepository: EbmsMessageDetailsRepository
+    lateinit var eventTypesRepository: EventTypesRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailsService: EbmsMessageDetailsService
@@ -63,9 +65,10 @@ class ApplicationTest : StringSpec({
 
         eventRepository = EventsRepository(db)
         ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(db)
+        eventTypesRepository = EventTypesRepository(db)
 
         eventService = EventService(eventRepository, ebmsMessageDetailsRepository)
-        ebmsMessageDetailsService = EbmsMessageDetailsService(eventRepository, ebmsMessageDetailsRepository)
+        ebmsMessageDetailsService = EbmsMessageDetailsService(eventRepository, ebmsMessageDetailsRepository, eventTypesRepository)
     }
 
     afterSpec {
