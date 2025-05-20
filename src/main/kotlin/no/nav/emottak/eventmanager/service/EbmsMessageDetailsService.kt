@@ -38,11 +38,11 @@ class EbmsMessageDetailsService(
 
             val messageStatus = when {
                 relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
-                -> "Ferdigbehandlet"
+                -> EventStatusEnum.PROCESSING_COMPLETED.description
                 relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
-                -> "Feil"
+                -> EventStatusEnum.ERROR.description
                 relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
-                -> "Melding er under behandling"
+                -> EventStatusEnum.INFORMATION.description
                 else -> "Status er ukjent"
             }
 
