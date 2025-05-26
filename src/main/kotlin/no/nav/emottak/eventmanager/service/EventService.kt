@@ -6,6 +6,7 @@ import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.Event
+import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 
@@ -16,8 +17,10 @@ class EventService(
     suspend fun process(value: ByteArray) {
         try {
             log.info("Event read from Kafka: ${String(value)}")
-
             val event: Event = Json.decodeFromString(String(value))
+
+            updateMessageDetails(event)
+
             eventsRepository.insert(event)
             log.info("Event processed successfully: $event")
         } catch (e: Exception) {
@@ -44,5 +47,22 @@ class EventService(
                 avsender = ebmsMessageDetails?.sender
             )
         }.toList()
+    }
+
+    private suspend fun updateMessageDetails(event: Event) {
+        if (event.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA) {
+            val relatedMessageDetails = ebmsMessageDetailsRepository.findByRequestId(event.requestId)
+            if (relatedMessageDetails != null) {
+                val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
+
+                eventData["sender"]?.also {
+                    val updatedMessageDetails = relatedMessageDetails.copy(sender = it)
+                    ebmsMessageDetailsRepository.update(updatedMessageDetails)
+                    log.info("Sender updated successfully for requestId: ${event.requestId}")
+                }
+            } else {
+                log.warn("Cannot update sender! EbmsMessageDetails for requestId: ${event.requestId} not found")
+            }
+        }
     }
 }

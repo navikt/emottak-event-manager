@@ -22,9 +22,9 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailsTable.toR
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
@@ -54,11 +54,36 @@ class EbmsMessageDetailsRepository(private val database: Database) {
         ebmsMessageDetails.requestId
     }
 
-    suspend fun findByRequestId(requestId: UUID): EbmsMessageDetails? = withContext(Dispatchers.IO) {
+    suspend fun update(ebmsMessageDetails: EbmsMessageDetails): Boolean = withContext(Dispatchers.IO) {
+        transaction(database.db) {
+            val updatedRows = EbmsMessageDetailsTable
+                .update({
+                    requestId eq ebmsMessageDetails.requestId.toJavaUuid()
+                }) {
+                    it[cpaId] = ebmsMessageDetails.cpaId
+                    it[conversationId] = ebmsMessageDetails.conversationId
+                    it[messageId] = ebmsMessageDetails.messageId
+                    it[refToMessageId] = ebmsMessageDetails.refToMessageId
+                    it[fromPartyId] = ebmsMessageDetails.fromPartyId
+                    it[fromRole] = ebmsMessageDetails.fromRole
+                    it[toPartyId] = ebmsMessageDetails.toPartyId
+                    it[toRole] = ebmsMessageDetails.toRole
+                    it[service] = ebmsMessageDetails.service
+                    it[action] = ebmsMessageDetails.action
+                    it[refParam] = ebmsMessageDetails.refParam
+                    it[sender] = ebmsMessageDetails.sender
+                    it[sentAt] = ebmsMessageDetails.sentAt?.truncatedTo(ChronoUnit.MICROS)
+                    it[savedAt] = ebmsMessageDetails.savedAt.truncatedTo(ChronoUnit.MICROS)
+                }
+            updatedRows > 0
+        }
+    }
+
+    suspend fun findByRequestId(requestId: Uuid): EbmsMessageDetails? = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailsTable
                 .select(EbmsMessageDetailsTable.columns)
-                .where { EbmsMessageDetailsTable.requestId eq requestId }
+                .where { EbmsMessageDetailsTable.requestId eq requestId.toJavaUuid() }
                 .mapNotNull {
                     EbmsMessageDetails(
                         requestId = it[EbmsMessageDetailsTable.requestId].toKotlinUuid(),

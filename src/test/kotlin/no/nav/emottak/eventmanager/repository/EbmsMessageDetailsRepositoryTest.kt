@@ -12,7 +12,6 @@ import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
-import kotlin.uuid.toJavaUuid
 
 class EbmsMessageDetailsRepositoryTest : StringSpec({
 
@@ -36,9 +35,44 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
         val messageDetails = buildTestEbmsMessageDetails()
 
         repository.insert(messageDetails)
-        val retrievedDetails = repository.findByRequestId(messageDetails.requestId.toJavaUuid())
+        val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
 
         retrievedDetails shouldBe messageDetails.copy()
+    }
+
+    "Should update message details by requestId" {
+        val messageDetails = buildTestEbmsMessageDetails()
+        repository.insert(messageDetails)
+
+        val updatedMessageDetails = messageDetails.copy(
+            cpaId = "updated-cpa-id",
+            conversationId = "updated-conversation-id",
+            messageId = "updated-message-id",
+            fromPartyId = "updated-from-party-id",
+            toPartyId = "updated-to-party-id",
+            service = "updated-service",
+            action = "updated-action",
+            refParam = "updated-ref-param",
+            sentAt = Instant.parse("2025-05-26T14:54:45.386Z"),
+            savedAt = Instant.parse("2025-05-26T15:54:50.386Z")
+        )
+        repository.update(updatedMessageDetails)
+
+        val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
+
+        retrievedDetails?.requestId shouldBe messageDetails.requestId
+
+        retrievedDetails?.cpaId shouldBe updatedMessageDetails.cpaId
+        retrievedDetails?.conversationId shouldBe updatedMessageDetails.conversationId
+        retrievedDetails?.messageId shouldBe updatedMessageDetails.messageId
+        retrievedDetails?.requestId shouldBe updatedMessageDetails.requestId
+        retrievedDetails?.fromPartyId shouldBe updatedMessageDetails.fromPartyId
+        retrievedDetails?.toPartyId shouldBe updatedMessageDetails.toPartyId
+        retrievedDetails?.service shouldBe updatedMessageDetails.service
+        retrievedDetails?.action shouldBe updatedMessageDetails.action
+        retrievedDetails?.savedAt shouldBe updatedMessageDetails.savedAt.truncatedTo(ChronoUnit.MICROS)
+        retrievedDetails?.sentAt shouldBe updatedMessageDetails.sentAt?.truncatedTo(ChronoUnit.MICROS)
+        retrievedDetails?.refParam shouldBe updatedMessageDetails.refParam
     }
 
     "Should retrieve records by time interval" {
@@ -97,6 +131,7 @@ fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
         toPartyId = "test-to-party-id",
         service = "test-service",
         action = "test-action",
+        sender = "test-sender",
         savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
     )
 }
