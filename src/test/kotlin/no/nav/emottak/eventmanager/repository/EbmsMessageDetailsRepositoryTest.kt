@@ -131,6 +131,7 @@ fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
         toPartyId = "test-to-party-id",
         service = "test-service",
         action = "test-action",
+        sender = "test-sender",
         savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
     )
 }
