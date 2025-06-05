@@ -12,11 +12,10 @@ import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
-import no.nav.emottak.eventmanager.repository.buildTestEvent
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
-import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
+import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 
 class EbmsMessageDetailsServiceTest : StringSpec({
 
@@ -67,7 +66,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         val relatedEvents = listOf(
             buildTestEvent(),
             buildTestEvent().copy(
-                eventType = EventType.MESSAGE_VALIDATED_AGAINST_CPA,
+                eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
                 eventData = Json.encodeToString(mapOf("sender" to "Test EPJ AS"))
             )
         )
