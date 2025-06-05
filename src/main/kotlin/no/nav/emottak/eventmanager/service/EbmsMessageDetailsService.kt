@@ -4,7 +4,9 @@ import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
@@ -13,7 +15,8 @@ import java.time.ZoneId
 
 class EbmsMessageDetailsService(
     private val eventRepository: EventsRepository,
-    private val ebmsMessageDetailsRepository: EbmsMessageDetailsRepository
+    private val ebmsMessageDetailsRepository: EbmsMessageDetailsRepository,
+    private val eventTypesRepository: EventTypesRepository
 ) {
     suspend fun process(value: ByteArray) {
         try {
@@ -28,9 +31,24 @@ class EbmsMessageDetailsService(
     }
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
-        return ebmsMessageDetailsRepository.findByTimeInterval(from, to).map {
+        return ebmsMessageDetailsRepository.findByTimeInterval(from, to).map { it ->
             val relatedEvents = eventRepository.findEventByRequestId(it.requestId)
             val sender = it.sender ?: findSender(relatedEvents)
+
+            val relatedEventTypeIds = relatedEvents.map { event ->
+                event.eventType.value
+            }
+            val relatedEventTypes = eventTypesRepository.findEventTypesByIds(relatedEventTypeIds)
+
+            val messageStatus = when {
+                relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
+                -> EventStatusEnum.PROCESSING_COMPLETED.description
+                relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
+                -> EventStatusEnum.ERROR.description
+                relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
+                -> EventStatusEnum.INFORMATION.description
+                else -> "Status er ukjent"
+            }
 
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
@@ -42,7 +60,7 @@ class EbmsMessageDetailsService(
                 avsender = sender,
                 cpaid = it.cpaId,
                 antall = relatedEvents.count(),
-                status = "Unimplemented"
+                status = messageStatus
             )
         }
     }

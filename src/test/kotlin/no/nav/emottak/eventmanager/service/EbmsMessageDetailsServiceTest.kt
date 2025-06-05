@@ -6,19 +6,23 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.buildTestEbmsMessageDetails
+import no.nav.emottak.eventmanager.buildTestEvent
+import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
-import no.nav.emottak.eventmanager.repository.buildTestEvent
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
-import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
+import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 
 class EbmsMessageDetailsServiceTest : StringSpec({
 
     val eventsRepository = mockk<EventsRepository>()
     val ebmsMessageDetailsRepository = mockk<EbmsMessageDetailsRepository>()
-    val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository)
+    val eventTypesRepository = mockk<EventTypesRepository>(relaxed = true)
+    val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository, eventTypesRepository)
 
     "Should call database repository on processing EBMS message details" {
 
@@ -34,15 +38,24 @@ class EbmsMessageDetailsServiceTest : StringSpec({
 
     "Should call database repository on fetching EBMS message details" {
         val testDetails = buildTestEbmsMessageDetails()
+        val testEvent = buildTestEvent()
+        val testEventType = EventType(
+            eventTypeId = 19,
+            description = "Melding lagret i juridisk logg",
+            status = EventStatusEnum.INFORMATION
+        )
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
-        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns listOf()
+        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns listOf(testEvent)
+        coEvery { eventTypesRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
         coVerify { ebmsMessageDetailsRepository.findByTimeInterval(from, to) }
+        coVerify { eventsRepository.findEventByRequestId(testDetails.requestId) }
+        coVerify { eventTypesRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
     }
 
     "Should find sender from related events" {
@@ -53,7 +66,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         val relatedEvents = listOf(
             buildTestEvent(),
             buildTestEvent().copy(
-                eventType = EventType.MESSAGE_VALIDATED_AGAINST_CPA,
+                eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
                 eventData = Json.encodeToString(mapOf("sender" to "Test EPJ AS"))
             )
         )
