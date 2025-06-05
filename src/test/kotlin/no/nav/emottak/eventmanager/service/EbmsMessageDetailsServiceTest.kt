@@ -1,6 +1,7 @@
 package no.nav.emottak.eventmanager.service
 
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -11,8 +12,10 @@ import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
+import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
+import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 
 class EbmsMessageDetailsServiceTest : StringSpec({
@@ -54,5 +57,26 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         coVerify { ebmsMessageDetailsRepository.findByTimeInterval(from, to) }
         coVerify { eventsRepository.findEventByRequestId(testDetails.requestId) }
         coVerify { eventTypesRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
+    }
+
+    "Should find sender from related events" {
+        val testDetails = buildTestEbmsMessageDetails().copy(sender = null)
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        val relatedEvents = listOf(
+            buildTestEvent(),
+            buildTestEvent().copy(
+                eventType = EventType.MESSAGE_VALIDATED_AGAINST_CPA,
+                eventData = Json.encodeToString(mapOf("sender" to "Test EPJ AS"))
+            )
+        )
+
+        coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns relatedEvents
+
+        val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
+
+        result.first().avsender shouldBe "Test EPJ AS"
     }
 })
