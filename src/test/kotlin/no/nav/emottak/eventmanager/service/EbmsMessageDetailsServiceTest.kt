@@ -11,6 +11,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
+import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 
@@ -64,5 +65,27 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
         result.first().avsender shouldBe "Test EPJ AS"
+    }
+
+    "Should find reference parameter from related events" {
+        val reference = "abcd1234"
+        val testDetails = buildTestEbmsMessageDetails().copy(refParam = null)
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        val relatedEvents = listOf(
+            buildTestEvent(),
+            buildTestEvent().copy(
+                eventType = EventType.REFERENCE_RETRIEVED,
+                eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE.value to reference))
+            )
+        )
+
+        coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns relatedEvents
+
+        val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
+
+        result.first().referanse shouldBe reference
     }
 })

@@ -132,6 +132,7 @@ fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
         service = "test-service",
         action = "test-action",
         sender = "test-sender",
+        refParam = "test-ref-param",
         savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
     )
 }
