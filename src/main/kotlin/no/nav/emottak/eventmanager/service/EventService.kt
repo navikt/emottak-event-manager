@@ -6,6 +6,7 @@ import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.utils.kafka.model.Event
+import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
@@ -62,6 +63,21 @@ class EventService(
                 }
             } else {
                 log.warn("Cannot update sender! EbmsMessageDetails for requestId: ${event.requestId} not found")
+            }
+        }
+
+        if (event.eventType == EventType.REFERENCE_RETRIEVED) {
+            val relatedMessageDetails = ebmsMessageDetailsRepository.findByRequestId(event.requestId)
+            if (relatedMessageDetails != null) {
+                val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
+
+                eventData[EventDataType.REFERENCE.value]?.also {
+                    val updatedMessageDetails = relatedMessageDetails.copy(refParam = it)
+                    ebmsMessageDetailsRepository.update(updatedMessageDetails)
+                    log.info("Reference parameter updated successfully for requestId: ${event.requestId}")
+                }
+            } else {
+                log.warn("Cannot update reference parameter! EbmsMessageDetails for requestId: ${event.requestId} not found")
             }
         }
     }
