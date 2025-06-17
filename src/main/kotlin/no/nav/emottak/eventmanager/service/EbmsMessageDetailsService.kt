@@ -9,6 +9,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.Event
+import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
@@ -34,6 +35,7 @@ class EbmsMessageDetailsService(
         return ebmsMessageDetailsRepository.findByTimeInterval(from, to).map { it ->
             val relatedEvents = eventRepository.findEventByRequestId(it.requestId)
             val sender = it.sender ?: findSender(relatedEvents)
+            val refParam = it.refParam ?: findRefParam(relatedEvents)
 
             val relatedEventTypeIds = relatedEvents.map { event ->
                 event.eventType.value
@@ -56,7 +58,7 @@ class EbmsMessageDetailsService(
                 role = it.fromRole,
                 service = it.service,
                 action = it.action,
-                referanse = it.refParam,
+                referanse = refParam,
                 avsender = sender,
                 cpaid = it.cpaId,
                 antall = relatedEvents.count(),
@@ -71,8 +73,20 @@ class EbmsMessageDetailsService(
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData["sender"]
-        }?.let { sender ->
-            return sender
+        }?.let {
+            return it
+        }
+        return "Unknown"
+    }
+
+    private fun findRefParam(events: List<Event>): String {
+        events.firstOrNull {
+            it.eventType == EventType.REFERENCE_RETRIEVED
+        }?.let { event ->
+            val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
+            eventData[EventDataType.REFERENCE.value]
+        }?.let {
+            return it
         }
         return "Unknown"
     }
