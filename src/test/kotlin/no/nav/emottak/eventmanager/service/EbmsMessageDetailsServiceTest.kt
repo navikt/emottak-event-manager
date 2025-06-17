@@ -15,8 +15,8 @@ import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.EventDataType
-import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 import java.time.Instant
+import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 
 class EbmsMessageDetailsServiceTest : StringSpec({
 
@@ -89,7 +89,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         val relatedEvents = listOf(
             buildTestEvent(),
             buildTestEvent().copy(
-                eventType = EventType.REFERENCE_RETRIEVED,
+                eventType = EventTypeEnum.REFERENCE_RETRIEVED,
                 eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE.value to reference))
             )
         )
