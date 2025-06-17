@@ -6,13 +6,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.buildTestEbmsMessageDetails
-import no.nav.emottak.eventmanager.buildTestEvent
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
+import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
 import no.nav.emottak.utils.kafka.model.EventDataType
 import java.time.Instant

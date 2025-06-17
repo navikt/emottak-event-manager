@@ -5,7 +5,6 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
-import no.nav.emottak.eventmanager.buildTestEvent
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
@@ -121,3 +120,12 @@ class EventsRepositoryTest : StringSpec({
             }
     }
 }
+
+fun buildTestEvent(): Event = Event(
+    eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
+    requestId = Uuid.random(),
+    contentId = "test-content-id",
+    messageId = "test-message-id",
+    eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
+    createdAt = Instant.parse("2025-04-01T12:54:45.386Z")
+)
