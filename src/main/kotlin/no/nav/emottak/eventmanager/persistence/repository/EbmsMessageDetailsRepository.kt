@@ -20,7 +20,13 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailsTable.ser
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailsTable.toPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailsTable.toRole
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.TextColumnType
+import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.castTo
+import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
@@ -161,6 +167,28 @@ class EbmsMessageDetailsRepository(private val database: Database) {
                     )
                 }
                 .toList()
+        }
+    }
+
+    suspend fun findRelatedRequestIds(requestIds: List<Uuid>): Map<Uuid, String> = withContext(Dispatchers.IO) {
+        transaction(database.db) {
+            val relatedRequestIdsColumn = requestId.castTo<String>(
+                columnType = TextColumnType()
+            ).groupConcat(",").alias("related_request_ids")
+
+            val subQuery = EbmsMessageDetailsTable
+                .select(conversationId, relatedRequestIdsColumn)
+                .groupBy(conversationId)
+                .alias("related")
+
+            EbmsMessageDetailsTable
+                .join(subQuery, JoinType.INNER, conversationId, subQuery[conversationId])
+                .select(requestId, subQuery[relatedRequestIdsColumn])
+                .where { requestId.inList(requestIds.map { it.toJavaUuid() }) }
+                .mapNotNull {
+                    Pair(it[requestId].toKotlinUuid(), it[subQuery[relatedRequestIdsColumn]])
+                }
+                .toMap()
         }
     }
 }

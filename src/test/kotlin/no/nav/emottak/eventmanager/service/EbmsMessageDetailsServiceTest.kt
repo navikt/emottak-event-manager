@@ -39,6 +39,8 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         val to = from.plusSeconds(60)
 
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { ebmsMessageDetailsRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
+            mapOf(testDetails.requestId to testDetails.requestId.toString())
         coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns listOf()
 
         ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
@@ -60,6 +62,8 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         )
 
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { ebmsMessageDetailsRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
+            mapOf(testDetails.requestId to testDetails.requestId.toString())
         coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns relatedEvents
 
         val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
@@ -82,10 +86,44 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         )
 
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { ebmsMessageDetailsRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
+            mapOf(testDetails.requestId to testDetails.requestId.toString())
         coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns relatedEvents
 
         val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
         result.first().referanse shouldBe reference
+    }
+
+    "Should find related messages" {
+        val commonReferenceId = "commonRef123"
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        val testDetails1 = buildTestEbmsMessageDetails().copy(conversationId = commonReferenceId)
+        val testDetails2 = buildTestEbmsMessageDetails().copy(conversationId = commonReferenceId)
+        val testDetails3 = buildTestEbmsMessageDetails().copy(conversationId = "differentRef456")
+
+        coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails1, testDetails2, testDetails3)
+        coEvery {
+            ebmsMessageDetailsRepository.findRelatedRequestIds(
+                listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
+            )
+        } returns
+            mapOf(
+                testDetails1.requestId to "${testDetails1.requestId},${testDetails2.requestId}",
+                testDetails2.requestId to "${testDetails1.requestId},${testDetails2.requestId}",
+                testDetails3.requestId to "${testDetails3.requestId}"
+            )
+        coEvery { eventsRepository.findEventByRequestId(testDetails1.requestId) } returns listOf()
+        coEvery { eventsRepository.findEventByRequestId(testDetails2.requestId) } returns listOf()
+        coEvery { eventsRepository.findEventByRequestId(testDetails3.requestId) } returns listOf()
+
+        val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
+
+        result.size shouldBe 3
+        result[0].mottakidliste shouldBe "${testDetails1.requestId},${testDetails2.requestId}"
+        result[1].mottakidliste shouldBe "${testDetails1.requestId},${testDetails2.requestId}"
+        result[2].mottakidliste shouldBe "${testDetails3.requestId}"
     }
 })

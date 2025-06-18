@@ -29,14 +29,17 @@ class EbmsMessageDetailsService(
     }
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
-        return ebmsMessageDetailsRepository.findByTimeInterval(from, to).map {
+        val messageDetailsList = ebmsMessageDetailsRepository.findByTimeInterval(from, to)
+        val relatedRequestIds = ebmsMessageDetailsRepository.findRelatedRequestIds(messageDetailsList.map { it.requestId })
+
+        return messageDetailsList.map {
             val relatedEvents = eventRepository.findEventByRequestId(it.requestId)
             val sender = it.sender ?: findSender(relatedEvents)
             val refParam = it.refParam ?: findRefParam(relatedEvents)
 
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakidliste = it.requestId.toString(),
+                mottakidliste = relatedRequestIds[it.requestId] ?: "Not found",
                 role = it.fromRole,
                 service = it.service,
                 action = it.action,
