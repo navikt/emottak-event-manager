@@ -76,6 +76,24 @@ class EventsRepository(private val database: Database) {
         }
     }
 
+    suspend fun findEventsByRequestIds(requestIds: List<Uuid>): List<Event> = withContext(Dispatchers.IO) {
+        transaction {
+            EventsTable.select(EventsTable.columns)
+                .where { requestIdColumn.inList(requestIds.map { it.toJavaUuid() }) }
+                .mapNotNull {
+                    Event(
+                        eventType = EventType.fromInt(it[eventTypeId]),
+                        requestId = it[requestIdColumn].toKotlinUuid(),
+                        contentId = it[contentId],
+                        messageId = it[messageId],
+                        eventData = Json.encodeToString(it[eventData]),
+                        createdAt = it[createdAt]
+                    )
+                }
+                .toList()
+        }
+    }
+
     suspend fun findEventByTimeInterval(from: Instant, to: Instant): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventsTable.select(EventsTable.columns)

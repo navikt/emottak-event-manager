@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.repository
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
@@ -94,6 +95,34 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
 
         retrievedDetails.size shouldBe 1
         retrievedDetails shouldContain messageDetailsInInterval
+    }
+
+    "Should retrieve related request IDs by request IDs" {
+        val messageDetails1 = buildTestEbmsMessageDetails().copy(
+            requestId = Uuid.random(),
+            conversationId = "conversationId-1"
+        )
+        val messageDetails2 = buildTestEbmsMessageDetails().copy(
+            requestId = Uuid.random(),
+            conversationId = "conversationId-1"
+        )
+        val messageDetails3 = buildTestEbmsMessageDetails().copy(
+            requestId = Uuid.random(),
+            conversationId = "conversationId-2"
+        )
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+        repository.insert(messageDetails3)
+
+        val requestIds = listOf(messageDetails1.requestId, messageDetails3.requestId)
+        val relatedRequestIds = repository.findRelatedRequestIds(requestIds)
+
+        relatedRequestIds.size shouldBe 2
+        relatedRequestIds shouldContainKey messageDetails1.requestId
+        relatedRequestIds[messageDetails1.requestId] shouldBe "${messageDetails1.requestId},${messageDetails2.requestId}"
+        relatedRequestIds shouldContainKey messageDetails3.requestId
+        relatedRequestIds[messageDetails3.requestId] shouldBe messageDetails3.requestId.toString()
     }
 }) {
     companion object {
