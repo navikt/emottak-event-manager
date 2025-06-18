@@ -128,11 +128,13 @@ fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
         conversationId = "test-conversation-id",
         messageId = "test-message-id",
         fromPartyId = "test-from-party-id",
+        fromRole = "test-from-role",
         toPartyId = "test-to-party-id",
+        toRole = "test-to-role",
         service = "test-service",
         action = "test-action",
-        sender = "test-sender",
         refParam = "test-ref-param",
-        savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
+        sender = "test-sender",
+        savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
     )
 }

@@ -4,9 +4,9 @@ import io.kotest.core.spec.style.StringSpec
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.emottak.eventmanager.buildTestEvent
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.repository.buildTestEvent
 import java.time.Instant
 
 class EventServiceTest : StringSpec({
