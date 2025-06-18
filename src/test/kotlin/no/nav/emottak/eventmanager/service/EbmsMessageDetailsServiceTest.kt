@@ -41,7 +41,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
         coEvery { ebmsMessageDetailsRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.requestId.toString())
-        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns listOf()
+        coEvery { eventsRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns listOf()
 
         ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
@@ -57,6 +57,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
             buildTestEvent(),
             buildTestEvent().copy(
                 eventType = EventType.MESSAGE_VALIDATED_AGAINST_CPA,
+                requestId = testDetails.requestId,
                 eventData = Json.encodeToString(mapOf("sender" to "Test EPJ AS"))
             )
         )
@@ -64,7 +65,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
         coEvery { ebmsMessageDetailsRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.requestId.toString())
-        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns relatedEvents
+        coEvery { eventsRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
         val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
@@ -81,6 +82,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
             buildTestEvent(),
             buildTestEvent().copy(
                 eventType = EventType.REFERENCE_RETRIEVED,
+                requestId = testDetails.requestId,
                 eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE.value to reference))
             )
         )
@@ -88,7 +90,7 @@ class EbmsMessageDetailsServiceTest : StringSpec({
         coEvery { ebmsMessageDetailsRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
         coEvery { ebmsMessageDetailsRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.requestId.toString())
-        coEvery { eventsRepository.findEventByRequestId(testDetails.requestId) } returns relatedEvents
+        coEvery { eventsRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
         val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
@@ -115,9 +117,11 @@ class EbmsMessageDetailsServiceTest : StringSpec({
                 testDetails2.requestId to "${testDetails1.requestId},${testDetails2.requestId}",
                 testDetails3.requestId to "${testDetails3.requestId}"
             )
-        coEvery { eventsRepository.findEventByRequestId(testDetails1.requestId) } returns listOf()
-        coEvery { eventsRepository.findEventByRequestId(testDetails2.requestId) } returns listOf()
-        coEvery { eventsRepository.findEventByRequestId(testDetails3.requestId) } returns listOf()
+        coEvery {
+            eventsRepository.findEventsByRequestIds(
+                listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
+            )
+        } returns listOf()
 
         val result = ebmsMessageDetailsService.fetchEbmsMessageDetails(from, to)
 
