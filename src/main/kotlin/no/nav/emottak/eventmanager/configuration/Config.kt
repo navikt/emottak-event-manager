@@ -22,7 +22,8 @@ data class Environment(
 )
 
 data class Database(
-    val vaultJdbcUrl: VaultJdbcUrl,
+    val vaultJdbcUrlDev: VaultJdbcUrl,
+    val vaultJdbcUrlProd: VaultJdbcUrl,
     val maxConnectionPoolSizeForUser: MaxConnectionPoolSizeForUser,
     val maxConnectionPoolSizeForAdmin: MaxConnectionPoolSizeForAdmin
 )

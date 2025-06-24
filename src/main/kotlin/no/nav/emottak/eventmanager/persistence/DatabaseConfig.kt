@@ -15,15 +15,22 @@ val eventMigrationConfig = lazy { VaultConfig().configure("admin") }
 
 data class VaultConfig(
     val databaseName: String = EVENT_DB_NAME,
-    val jdbcUrl: String = config.database.vaultJdbcUrl.value.also {
-        log.info("vault jdbc url set til: $it")
+
+    val jdbcUrl: String = if (config.environment.naisClusterName.value == "prod-fss") {
+        config.database.vaultJdbcUrlProd.value
+    } else {
+        config.database.vaultJdbcUrlDev.value
+    }.also {
+        log.info("jdbc url set til: $it")
     },
-    val vaultMountPath: String = (
-        "postgresql/prod-fss".takeIf { config.environment.naisClusterName.value == "prod-fss" } ?: "postgresql/preprod-fss"
-        )
-        .also {
-            log.info("vaultMountPath satt til $it")
-        }
+
+    val vaultMountPath: String = if (config.environment.naisClusterName.value == "prod-fss") {
+        "postgresql/prod-fss"
+    } else {
+        "postgresql/preprod-fss"
+    }.also {
+        log.info("vaultMountPath satt til $it")
+    }
 )
 
 fun VaultConfig.configure(role: String): HikariConfig {
