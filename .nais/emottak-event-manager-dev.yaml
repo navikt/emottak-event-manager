@@ -53,6 +53,10 @@ spec:
   kafka:
     pool: nav-dev
   env:
+    - name: JDBC_URL
+      value: jdbc:postgresql://b27dbvl007.preprod.local:5432/
+    - name: DB_CREDENTIALS_MOUNT_PATH
+      value: postgresql/preprod-fss
     - name: ENABLE_EVENT_RECEIVER
       value: "true"
     - name: EMOTTAK_LOGGING_LEVEL
