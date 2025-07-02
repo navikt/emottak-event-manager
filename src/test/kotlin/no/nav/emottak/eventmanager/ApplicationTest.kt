@@ -105,7 +105,7 @@ class ApplicationTest : StringSpec({
 
             val events: List<EventInfo> = httpResponse.body()
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
-            events[0].hendelsedeskr shouldBe testEvent.eventType.toString()
+            events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
             events[0].mottakid shouldBe testEvent.requestId.toString()
             events[0].role shouldBe testMessageDetails.fromRole
@@ -128,7 +128,7 @@ class ApplicationTest : StringSpec({
 
             val events: List<EventInfo> = httpResponse.body()
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
-            events[0].hendelsedeskr shouldBe testEvent.eventType.toString()
+            events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
             events[0].mottakid shouldBe testEvent.requestId.toString()
             events[0].role shouldBe null
