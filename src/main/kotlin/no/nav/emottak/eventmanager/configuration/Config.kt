@@ -23,6 +23,7 @@ data class Environment(
 
 data class Database(
     val vaultJdbcUrl: VaultJdbcUrl,
+    val dbCredentialsMountPath: DbCredentialsMountPath,
     val maxConnectionPoolSizeForUser: MaxConnectionPoolSizeForUser,
     val maxConnectionPoolSizeForAdmin: MaxConnectionPoolSizeForAdmin
 )
@@ -50,6 +51,9 @@ value class NaisClusterName(val value: String)
 
 @JvmInline
 value class VaultJdbcUrl(val value: String)
+
+@JvmInline
+value class DbCredentialsMountPath(val value: String)
 
 @JvmInline
 value class MaxConnectionPoolSizeForUser(val value: Int)
