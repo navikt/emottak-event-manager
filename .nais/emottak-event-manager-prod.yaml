@@ -53,6 +53,10 @@ spec:
   kafka:
     pool: nav-prod
   env:
+    - name: JDBC_URL
+      value: jdbc:postgresql://A01DBVL009.adeo.no:5432/
+    - name: DB_CREDENTIALS_MOUNT_PATH
+      value: postgresql/prod-fss
     - name: ENABLE_EVENT_RECEIVER
       value: "true"
     - name: EMOTTAK_LOGGING_LEVEL
