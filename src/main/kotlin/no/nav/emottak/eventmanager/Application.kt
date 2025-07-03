@@ -21,6 +21,7 @@ import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
 import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
@@ -38,9 +39,10 @@ fun main(args: Array<String>) = SuspendApp {
 
             val eventsRepository = EventsRepository(database)
             val ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(database)
+            val eventTypesRepository = EventTypesRepository(database)
 
             val eventService = EventService(eventsRepository, ebmsMessageDetailsRepository)
-            val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository)
+            val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository, eventTypesRepository)
 
             server(
                 factory = Netty,

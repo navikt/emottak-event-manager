@@ -17,14 +17,13 @@ import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
+import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
 import no.nav.emottak.eventmanager.service.EventService
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
-import no.nav.emottak.utils.kafka.model.Event
-import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
-import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
 
@@ -35,6 +34,7 @@ class ApplicationTest : StringSpec({
 
     lateinit var eventRepository: EventsRepository
     lateinit var ebmsMessageDetailsRepository: EbmsMessageDetailsRepository
+    lateinit var eventTypesRepository: EventTypesRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailsService: EbmsMessageDetailsService
@@ -63,9 +63,10 @@ class ApplicationTest : StringSpec({
 
         eventRepository = EventsRepository(db)
         ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(db)
+        eventTypesRepository = EventTypesRepository(db)
 
         eventService = EventService(eventRepository, ebmsMessageDetailsRepository)
-        ebmsMessageDetailsService = EbmsMessageDetailsService(eventRepository, ebmsMessageDetailsRepository)
+        ebmsMessageDetailsService = EbmsMessageDetailsService(eventRepository, ebmsMessageDetailsRepository, eventTypesRepository)
     }
 
     afterSpec {
@@ -193,6 +194,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].avsender shouldBe messageDetails.sender
             messageInfoList[0].cpaid shouldBe messageDetails.cpaId
             messageInfoList[0].antall shouldBe 1
+            messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
     }
 
@@ -247,31 +249,4 @@ class ApplicationTest : StringSpec({
                 start()
             }
     }
-}
-
-fun buildTestEvent(): Event = Event(
-    eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-    requestId = Uuid.random(),
-    contentId = "content-1",
-    messageId = "message-1",
-    eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
-    createdAt = Instant.parse("2025-04-01T12:54:45.386Z")
-)
-
-fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
-    return EbmsMessageDetails(
-        requestId = Uuid.random(),
-        cpaId = "test-cpa-id",
-        conversationId = "test-conversation-id",
-        messageId = "test-message-id",
-        fromPartyId = "test-from-party-id",
-        fromRole = "test-from-role",
-        toPartyId = "test-to-party-id",
-        toRole = "test-to-role",
-        service = "test-service",
-        action = "test-action",
-        refParam = "test-ref-param",
-        sender = "test-sender",
-        savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
-    )
 }
