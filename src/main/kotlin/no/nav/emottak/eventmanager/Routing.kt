@@ -10,7 +10,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.error
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
+import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import java.time.Instant
 import java.time.LocalDateTime
@@ -28,7 +28,7 @@ fun Application.configureRouting() {
 fun Application.configureNaisRouts(
     collectorRegistry: PrometheusMeterRegistry,
     eventService: EventService,
-    ebmsMessageDetailsService: EbmsMessageDetailsService
+    ebmsMessageDetailService: EbmsMessageDetailService
 ) {
     routing {
         get("/internal/health/liveness") {
@@ -61,7 +61,7 @@ fun Application.configureNaisRouts(
             val toDate = parseDate(call.request.queryParameters.get("toDate")!!)
 
             log.debug("Retrieving message details from database")
-            val messageDetails = ebmsMessageDetailsService.fetchEbmsMessageDetails(fromDate, toDate)
+            val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate)
             log.debug("Message details retrieved: ${messageDetails.size}")
             log.debug("The last message details retrieved: ${messageDetails.lastOrNull()}")
 

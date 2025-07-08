@@ -5,7 +5,7 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 import java.util.UUID
 
-object EbmsMessageDetailsTable : Table("ebms_message_details") {
+object EbmsMessageDetailTable : Table("ebms_message_details") {
     val requestId: Column<UUID> = uuid("request_id")
     val cpaId: Column<String> = varchar("cpa_id", 256)
     val conversationId: Column<String> = varchar("conversation_id", 256)

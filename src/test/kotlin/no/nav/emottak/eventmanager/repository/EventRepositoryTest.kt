@@ -7,25 +7,25 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import kotlin.uuid.Uuid
 
-class EventsRepositoryTest : StringSpec({
+class EventRepositoryTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
-    lateinit var eventRepository: EventsRepository
+    lateinit var eventRepository: EventRepository
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
-        eventRepository = EventsRepository(db)
+        eventRepository = EventRepository(db)
     }
 
     afterSpec {

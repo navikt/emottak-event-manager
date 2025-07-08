@@ -3,11 +3,11 @@ package no.nav.emottak.eventmanager.service
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.MessageInfo
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
@@ -15,17 +15,17 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
 
-class EbmsMessageDetailsService(
-    private val eventRepository: EventsRepository,
-    private val ebmsMessageDetailsRepository: EbmsMessageDetailsRepository,
-    private val eventTypesRepository: EventTypesRepository
+class EbmsMessageDetailService(
+    private val eventRepository: EventRepository,
+    private val ebmsMessageDetailRepository: EbmsMessageDetailRepository,
+    private val eventTypeRepository: EventTypeRepository
 ) {
     suspend fun process(value: ByteArray) {
         try {
             log.info("EBMS message details read from Kafka: ${String(value)}")
 
-            val details: EbmsMessageDetails = Json.decodeFromString(String(value))
-            ebmsMessageDetailsRepository.insert(details)
+            val details: EbmsMessageDetail = Json.decodeFromString(String(value))
+            ebmsMessageDetailRepository.insert(details)
             log.info("EBMS message details processed successfully: $details")
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)
@@ -33,8 +33,8 @@ class EbmsMessageDetailsService(
     }
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
-        val messageDetailsList = ebmsMessageDetailsRepository.findByTimeInterval(from, to)
-        val relatedRequestIds = ebmsMessageDetailsRepository.findRelatedRequestIds(messageDetailsList.map { it.requestId })
+        val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to)
+        val relatedRequestIds = ebmsMessageDetailRepository.findRelatedRequestIds(messageDetailsList.map { it.requestId })
         val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
 
         return messageDetailsList.map {
@@ -44,7 +44,7 @@ class EbmsMessageDetailsService(
             val relatedEventTypeIds = relatedEvents.map { event ->
                 event.eventType.value
             }
-            val relatedEventTypes = eventTypesRepository.findEventTypesByIds(relatedEventTypeIds)
+            val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
 
             val messageStatus = when {
                 relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }

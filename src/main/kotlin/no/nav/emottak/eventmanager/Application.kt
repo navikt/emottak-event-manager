@@ -20,10 +20,10 @@ import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
 import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
 
@@ -37,17 +37,17 @@ fun main(args: Array<String>) = SuspendApp {
             val database = Database(eventDbConfig.value)
             database.migrate(eventMigrationConfig.value)
 
-            val eventsRepository = EventsRepository(database)
-            val ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(database)
-            val eventTypesRepository = EventTypesRepository(database)
+            val eventRepository = EventRepository(database)
+            val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
+            val eventTypeRepository = EventTypeRepository(database)
 
-            val eventService = EventService(eventsRepository, ebmsMessageDetailsRepository)
-            val ebmsMessageDetailsService = EbmsMessageDetailsService(eventsRepository, ebmsMessageDetailsRepository, eventTypesRepository)
+            val eventService = EventService(eventRepository, ebmsMessageDetailRepository)
+            val ebmsMessageDetailService = EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
 
             server(
                 factory = Netty,
                 port = 8080,
-                module = eventManagerModule(eventService, ebmsMessageDetailsService)
+                module = eventManagerModule(eventService, ebmsMessageDetailService)
             )
 
             log.debug("Configuration: $config")
@@ -60,7 +60,7 @@ fun main(args: Array<String>) = SuspendApp {
                             config.eventConsumer.messageDetailsTopic
                         ),
                         eventService,
-                        ebmsMessageDetailsService
+                        ebmsMessageDetailService
                     )
                 }
             }
@@ -70,13 +70,13 @@ fun main(args: Array<String>) = SuspendApp {
     }
 }
 
-fun eventManagerModule(eventService: EventService, ebmsMessageDetailsService: EbmsMessageDetailsService): Application.() -> Unit {
+fun eventManagerModule(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService): Application.() -> Unit {
     return {
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {
             registry = appMicrometerRegistry
         }
         configureRouting()
-        configureNaisRouts(appMicrometerRegistry, eventService, ebmsMessageDetailsService)
+        configureNaisRouts(appMicrometerRegistry, eventService, ebmsMessageDetailService)
     }
 }

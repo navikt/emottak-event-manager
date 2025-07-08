@@ -7,25 +7,25 @@ import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetails
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 
-class EbmsMessageDetailsRepositoryTest : StringSpec({
+class EbmsMessageDetailRepositoryTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
-    lateinit var repository: EbmsMessageDetailsRepository
+    lateinit var repository: EbmsMessageDetailRepository
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
-        repository = EbmsMessageDetailsRepository(db)
+        repository = EbmsMessageDetailRepository(db)
     }
 
     afterSpec {
@@ -33,7 +33,7 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
     }
 
     "Should insert and retrieve message details by requestId" {
-        val messageDetails = buildTestEbmsMessageDetails()
+        val messageDetails = buildTestEbmsMessageDetail()
 
         repository.insert(messageDetails)
         val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
@@ -42,10 +42,10 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
     }
 
     "Should update message details by requestId" {
-        val messageDetails = buildTestEbmsMessageDetails()
+        val messageDetails = buildTestEbmsMessageDetail()
         repository.insert(messageDetails)
 
-        val updatedMessageDetails = messageDetails.copy(
+        val updatedMessageDetail = messageDetails.copy(
             cpaId = "updated-cpa-id",
             conversationId = "updated-conversation-id",
             messageId = "updated-message-id",
@@ -57,31 +57,31 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
             sentAt = Instant.parse("2025-05-26T14:54:45.386Z"),
             savedAt = Instant.parse("2025-05-26T15:54:50.386Z")
         )
-        repository.update(updatedMessageDetails)
+        repository.update(updatedMessageDetail)
 
         val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
 
         retrievedDetails?.requestId shouldBe messageDetails.requestId
 
-        retrievedDetails?.cpaId shouldBe updatedMessageDetails.cpaId
-        retrievedDetails?.conversationId shouldBe updatedMessageDetails.conversationId
-        retrievedDetails?.messageId shouldBe updatedMessageDetails.messageId
-        retrievedDetails?.requestId shouldBe updatedMessageDetails.requestId
-        retrievedDetails?.fromPartyId shouldBe updatedMessageDetails.fromPartyId
-        retrievedDetails?.toPartyId shouldBe updatedMessageDetails.toPartyId
-        retrievedDetails?.service shouldBe updatedMessageDetails.service
-        retrievedDetails?.action shouldBe updatedMessageDetails.action
-        retrievedDetails?.savedAt shouldBe updatedMessageDetails.savedAt.truncatedTo(ChronoUnit.MICROS)
-        retrievedDetails?.sentAt shouldBe updatedMessageDetails.sentAt?.truncatedTo(ChronoUnit.MICROS)
-        retrievedDetails?.refParam shouldBe updatedMessageDetails.refParam
+        retrievedDetails?.cpaId shouldBe updatedMessageDetail.cpaId
+        retrievedDetails?.conversationId shouldBe updatedMessageDetail.conversationId
+        retrievedDetails?.messageId shouldBe updatedMessageDetail.messageId
+        retrievedDetails?.requestId shouldBe updatedMessageDetail.requestId
+        retrievedDetails?.fromPartyId shouldBe updatedMessageDetail.fromPartyId
+        retrievedDetails?.toPartyId shouldBe updatedMessageDetail.toPartyId
+        retrievedDetails?.service shouldBe updatedMessageDetail.service
+        retrievedDetails?.action shouldBe updatedMessageDetail.action
+        retrievedDetails?.savedAt shouldBe updatedMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
+        retrievedDetails?.sentAt shouldBe updatedMessageDetail.sentAt?.truncatedTo(ChronoUnit.MICROS)
+        retrievedDetails?.refParam shouldBe updatedMessageDetail.refParam
     }
 
     "Should retrieve records by time interval" {
-        val messageDetailsInInterval = buildTestEbmsMessageDetails().copy(
+        val messageDetailsInInterval = buildTestEbmsMessageDetail().copy(
             savedAt = Instant.parse("2025-04-30T12:54:45.386Z")
         )
 
-        val messageDetailsOutOfInterval = buildTestEbmsMessageDetails().copy(
+        val messageDetailsOutOfInterval = buildTestEbmsMessageDetail().copy(
             savedAt = Instant.parse("2025-04-30T15:54:45.386Z")
         )
 
@@ -98,15 +98,15 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
     }
 
     "Should retrieve related request IDs by request IDs" {
-        val messageDetails1 = buildTestEbmsMessageDetails().copy(
+        val messageDetails1 = buildTestEbmsMessageDetail().copy(
             requestId = Uuid.random(),
             conversationId = "conversationId-1"
         )
-        val messageDetails2 = buildTestEbmsMessageDetails().copy(
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(
             requestId = Uuid.random(),
             conversationId = "conversationId-1"
         )
-        val messageDetails3 = buildTestEbmsMessageDetails().copy(
+        val messageDetails3 = buildTestEbmsMessageDetail().copy(
             requestId = Uuid.random(),
             conversationId = "conversationId-2"
         )
@@ -150,8 +150,8 @@ class EbmsMessageDetailsRepositoryTest : StringSpec({
     }
 }
 
-fun buildTestEbmsMessageDetails(): EbmsMessageDetails {
-    return EbmsMessageDetails(
+fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
+    return EbmsMessageDetail(
         requestId = Uuid.random(),
         cpaId = "test-cpa-id",
         conversationId = "test-conversation-id",
