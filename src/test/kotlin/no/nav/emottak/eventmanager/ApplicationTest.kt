@@ -16,12 +16,12 @@ import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailsRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventsRepository
-import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetails
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
-import no.nav.emottak.eventmanager.service.EbmsMessageDetailsService
+import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.ZoneId
@@ -32,17 +32,17 @@ class ApplicationTest : StringSpec({
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
 
-    lateinit var eventRepository: EventsRepository
-    lateinit var ebmsMessageDetailsRepository: EbmsMessageDetailsRepository
-    lateinit var eventTypesRepository: EventTypesRepository
+    lateinit var eventRepository: EventRepository
+    lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
+    lateinit var eventTypeRepository: EventTypeRepository
 
     lateinit var eventService: EventService
-    lateinit var ebmsMessageDetailsService: EbmsMessageDetailsService
+    lateinit var ebmsMessageDetailService: EbmsMessageDetailService
 
     val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
         testApplication {
             application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
+                eventManagerModule(eventService, ebmsMessageDetailService)
             )
 
             val httpClient = createClient {
@@ -61,12 +61,12 @@ class ApplicationTest : StringSpec({
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
 
-        eventRepository = EventsRepository(db)
-        ebmsMessageDetailsRepository = EbmsMessageDetailsRepository(db)
-        eventTypesRepository = EventTypesRepository(db)
+        eventRepository = EventRepository(db)
+        ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
+        eventTypeRepository = EventTypeRepository(db)
 
-        eventService = EventService(eventRepository, ebmsMessageDetailsRepository)
-        ebmsMessageDetailsService = EbmsMessageDetailsService(eventRepository, ebmsMessageDetailsRepository, eventTypesRepository)
+        eventService = EventService(eventRepository, ebmsMessageDetailRepository)
+        ebmsMessageDetailService = EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
     }
 
     afterSpec {
@@ -83,7 +83,7 @@ class ApplicationTest : StringSpec({
     "Root endpoint should return OK" {
         testApplication {
             application(
-                eventManagerModule(eventService, ebmsMessageDetailsService)
+                eventManagerModule(eventService, ebmsMessageDetailService)
             )
             client.get("/").apply {
                 status shouldBe HttpStatusCode.OK
@@ -95,10 +95,10 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
             val testEvent = buildTestEvent().copy(requestId = commonRequestId)
-            val testMessageDetails = buildTestEbmsMessageDetails().copy(requestId = commonRequestId)
+            val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-            ebmsMessageDetailsRepository.insert(testMessageDetails)
+            ebmsMessageDetailRepository.insert(testMessageDetails)
 
             val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-01T14:00&toDate=2025-04-01T15:00")
 
@@ -144,10 +144,10 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
             val testEvent = buildTestEvent().copy(requestId = commonRequestId)
-            val testMessageDetails = buildTestEbmsMessageDetails().copy(requestId = commonRequestId)
+            val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-            ebmsMessageDetailsRepository.insert(testMessageDetails)
+            ebmsMessageDetailRepository.insert(testMessageDetails)
 
             val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-02T14:00&toDate=2025-04-02T15:00")
 
@@ -174,10 +174,10 @@ class ApplicationTest : StringSpec({
 
     "fetchMessageDetails endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetails()
+            val messageDetails = buildTestEbmsMessageDetail()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
 
-            ebmsMessageDetailsRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.get("/fetchMessageDetails?fromDate=2025-05-08T14:00&toDate=2025-05-08T15:00")
@@ -200,8 +200,8 @@ class ApplicationTest : StringSpec({
 
     "fetchMessageDetails endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetails()
-            ebmsMessageDetailsRepository.insert(messageDetails)
+            val messageDetails = buildTestEbmsMessageDetail()
+            ebmsMessageDetailRepository.insert(messageDetails)
 
             val httpResponse = httpClient.get("/fetchMessageDetails?fromDate=2025-05-09T14:00&toDate=2025-05-09T15:00")
 

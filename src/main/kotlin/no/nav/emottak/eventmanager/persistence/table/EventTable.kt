@@ -9,10 +9,10 @@ import org.jetbrains.exposed.sql.javatime.timestamp
 import org.jetbrains.exposed.sql.json.json
 import java.util.UUID
 
-object EventsTable : Table("events") {
+object EventTable : Table("events") {
     val eventId: Column<UUID> = uuid("event_id")
     val eventTypeId: Column<Int> = integer("event_type_id")
-        .references(EventTypesTable.eventTypeId)
+        .references(EventTypeTable.eventTypeId)
     val requestId: Column<UUID> = uuid("request_id")
     val contentId: Column<String?> = varchar("content_id", 256).nullable()
     val messageId: Column<String> = varchar("message_id", 256)

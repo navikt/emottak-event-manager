@@ -8,22 +8,22 @@ import io.kotest.matchers.shouldNotBe
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EventTypesRepository
+import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import org.testcontainers.containers.PostgreSQLContainer
 
-class EventTypesRepositoryTest : StringSpec({
+class EventTypeRepositoryTest : StringSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
-    lateinit var eventTypesRepository: EventTypesRepository
+    lateinit var eventTypeRepository: EventTypeRepository
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
-        eventTypesRepository = EventTypesRepository(db)
+        eventTypeRepository = EventTypeRepository(db)
     }
 
     afterSpec {
@@ -32,7 +32,7 @@ class EventTypesRepositoryTest : StringSpec({
 
     "Should retrieve an event type by event type ID" {
 
-        val retrievedEventType = eventTypesRepository.findEventTypeById(1)
+        val retrievedEventType = eventTypeRepository.findEventTypeById(1)
 
         retrievedEventType shouldNotBe null
         // These values are from the migration script
@@ -43,7 +43,7 @@ class EventTypesRepositoryTest : StringSpec({
 
     "Should retrieve a list of event types by a list of event type IDs" {
 
-        val retrievedEventTypes = eventTypesRepository.findEventTypesByIds(listOf(1, 2, 3))
+        val retrievedEventTypes = eventTypeRepository.findEventTypesByIds(listOf(1, 2, 3))
 
         retrievedEventTypes.size shouldBe 3
         // These values are from the migration script
