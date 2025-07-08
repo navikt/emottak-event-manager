@@ -13,6 +13,7 @@ import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.uuid.Uuid
 
 class EbmsMessageDetailsService(
     private val eventRepository: EventsRepository,
@@ -32,10 +33,13 @@ class EbmsMessageDetailsService(
     }
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
-        return ebmsMessageDetailsRepository.findByTimeInterval(from, to).map { it ->
-            val relatedEvents = eventRepository.findEventByRequestId(it.requestId)
-            val sender = it.sender ?: findSender(relatedEvents)
-            val refParam = it.refParam ?: findRefParam(relatedEvents)
+        val messageDetailsList = ebmsMessageDetailsRepository.findByTimeInterval(from, to)
+        val relatedRequestIds = ebmsMessageDetailsRepository.findRelatedRequestIds(messageDetailsList.map { it.requestId })
+        val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
+
+        return messageDetailsList.map {
+            val sender = it.sender ?: findSender(it.requestId, relatedEvents)
+            val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
 
             val relatedEventTypeIds = relatedEvents.map { event ->
                 event.eventType.value
@@ -54,7 +58,7 @@ class EbmsMessageDetailsService(
 
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakidliste = it.requestId.toString(),
+                mottakidliste = relatedRequestIds[it.requestId] ?: "Not found",
                 role = it.fromRole,
                 service = it.service,
                 action = it.action,
@@ -67,9 +71,9 @@ class EbmsMessageDetailsService(
         }
     }
 
-    private fun findSender(events: List<Event>): String {
+    private fun findSender(requestId: Uuid, events: List<Event>): String {
         events.firstOrNull {
-            it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
+            it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData["sender"]
@@ -79,9 +83,9 @@ class EbmsMessageDetailsService(
         return "Unknown"
     }
 
-    private fun findRefParam(events: List<Event>): String {
+    private fun findRefParam(requestId: Uuid, events: List<Event>): String {
         events.firstOrNull {
-            it.eventType == EventType.REFERENCE_RETRIEVED
+            it.requestId == requestId && it.eventType == EventType.REFERENCE_RETRIEVED
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData[EventDataType.REFERENCE.value]
