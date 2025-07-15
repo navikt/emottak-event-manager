@@ -69,7 +69,7 @@ class EventRepositoryTest : StringSpec({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findEventByRequestId(sharedRequestId)
+        val retrievedEvents = eventRepository.findEventsByRequestId(sharedRequestId)
 
         retrievedEvents shouldContainExactlyInAnyOrder listOf(event1.copy(), event2.copy())
     }
