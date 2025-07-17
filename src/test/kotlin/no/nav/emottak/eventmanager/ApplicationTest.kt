@@ -9,9 +9,15 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
+import no.nav.emottak.eventmanager.model.DuplicateCheckRequest
+import no.nav.emottak.eventmanager.model.DuplicateCheckResponse
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
@@ -273,6 +279,85 @@ class ApplicationTest : StringSpec({
                 row("/fetchMessageLoggInfo")
             ) { url ->
                 val httpResponse = httpClient.get(url)
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+            }
+        }
+    }
+
+    "duplicateCheck endpoint should return DuplicateCheckResponse if message is duplicated" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = messageDetails.messageId,
+                conversationId = messageDetails.conversationId,
+                cpaId = messageDetails.cpaId
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val duplicateCheckResponse: DuplicateCheckResponse = httpResponse.body()
+            duplicateCheckResponse.requestId shouldBe duplicateCheckRequest.requestId
+            duplicateCheckResponse.isDuplicate shouldBe true
+        }
+    }
+
+    "duplicateCheck endpoint should return DuplicateCheckResponse if message is not duplicated" {
+        withTestApplication { httpClient ->
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = "test-message-id",
+                conversationId = "test-conversation-id",
+                cpaId = "test-cpa-id"
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val duplicateCheckResponse: DuplicateCheckResponse = httpResponse.body()
+            duplicateCheckResponse.requestId shouldBe duplicateCheckRequest.requestId
+            duplicateCheckResponse.isDuplicate shouldBe false
+        }
+    }
+
+    "duplicateCheck endpoint should return BedRequest if DuplicateCheckRequest is invalid" {
+        withTestApplication { httpClient ->
+            val invalidJson = "{\"invalid\":\"request\"}"
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                contentType(ContentType.Application.Json)
+                setBody(invalidJson)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    "duplicateCheck endpoint should return BedRequest if reuired fields are missing" {
+        withTestApplication { httpClient ->
+            forAll(
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "test-conversation-id")),
+                row(mapOf("messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "cpaId" to "test-cpa-id"))
+            ) { duplicateCheckRequest ->
+                val httpResponse = httpClient.post("/duplicateCheck") {
+                    contentType(ContentType.Application.Json)
+                    setBody(duplicateCheckRequest)
+                }
+
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
         }

@@ -32,6 +32,13 @@ class EventRepositoryTest : StringSpec({
         dbContainer.stop()
     }
 
+    afterTest {
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().execute("DELETE FROM events")
+            conn.createStatement().execute("DELETE FROM ebms_message_details")
+        }
+    }
+
     "Should retrieve an event by eventId" {
         val testEvent = buildTestEvent()
 

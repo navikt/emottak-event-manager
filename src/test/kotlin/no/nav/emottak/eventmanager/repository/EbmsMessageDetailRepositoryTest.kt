@@ -32,6 +32,13 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         dbContainer.stop()
     }
 
+    afterTest {
+        db.dataSource.connection.use { conn ->
+            conn.createStatement().execute("DELETE FROM events")
+            conn.createStatement().execute("DELETE FROM ebms_message_details")
+        }
+    }
+
     "Should insert and retrieve message details by requestId" {
         val messageDetails = buildTestEbmsMessageDetail()
 
@@ -123,6 +130,33 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         relatedRequestIds[messageDetails1.requestId] shouldBe "${messageDetails1.requestId},${messageDetails2.requestId}"
         relatedRequestIds shouldContainKey messageDetails3.requestId
         relatedRequestIds[messageDetails3.requestId] shouldBe messageDetails3.requestId.toString()
+    }
+
+    "Should retrieve records by message ID, conversation ID, and cpa ID" {
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(
+            messageId = "different-message-id"
+        )
+        val messageDetails3 = buildTestEbmsMessageDetail().copy(
+            conversationId = "different-conversation-id"
+        )
+        val messageDetails4 = buildTestEbmsMessageDetail().copy(
+            cpaId = "different-cpa-id"
+        )
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+        repository.insert(messageDetails3)
+        repository.insert(messageDetails4)
+
+        val retrievedDetails = repository.findBySecondaryIdsSet(
+            messageId = messageDetails1.messageId,
+            conversationId = messageDetails1.conversationId,
+            cpaId = messageDetails1.cpaId
+        )
+
+        retrievedDetails.size shouldBe 1
+        retrievedDetails shouldContain messageDetails1
     }
 }) {
     companion object {

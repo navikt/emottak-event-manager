@@ -3,7 +3,7 @@ package no.nav.emottak.eventmanager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.log
-import io.ktor.server.request.receive
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingCall
@@ -12,6 +12,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.error
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.DuplicateCheckRequest
 import no.nav.emottak.eventmanager.model.DuplicateCheckResponse
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
@@ -86,7 +87,10 @@ fun Application.configureNaisRouts(
         }
 
         post("/duplicateCheck") {
-            val duplicateCheckRequest: DuplicateCheckRequest = call.receive(DuplicateCheckRequest::class)
+            val duplicateCheckRequestJson = call.receiveText()
+            if (!validateDuplicateCheckRequest(call, duplicateCheckRequestJson)) return@post
+
+            val duplicateCheckRequest: DuplicateCheckRequest = Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
             log.debug("Received duplicate check request: $duplicateCheckRequest")
 
             val isDuplicate = ebmsMessageDetailService.isDuplicate(
@@ -168,6 +172,40 @@ suspend fun validateRequestIdRequest(call: RoutingCall): Boolean {
     } catch (e: Exception) {
         errorMessage = "Parameter 'requestId' is not a valid UUID: $requestIdParam"
         log.error(errorMessage, e)
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+
+    return true
+}
+
+suspend fun validateDuplicateCheckRequest(
+    call: RoutingCall,
+    duplicateCheckRequestJson: String
+): Boolean {
+    log.info("Validating duplicate check request: $duplicateCheckRequestJson")
+
+    var errorMessage = ""
+    val duplicateCheckRequest: DuplicateCheckRequest = try {
+        Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
+    } catch (e: Exception) {
+        errorMessage = "DuplicateCheckRequest  is not valid: $duplicateCheckRequestJson"
+        log.error(errorMessage, e)
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+
+    val requiredFieldMissing = when {
+        duplicateCheckRequest.requestId.isEmpty() -> "requestId"
+        duplicateCheckRequest.messageId.isEmpty() -> "messageId"
+        duplicateCheckRequest.conversationId.isEmpty() -> "conversationId"
+        duplicateCheckRequest.cpaId.isEmpty() -> "cpaId"
+        else -> ""
+    }
+
+    if (requiredFieldMissing.isNotEmpty()) {
+        errorMessage = "Required request parameter is missing: $requiredFieldMissing"
+        log.error(IllegalArgumentException(errorMessage))
         call.respond(HttpStatusCode.BadRequest, errorMessage)
         return false
     }
