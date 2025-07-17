@@ -54,13 +54,14 @@ class EventService(
 
     suspend fun fetchMessageLoggInfo(requestId: Uuid): List<MessageLoggInfo> {
         val eventsList = eventRepository.findEventsByRequestId(requestId)
-        return eventsList.map {
-            MessageLoggInfo(
-                hendelsesdato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                hendelsesbeskrivelse = it.eventType.description,
-                hendelsesid = it.eventType.value.toString()
-            )
-        }.toList()
+        return eventsList.sortedBy { it.createdAt }
+            .map {
+                MessageLoggInfo(
+                    hendelsesdato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
+                    hendelsesbeskrivelse = it.eventType.description,
+                    hendelsesid = it.eventType.value.toString()
+                )
+            }.toList()
     }
 
     private suspend fun updateMessageDetails(event: Event) {
