@@ -3,13 +3,17 @@ package no.nav.emottak.eventmanager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.log
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.util.logging.error
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import no.nav.emottak.eventmanager.model.DuplicateCheckRequest
+import no.nav.emottak.eventmanager.model.DuplicateCheckResponse
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import java.time.Instant
@@ -79,6 +83,28 @@ fun Application.configureNaisRouts(
             log.debug("Related events info retrieved: $messageLoggInfo")
 
             call.respond(messageLoggInfo)
+        }
+
+        post("/duplicateCheck") {
+            val duplicateCheckRequest: DuplicateCheckRequest = call.receive(DuplicateCheckRequest::class)
+            log.debug("Received duplicate check request: $duplicateCheckRequest")
+
+            val isDuplicate = ebmsMessageDetailService.isDuplicate(
+                messageId = duplicateCheckRequest.messageId,
+                conversationId = duplicateCheckRequest.conversationId,
+                cpaId = duplicateCheckRequest.cpaId
+            )
+            if (isDuplicate) {
+                log.info("Message is duplicated: ${duplicateCheckRequest.requestId}")
+            }
+
+            val duplicateCheckResponse = DuplicateCheckResponse(
+                requestId = duplicateCheckRequest.requestId,
+                isDuplicate = isDuplicate
+            )
+            log.debug("Duplicate check response: $duplicateCheckResponse")
+
+            call.respond(duplicateCheckResponse)
         }
     }
 }

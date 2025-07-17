@@ -52,6 +52,11 @@ spec:
     enabled: true
   kafka:
     pool: nav-dev
+  accessPolicy:
+    outbound:
+      rules:
+        - application: emottak-monitor
+        - application: ebms-async
   env:
     - name: JDBC_URL
       value: jdbc:postgresql://b27dbvl007.preprod.local:5432/
