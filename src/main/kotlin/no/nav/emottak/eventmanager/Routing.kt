@@ -16,6 +16,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.uuid.Uuid
 
 fun Application.configureRouting() {
     routing {
@@ -67,6 +68,18 @@ fun Application.configureNaisRouts(
 
             call.respond(messageDetails)
         }
+
+        get("/fetchMessageLoggInfo") {
+            if (!validateRequestIdRequest(call)) return@get
+
+            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+
+            log.debug("Retrieving related events info from database")
+            val messageLoggInfo = eventService.fetchMessageLoggInfo(requestId)
+            log.debug("Related events info retrieved: $messageLoggInfo")
+
+            call.respond(messageLoggInfo)
+        }
     }
 }
 
@@ -107,6 +120,32 @@ suspend fun validateDateRangeRequest(call: RoutingCall): Boolean {
         call.respond(HttpStatusCode.BadRequest, errorMessage)
         return false
     }
+    return true
+}
+
+suspend fun validateRequestIdRequest(call: RoutingCall): Boolean {
+    val parameters = call.request.queryParameters
+    log.info("Validating date request ID parameters: $parameters")
+
+    val requestIdParam = parameters["requestId"]
+
+    var errorMessage = ""
+    if (requestIdParam.isNullOrEmpty()) {
+        errorMessage = "Request parameter is missing: requestId"
+        log.error(IllegalArgumentException(errorMessage))
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+
+    try {
+        Uuid.parse(requestIdParam)
+    } catch (e: Exception) {
+        errorMessage = "Parameter 'requestId' is not a valid UUID: $requestIdParam"
+        log.error(errorMessage, e)
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        return false
+    }
+
     return true
 }
 

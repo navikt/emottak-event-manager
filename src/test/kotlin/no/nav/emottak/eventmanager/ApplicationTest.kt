@@ -14,6 +14,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
+import no.nav.emottak.eventmanager.model.MessageLoggInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
@@ -219,6 +220,57 @@ class ApplicationTest : StringSpec({
                 row("/fetchMessageDetails?fromDate=2025-5-08T14:00&toDate=2025-05-08T15:00\""),
                 row("/fetchMessageDetails?fromDate=2025-05-08T14:00&toDate=2025-05-8T15:00\""),
                 row("/fetchMessageDetails")
+            ) { url ->
+                val httpResponse = httpClient.get(url)
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+            }
+        }
+    }
+
+    "fetchMessageLoggInfo endpoint should return list of related events info" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val unrelatedEvent = buildTestEvent()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(relatedEvent)
+            eventRepository.insert(unrelatedEvent)
+
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MessageLoggInfo> = httpResponse.body()
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].hendelsesdato shouldBe relatedEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].hendelsesbeskrivelse shouldBe relatedEvent.eventType.description
+            messageInfoList[0].hendelsesid shouldBe relatedEvent.eventType.value.toString()
+        }
+    }
+
+    "fetchMessageLoggInfo endpoint should return empty list if no related events found" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val unrelatedEvent = buildTestEvent()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(unrelatedEvent)
+
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MessageLoggInfo> = httpResponse.body()
+            messageInfoList.size shouldBe 0
+        }
+    }
+
+    "fetchMessageLoggInfo endpoint should return BadRequest if parameters are missing or invalid" {
+        withTestApplication { httpClient ->
+            forAll(
+                row("/fetchMessageLoggInfo?requestId=invalid-uuid"),
+                row("/fetchMessageLoggInfo")
             ) { url ->
                 val httpResponse = httpClient.get(url)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest

@@ -58,7 +58,7 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findEventByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findEventsByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
                 .where { EventTable.requestId eq requestId.toJavaUuid() }

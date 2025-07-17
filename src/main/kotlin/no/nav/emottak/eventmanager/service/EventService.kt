@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.service
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.EventInfo
+import no.nav.emottak.eventmanager.model.MessageLoggInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.utils.kafka.model.Event
@@ -10,6 +11,7 @@ import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.uuid.Uuid
 
 class EventService(
     private val eventRepository: EventRepository,
@@ -48,6 +50,18 @@ class EventService(
                 avsender = ebmsMessageDetail?.sender
             )
         }.toList()
+    }
+
+    suspend fun fetchMessageLoggInfo(requestId: Uuid): List<MessageLoggInfo> {
+        val eventsList = eventRepository.findEventsByRequestId(requestId)
+        return eventsList.sortedBy { it.createdAt }
+            .map {
+                MessageLoggInfo(
+                    hendelsesdato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
+                    hendelsesbeskrivelse = it.eventType.description,
+                    hendelsesid = it.eventType.value.toString()
+                )
+            }.toList()
     }
 
     private suspend fun updateMessageDetails(event: Event) {
