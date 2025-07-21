@@ -149,7 +149,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         repository.insert(messageDetails3)
         repository.insert(messageDetails4)
 
-        val retrievedDetails = repository.findBySecondaryIdsSet(
+        val retrievedDetails = repository.findByMessageIdConversationIdAndCpaId(
             messageId = messageDetails1.messageId,
             conversationId = messageDetails1.conversationId,
             cpaId = messageDetails1.cpaId

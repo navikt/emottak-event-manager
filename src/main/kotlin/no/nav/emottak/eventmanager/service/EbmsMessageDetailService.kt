@@ -77,7 +77,7 @@ class EbmsMessageDetailService(
         cpaId: String
     ): Boolean {
         return ebmsMessageDetailRepository
-            .findBySecondaryIdsSet(messageId, conversationId, cpaId)
+            .findByMessageIdConversationIdAndCpaId(messageId, conversationId, cpaId)
             .isNotEmpty()
     }
 

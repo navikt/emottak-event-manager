@@ -152,7 +152,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         )
 
         coEvery {
-            ebmsMessageDetailRepository.findBySecondaryIdsSet(
+            ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
                 testMessageDetails.messageId,
                 testMessageDetails.conversationId,
                 testMessageDetails.cpaId
@@ -172,7 +172,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val testMessageDetails = buildTestEbmsMessageDetail()
 
         coEvery {
-            ebmsMessageDetailRepository.findBySecondaryIdsSet(
+            ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
                 testMessageDetails.messageId,
                 testMessageDetails.conversationId,
                 testMessageDetails.cpaId

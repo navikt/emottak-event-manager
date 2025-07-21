@@ -192,7 +192,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findBySecondaryIdsSet(
+    suspend fun findByMessageIdConversationIdAndCpaId(
         messageId: String,
         conversationId: String,
         cpaId: String
