@@ -317,7 +317,6 @@ class ApplicationTest : StringSpec({
                     "Authorization",
                     "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
                 )
-
                 contentType(ContentType.Application.Json)
                 setBody(duplicateCheckRequest)
             }
@@ -344,7 +343,6 @@ class ApplicationTest : StringSpec({
                     "Authorization",
                     "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
                 )
-
                 contentType(ContentType.Application.Json)
                 setBody(duplicateCheckRequest)
             }
@@ -357,6 +355,48 @@ class ApplicationTest : StringSpec({
         }
     }
 
+    "duplicateCheck endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val invalidAudience = "api://dev-fss.team-emottak.some-other-service/.default"
+
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = "test-message-id",
+                conversationId = "test-conversation-id",
+                cpaId = "test-cpa-id"
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(invalidAudience).serialize()}"
+                )
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "duplicateCheck endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = "test-message-id",
+                conversationId = "test-conversation-id",
+                cpaId = "test-cpa-id"
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
     "duplicateCheck endpoint should return BedRequest if DuplicateCheckRequest is invalid" {
         withTestApplication { httpClient ->
             val invalidJson = "{\"invalid\":\"request\"}"
@@ -366,7 +406,6 @@ class ApplicationTest : StringSpec({
                     "Authorization",
                     "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
                 )
-
                 contentType(ContentType.Application.Json)
                 setBody(invalidJson)
             }
@@ -388,7 +427,6 @@ class ApplicationTest : StringSpec({
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
                     )
-
                     contentType(ContentType.Application.Json)
                     setBody(duplicateCheckRequest)
                 }
