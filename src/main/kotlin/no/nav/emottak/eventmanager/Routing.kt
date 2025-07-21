@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.log
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
@@ -86,29 +87,31 @@ fun Application.configureNaisRouts(
             call.respond(messageLoggInfo)
         }
 
-        post("/duplicateCheck") {
-            val duplicateCheckRequestJson = call.receiveText()
-            if (!validateDuplicateCheckRequest(call, duplicateCheckRequestJson)) return@post
+        authenticate(AZURE_AD_AUTH) {
+            post("/duplicateCheck") {
+                val duplicateCheckRequestJson = call.receiveText()
+                if (!validateDuplicateCheckRequest(call, duplicateCheckRequestJson)) return@post
 
-            val duplicateCheckRequest: DuplicateCheckRequest = Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
-            log.debug("Received duplicate check request: $duplicateCheckRequest")
+                val duplicateCheckRequest: DuplicateCheckRequest = Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
+                log.debug("Received duplicate check request: $duplicateCheckRequest")
 
-            val isDuplicate = ebmsMessageDetailService.isDuplicate(
-                messageId = duplicateCheckRequest.messageId,
-                conversationId = duplicateCheckRequest.conversationId,
-                cpaId = duplicateCheckRequest.cpaId
-            )
-            if (isDuplicate) {
-                log.info("Message is duplicated: ${duplicateCheckRequest.requestId}")
+                val isDuplicate = ebmsMessageDetailService.isDuplicate(
+                    messageId = duplicateCheckRequest.messageId,
+                    conversationId = duplicateCheckRequest.conversationId,
+                    cpaId = duplicateCheckRequest.cpaId
+                )
+                if (isDuplicate) {
+                    log.info("Message is duplicated: ${duplicateCheckRequest.requestId}")
+                }
+
+                val duplicateCheckResponse = DuplicateCheckResponse(
+                    requestId = duplicateCheckRequest.requestId,
+                    isDuplicate = isDuplicate
+                )
+                log.debug("Duplicate check response: $duplicateCheckResponse")
+
+                call.respond(duplicateCheckResponse)
             }
-
-            val duplicateCheckResponse = DuplicateCheckResponse(
-                requestId = duplicateCheckRequest.requestId,
-                isDuplicate = isDuplicate
-            )
-            log.debug("Duplicate check response: $duplicateCheckResponse")
-
-            call.respond(duplicateCheckResponse)
         }
     }
 }

@@ -7,6 +7,7 @@ import arrow.fx.coroutines.resourceScope
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
 import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
@@ -25,6 +26,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.security.token.support.v3.tokenValidationSupport
 import org.slf4j.LoggerFactory
 
 val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
@@ -75,6 +77,9 @@ fun eventManagerModule(eventService: EventService, ebmsMessageDetailService: Ebm
         install(ContentNegotiation) { json() }
         install(MicrometerMetrics) {
             registry = appMicrometerRegistry
+        }
+        install(Authentication) {
+            tokenValidationSupport(AZURE_AD_AUTH, AuthConfig.getTokenSupportConfig())
         }
         configureRouting()
         configureNaisRouts(appMicrometerRegistry, eventService, ebmsMessageDetailService)

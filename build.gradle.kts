@@ -66,10 +66,12 @@ dependencies {
     implementation(libs.flyway.core)
     implementation(libs.vault.jdbc)
     implementation(libs.kotlin.kafka)
+    implementation(libs.token.validation.ktor.v3)
 
     testImplementation(kotlin("test"))
     testImplementation(testLibs.mockk)
     testImplementation(testLibs.bundles.kotest)
     testImplementation(testLibs.ktor.server.test)
     testImplementation(testLibs.testcontainers.postgresql)
+    testImplementation(testLibs.mock.oauth2.server)
 }

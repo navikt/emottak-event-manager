@@ -1,5 +1,6 @@
 package no.nav.emottak.eventmanager
 
+import com.nimbusds.jwt.SignedJWT
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
@@ -9,6 +10,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -30,6 +32,7 @@ import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.ZoneId
 import kotlin.uuid.Uuid
@@ -39,12 +42,22 @@ class ApplicationTest : StringSpec({
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
 
+    lateinit var mockOAuth2Server: MockOAuth2Server
+
     lateinit var eventRepository: EventRepository
     lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
     lateinit var eventTypeRepository: EventTypeRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
+
+    val getToken: (String) -> SignedJWT = { audience: String ->
+        mockOAuth2Server.issueToken(
+            issuerId = AZURE_AD_AUTH,
+            audience = audience,
+            subject = "testUser"
+        )
+    }
 
     val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
         testApplication {
@@ -67,6 +80,8 @@ class ApplicationTest : StringSpec({
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
+
+        mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
 
         eventRepository = EventRepository(db)
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
@@ -298,6 +313,11 @@ class ApplicationTest : StringSpec({
             )
 
             val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+
                 contentType(ContentType.Application.Json)
                 setBody(duplicateCheckRequest)
             }
@@ -320,6 +340,11 @@ class ApplicationTest : StringSpec({
             )
 
             val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+
                 contentType(ContentType.Application.Json)
                 setBody(duplicateCheckRequest)
             }
@@ -337,6 +362,11 @@ class ApplicationTest : StringSpec({
             val invalidJson = "{\"invalid\":\"request\"}"
 
             val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+
                 contentType(ContentType.Application.Json)
                 setBody(invalidJson)
             }
@@ -354,6 +384,11 @@ class ApplicationTest : StringSpec({
                 row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "cpaId" to "test-cpa-id"))
             ) { duplicateCheckRequest ->
                 val httpResponse = httpClient.post("/duplicateCheck") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+
                     contentType(ContentType.Application.Json)
                     setBody(duplicateCheckRequest)
                 }

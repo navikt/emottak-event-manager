@@ -14,6 +14,7 @@ dependencyResolutionManagement {
             version("logstash", "8.0")
             version("prometheus", "1.12.4")
             version("vault-jdbc", "1.3.10")
+            version("token-validation-ktor", "5.0.15")
 
             library("hikari", "com.zaxxer:HikariCP:5.0.1")
 
@@ -53,6 +54,8 @@ dependencyResolutionManagement {
 
             library("vault-jdbc", "no.nav", "vault-jdbc").versionRef("vault-jdbc")
 
+            library("token-validation-ktor-v3", "no.nav.security", "token-validation-ktor-v3").versionRef("token-validation-ktor")
+
             bundle("suspendapp", listOf("arrow-suspendapp", "arrow-suspendapp-ktor"))
             bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc", "exposed-time", "exposed-json"))
             bundle("ktor", listOf("server-content-negotiation", "client-content-negotiation", "serialization-json", "micrometer", "server-core", "server-netty", "server-config-yaml"))
@@ -74,6 +77,8 @@ dependencyResolutionManagement {
             library("testcontainers-postgresql", "org.testcontainers", "postgresql").versionRef("testcontainers")
 
             library("mockk", "io.mockk", "mockk").versionRef("mockk")
+
+            library("mock-oauth2-server", "no.nav.security:mock-oauth2-server:2.1.2")
 
             bundle("kotest", listOf("kotest-runner", "kotest-assertions"))
         }
