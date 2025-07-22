@@ -53,7 +53,7 @@ spec:
   kafka:
     pool: nav-prod
   accessPolicy:
-    outbound:
+    inbound:
       rules:
         - application: emottak-monitor
         - application: ebms-async
