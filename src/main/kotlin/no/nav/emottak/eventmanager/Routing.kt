@@ -192,17 +192,17 @@ suspend fun validateDuplicateCheckRequest(
     val duplicateCheckRequest: DuplicateCheckRequest = try {
         Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
     } catch (e: Exception) {
-        errorMessage = "DuplicateCheckRequest  is not valid: $duplicateCheckRequestJson"
+        errorMessage = "DuplicateCheckRequest is not valid: $duplicateCheckRequestJson"
         log.error(errorMessage, e)
         call.respond(HttpStatusCode.BadRequest, errorMessage)
         return false
     }
 
     val requiredFieldMissing = when {
-        duplicateCheckRequest.requestId.isEmpty() -> "requestId"
-        duplicateCheckRequest.messageId.isEmpty() -> "messageId"
-        duplicateCheckRequest.conversationId.isEmpty() -> "conversationId"
-        duplicateCheckRequest.cpaId.isEmpty() -> "cpaId"
+        duplicateCheckRequest.requestId.isBlank() -> "requestId"
+        duplicateCheckRequest.messageId.isBlank() -> "messageId"
+        duplicateCheckRequest.conversationId.isBlank() -> "conversationId"
+        duplicateCheckRequest.cpaId.isBlank() -> "cpaId"
         else -> ""
     }
 

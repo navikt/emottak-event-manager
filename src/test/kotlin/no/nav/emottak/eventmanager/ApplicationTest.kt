@@ -6,6 +6,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -397,7 +398,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "duplicateCheck endpoint should return BedRequest if DuplicateCheckRequest is invalid" {
+    "duplicateCheck endpoint should return BadRequest if DuplicateCheckRequest is invalid" {
         withTestApplication { httpClient ->
             val invalidJson = "{\"invalid\":\"request\"}"
 
@@ -411,16 +412,20 @@ class ApplicationTest : StringSpec({
             }
 
             httpResponse.status shouldBe HttpStatusCode.BadRequest
+
+            val errorResponse = httpResponse.body<String>()
+            errorResponse shouldStartWith "DuplicateCheckRequest is not valid"
         }
     }
 
-    "duplicateCheck endpoint should return BedRequest if reuired fields are missing" {
+    "duplicateCheck endpoint should return BadRequest if required fields are missing" {
         withTestApplication { httpClient ->
             forAll(
-                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "test-conversation-id")),
-                row(mapOf("messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
-                row(mapOf("requestId" to "test-request-id", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
-                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "cpaId" to "test-cpa-id"))
+                row(mapOf("requestId" to "", "messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "    "))
             ) { duplicateCheckRequest ->
                 val httpResponse = httpClient.post("/duplicateCheck") {
                     header(
@@ -432,6 +437,9 @@ class ApplicationTest : StringSpec({
                 }
 
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
+
+                val errorResponse = httpResponse.body<String>()
+                errorResponse shouldStartWith "Required request parameter is missing"
             }
         }
     }
