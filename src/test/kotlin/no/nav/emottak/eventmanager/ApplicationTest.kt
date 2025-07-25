@@ -1,15 +1,22 @@
 package no.nav.emottak.eventmanager
 
+import com.nimbusds.jwt.SignedJWT
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
 import no.nav.emottak.eventmanager.model.EventInfo
@@ -24,6 +31,9 @@ import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.emottak.utils.common.model.DuplicateCheckRequest
+import no.nav.emottak.utils.common.model.DuplicateCheckResponse
+import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.ZoneId
 import kotlin.uuid.Uuid
@@ -33,12 +43,22 @@ class ApplicationTest : StringSpec({
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
 
+    lateinit var mockOAuth2Server: MockOAuth2Server
+
     lateinit var eventRepository: EventRepository
     lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
     lateinit var eventTypeRepository: EventTypeRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
+
+    val getToken: (String) -> SignedJWT = { audience: String ->
+        mockOAuth2Server.issueToken(
+            issuerId = AZURE_AD_AUTH,
+            audience = audience,
+            subject = "testUser"
+        )
+    }
 
     val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
         testApplication {
@@ -61,6 +81,8 @@ class ApplicationTest : StringSpec({
         dbContainer.start()
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
+
+        mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
 
         eventRepository = EventRepository(db)
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
@@ -274,6 +296,150 @@ class ApplicationTest : StringSpec({
             ) { url ->
                 val httpResponse = httpClient.get(url)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
+            }
+        }
+    }
+
+    "duplicateCheck endpoint should return DuplicateCheckResponse if message is duplicated" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = messageDetails.messageId,
+                conversationId = messageDetails.conversationId,
+                cpaId = messageDetails.cpaId
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val duplicateCheckResponse: DuplicateCheckResponse = httpResponse.body()
+            duplicateCheckResponse.requestId shouldBe duplicateCheckRequest.requestId
+            duplicateCheckResponse.isDuplicate shouldBe true
+        }
+    }
+
+    "duplicateCheck endpoint should return DuplicateCheckResponse if message is not duplicated" {
+        withTestApplication { httpClient ->
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = "test-message-id",
+                conversationId = "test-conversation-id",
+                cpaId = "test-cpa-id"
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val duplicateCheckResponse: DuplicateCheckResponse = httpResponse.body()
+            duplicateCheckResponse.requestId shouldBe duplicateCheckRequest.requestId
+            duplicateCheckResponse.isDuplicate shouldBe false
+        }
+    }
+
+    "duplicateCheck endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val invalidAudience = "api://dev-fss.team-emottak.some-other-service/.default"
+
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = "test-message-id",
+                conversationId = "test-conversation-id",
+                cpaId = "test-cpa-id"
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(invalidAudience).serialize()}"
+                )
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "duplicateCheck endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val duplicateCheckRequest = DuplicateCheckRequest(
+                requestId = Uuid.random().toString(),
+                messageId = "test-message-id",
+                conversationId = "test-conversation-id",
+                cpaId = "test-cpa-id"
+            )
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                contentType(ContentType.Application.Json)
+                setBody(duplicateCheckRequest)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "duplicateCheck endpoint should return BadRequest if DuplicateCheckRequest is invalid" {
+        withTestApplication { httpClient ->
+            val invalidJson = "{\"invalid\":\"request\"}"
+
+            val httpResponse = httpClient.post("/duplicateCheck") {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+                contentType(ContentType.Application.Json)
+                setBody(invalidJson)
+            }
+
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
+
+            val errorResponse = httpResponse.body<String>()
+            errorResponse shouldStartWith "DuplicateCheckRequest is not valid"
+        }
+    }
+
+    "duplicateCheck endpoint should return BadRequest if required fields are missing" {
+        withTestApplication { httpClient ->
+            forAll(
+                row(mapOf("requestId" to "", "messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "", "conversationId" to "test-conversation-id", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "", "cpaId" to "test-cpa-id")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "")),
+                row(mapOf("requestId" to "test-request-id", "messageId" to "test-message-id", "conversationId" to "test-conversation-id", "cpaId" to "    "))
+            ) { duplicateCheckRequest ->
+                val httpResponse = httpClient.post("/duplicateCheck") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    contentType(ContentType.Application.Json)
+                    setBody(duplicateCheckRequest)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+
+                val errorResponse = httpResponse.body<String>()
+                errorResponse shouldStartWith "Required request parameter is missing"
             }
         }
     }

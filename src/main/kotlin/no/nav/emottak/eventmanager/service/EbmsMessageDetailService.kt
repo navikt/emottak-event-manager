@@ -71,6 +71,16 @@ class EbmsMessageDetailService(
         }
     }
 
+    suspend fun isDuplicate(
+        messageId: String,
+        conversationId: String,
+        cpaId: String
+    ): Boolean {
+        return ebmsMessageDetailRepository
+            .findByMessageIdConversationIdAndCpaId(messageId, conversationId, cpaId)
+            .isNotEmpty()
+    }
+
     private fun findSender(requestId: Uuid, events: List<Event>): String {
         events.firstOrNull {
             it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA

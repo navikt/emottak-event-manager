@@ -16,6 +16,7 @@ import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import no.nav.emottak.utils.kafka.model.EventDataType
 import java.time.Instant
+import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 
 class EbmsMessageDetailServiceTest : StringSpec({
@@ -142,5 +143,48 @@ class EbmsMessageDetailServiceTest : StringSpec({
         result[0].mottakidliste shouldBe "${testDetails1.requestId},${testDetails2.requestId}"
         result[1].mottakidliste shouldBe "${testDetails1.requestId},${testDetails2.requestId}"
         result[2].mottakidliste shouldBe "${testDetails3.requestId}"
+    }
+
+    "isDuplicate should return true if message is a duplicate" {
+        val testMessageDetails = buildTestEbmsMessageDetail()
+        val testMessageDetailsDuplicate = testMessageDetails.copy(
+            requestId = Uuid.random()
+        )
+
+        coEvery {
+            ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
+                testMessageDetails.messageId,
+                testMessageDetails.conversationId,
+                testMessageDetails.cpaId
+            )
+        } returns listOf(testMessageDetailsDuplicate)
+
+        val result = ebmsMessageDetailService.isDuplicate(
+            testMessageDetails.messageId,
+            testMessageDetails.conversationId,
+            testMessageDetails.cpaId
+        )
+
+        result shouldBe true
+    }
+
+    "isDuplicate should return false if message is not a duplicate" {
+        val testMessageDetails = buildTestEbmsMessageDetail()
+
+        coEvery {
+            ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
+                testMessageDetails.messageId,
+                testMessageDetails.conversationId,
+                testMessageDetails.cpaId
+            )
+        } returns listOf()
+
+        val result = ebmsMessageDetailService.isDuplicate(
+            testMessageDetails.messageId,
+            testMessageDetails.conversationId,
+            testMessageDetails.cpaId
+        )
+
+        result shouldBe false
     }
 })
