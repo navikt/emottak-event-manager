@@ -19,8 +19,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
-import no.nav.emottak.eventmanager.model.DuplicateCheckRequest
-import no.nav.emottak.eventmanager.model.DuplicateCheckResponse
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
@@ -33,6 +31,8 @@ import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.emottak.utils.common.model.DuplicateCheckRequest
+import no.nav.emottak.utils.common.model.DuplicateCheckResponse
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.ZoneId

@@ -14,10 +14,10 @@ import io.ktor.server.routing.routing
 import io.ktor.util.logging.error
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.model.DuplicateCheckRequest
-import no.nav.emottak.eventmanager.model.DuplicateCheckResponse
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.emottak.utils.common.model.DuplicateCheckRequest
+import no.nav.emottak.utils.common.model.DuplicateCheckResponse
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
