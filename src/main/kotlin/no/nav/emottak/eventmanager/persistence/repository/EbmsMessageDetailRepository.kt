@@ -23,6 +23,7 @@ import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
@@ -188,6 +189,42 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     Pair(it[requestId].toKotlinUuid(), it[subQuery[relatedRequestIdsColumn]])
                 }
                 .toMap()
+        }
+    }
+
+    suspend fun findByMessageIdConversationIdAndCpaId(
+        messageId: String,
+        conversationId: String,
+        cpaId: String
+    ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+        transaction(database.db) {
+            EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where {
+                    (EbmsMessageDetailTable.messageId eq messageId) and
+                        (EbmsMessageDetailTable.conversationId eq conversationId) and
+                        (EbmsMessageDetailTable.cpaId eq cpaId)
+                }
+                .mapNotNull {
+                    EbmsMessageDetail(
+                        requestId = it[requestId].toKotlinUuid(),
+                        cpaId = it[EbmsMessageDetailTable.cpaId],
+                        conversationId = it[EbmsMessageDetailTable.conversationId],
+                        messageId = it[EbmsMessageDetailTable.messageId],
+                        refToMessageId = it[refToMessageId],
+                        fromPartyId = it[fromPartyId],
+                        fromRole = it[fromRole],
+                        toPartyId = it[toPartyId],
+                        toRole = it[toRole],
+                        service = it[service],
+                        action = it[action],
+                        refParam = it[refParam],
+                        sender = it[sender],
+                        sentAt = it[sentAt],
+                        savedAt = it[savedAt]
+                    )
+                }
+                .toList()
         }
     }
 }
