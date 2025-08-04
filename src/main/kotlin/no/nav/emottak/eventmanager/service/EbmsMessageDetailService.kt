@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.service
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.MessageInfo
+import no.nav.emottak.eventmanager.model.MottakIdInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
@@ -14,7 +15,6 @@ import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
-import no.nav.emottak.eventmanager.model.MottakIdInfo
 
 class EbmsMessageDetailService(
     private val eventRepository: EventRepository,
@@ -131,11 +131,11 @@ class EbmsMessageDetailService(
 
         return when {
             relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
-                -> EventStatusEnum.PROCESSING_COMPLETED.description
+            -> EventStatusEnum.PROCESSING_COMPLETED.description
             relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
-                -> EventStatusEnum.ERROR.description
+            -> EventStatusEnum.ERROR.description
             relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
-                -> EventStatusEnum.INFORMATION.description
+            -> EventStatusEnum.INFORMATION.description
             else -> "Status is unknown"
         }
     }
