@@ -38,7 +38,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coVerify { ebmsMessageDetailRepository.insert(testDetails) }
     }
 
-    "Should call database repository on fetching EBMS message details" {
+    "Should call database repository on fetching EBMS message details by time interval" {
         val testDetails = buildTestEbmsMessageDetail()
         val testEvent = buildTestEvent()
         val testEventType = EventType(
@@ -56,10 +56,37 @@ class EbmsMessageDetailServiceTest : StringSpec({
             mapOf(testDetails.requestId to testDetails.requestId.toString())
         coEvery { eventRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
 
-        ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+        val messageInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
 
         coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to) }
         coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
+
+        messageInfoList.size shouldBe 1
+        messageInfoList[0].mottakidliste shouldBe testDetails.requestId.toString()
+        messageInfoList[0].cpaid shouldBe testDetails.cpaId
+    }
+
+    "Should call database repository on fetching EBMS message details by request ID" {
+        val testDetails = buildTestEbmsMessageDetail()
+        val testEvent = buildTestEvent()
+        val testEventType = EventType(
+            eventTypeId = 19,
+            description = "Melding lagret i juridisk logg",
+            status = EventStatusEnum.INFORMATION
+        )
+
+        coEvery { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) } returns testDetails
+        coEvery { eventRepository.findEventsByRequestId(testDetails.requestId) } returns listOf(testEvent)
+        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+        val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.requestId)
+
+        coVerify { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) }
+        coVerify { eventRepository.findEventsByRequestId(testDetails.requestId) }
+
+        mottakIdInfoList.size shouldBe 1
+        mottakIdInfoList[0].mottakid shouldBe testDetails.requestId.toString()
+        mottakIdInfoList[0].cpaid shouldBe testDetails.cpaId
     }
 
     "Should find sender from related events" {

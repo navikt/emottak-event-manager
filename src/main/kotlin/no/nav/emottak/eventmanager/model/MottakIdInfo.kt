@@ -1,5 +1,8 @@
 package no.nav.emottak.eventmanager.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class MottakIdInfo(
     val datomottat: String,
     val mottakid: String,

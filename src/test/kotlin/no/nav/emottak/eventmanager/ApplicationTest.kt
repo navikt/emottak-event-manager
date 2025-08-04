@@ -22,6 +22,7 @@ import io.ktor.server.testing.testApplication
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
+import no.nav.emottak.eventmanager.model.MottakIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
@@ -440,6 +441,56 @@ class ApplicationTest : StringSpec({
 
                 val errorResponse = httpResponse.body<String>()
                 errorResponse shouldStartWith "Required request parameter is missing"
+            }
+        }
+    }
+
+    "fetchMottakIdInfo endpoint should return list of message details" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(testEvent)
+
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?requestId=${messageDetails.requestId}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MottakIdInfo> = httpResponse.body()
+            messageInfoList[0].mottakid shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].role shouldBe messageDetails.fromRole
+            messageInfoList[0].service shouldBe messageDetails.service
+            messageInfoList[0].action shouldBe messageDetails.action
+            messageInfoList[0].referanse shouldBe messageDetails.refParam
+            messageInfoList[0].avsender shouldBe messageDetails.sender
+            messageInfoList[0].cpaid shouldBe messageDetails.cpaId
+            messageInfoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "fetchMottakIdInfo endpoint should return empty list if no message details found" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?requestId=${Uuid.random()}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+            val events: List<MessageInfo> = httpResponse.body()
+            events.size shouldBe 0
+        }
+    }
+
+    "fetchMottakIdInfo endpoint should return BadRequest if required parameters are missing or invalid" {
+        withTestApplication { httpClient ->
+            forAll(
+                row("/fetchMottakIdInfo?requestId=invalid-uuid"),
+                row("/fetchMottakIdInfo")
+            ) { url ->
+                val httpResponse = httpClient.get(url)
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
         }
     }

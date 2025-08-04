@@ -93,10 +93,10 @@ fun Application.configureNaisRouts(
             val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
 
             log.debug("Retrieving message details for requestId: $requestId")
-            val messageLoggInfo = ebmsMessageDetailService.fetchEbmsMessageDetails(requestId)
-            log.debug("Message details requestId $requestId retrieved: $messageLoggInfo")
+            val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(requestId)
+            log.debug("Message details for requestId $requestId retrieved: $mottakIdInfoList")
 
-            call.respond(messageLoggInfo)
+            call.respond(mottakIdInfoList)
         }
 
         authenticate(AZURE_AD_AUTH) {
