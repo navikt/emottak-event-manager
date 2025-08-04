@@ -87,6 +87,18 @@ fun Application.configureNaisRouts(
             call.respond(messageLoggInfo)
         }
 
+        get("/fetchMottakIdInfo") {
+            if (!validateMottakIdInfoRequest(call)) return@get
+
+            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+
+            log.debug("Retrieving message details for requestId: $requestId")
+            val messageLoggInfo = ebmsMessageDetailService.fetchEbmsMessageDetails(requestId)
+            log.debug("Message details requestId $requestId retrieved: $messageLoggInfo")
+
+            call.respond(messageLoggInfo)
+        }
+
         authenticate(AZURE_AD_AUTH) {
             post("/duplicateCheck") {
                 val duplicateCheckRequestJson = call.receiveText()
@@ -215,6 +227,14 @@ suspend fun validateDuplicateCheckRequest(
 
     return true
 }
+
+suspend fun validateMottakIdInfoRequest(call: RoutingCall): Boolean {
+
+
+
+    return true
+}
+
 
 fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
     val formatter = DateTimeFormatter.ofPattern(dateFormatString)

@@ -14,6 +14,7 @@ import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
+import no.nav.emottak.eventmanager.model.MottakIdInfo
 
 class EbmsMessageDetailService(
     private val eventRepository: EventRepository,
@@ -41,20 +42,7 @@ class EbmsMessageDetailService(
             val sender = it.sender ?: findSender(it.requestId, relatedEvents)
             val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
 
-            val relatedEventTypeIds = relatedEvents.map { event ->
-                event.eventType.value
-            }
-            val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
-
-            val messageStatus = when {
-                relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
-                -> EventStatusEnum.PROCESSING_COMPLETED.description
-                relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
-                -> EventStatusEnum.ERROR.description
-                relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
-                -> EventStatusEnum.INFORMATION.description
-                else -> "Status er ukjent"
-            }
+            val messageStatus = calculateMessageStatus(relatedEvents)
 
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
@@ -69,6 +57,36 @@ class EbmsMessageDetailService(
                 status = messageStatus
             )
         }
+    }
+
+    suspend fun fetchEbmsMessageDetails(requestId: Uuid): List<MottakIdInfo> {
+        val messageDetails = ebmsMessageDetailRepository.findByRequestId(requestId)
+
+        if (messageDetails == null) {
+            log.warn("No EBMS message details found for requestId: $requestId")
+            return emptyList()
+        }
+
+        val relatedEvents = eventRepository.findEventsByRequestId(requestId)
+
+        val sender = messageDetails.sender ?: findSender(messageDetails.requestId, relatedEvents)
+        val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
+
+        val messageStatus = calculateMessageStatus(relatedEvents)
+
+        return listOf(
+            MottakIdInfo(
+                datomottat = messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
+                mottakid = messageDetails.requestId.toString(),
+                cpaid = messageDetails.cpaId,
+                role = messageDetails.fromRole,
+                service = messageDetails.service,
+                action = messageDetails.action,
+                referanse = refParam,
+                avsender = sender,
+                status = messageStatus
+            )
+        )
     }
 
     suspend fun isDuplicate(
@@ -103,5 +121,22 @@ class EbmsMessageDetailService(
             return it
         }
         return "Unknown"
+    }
+
+    private suspend fun calculateMessageStatus(relatedEvents: List<Event>): String {
+        val relatedEventTypeIds = relatedEvents.map { event ->
+            event.eventType.value
+        }
+        val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
+
+        return when {
+            relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
+                -> EventStatusEnum.PROCESSING_COMPLETED.description
+            relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
+                -> EventStatusEnum.ERROR.description
+            relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
+                -> EventStatusEnum.INFORMATION.description
+            else -> "Status is unknown"
+        }
     }
 }
