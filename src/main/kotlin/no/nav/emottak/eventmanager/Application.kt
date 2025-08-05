@@ -81,7 +81,7 @@ fun eventManagerModule(eventService: EventService, ebmsMessageDetailService: Ebm
         install(Authentication) {
             tokenValidationSupport(AZURE_AD_AUTH, AuthConfig.getTokenSupportConfig())
         }
-        configureRouting()
-        configureNaisRouts(appMicrometerRegistry, eventService, ebmsMessageDetailService)
+        configureRouting(eventService, ebmsMessageDetailService)
+        configureNaisRouts(appMicrometerRegistry)
     }
 }

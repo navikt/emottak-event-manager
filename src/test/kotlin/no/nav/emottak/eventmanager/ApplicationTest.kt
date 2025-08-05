@@ -105,11 +105,8 @@ class ApplicationTest : StringSpec({
     }
 
     "Root endpoint should return OK" {
-        testApplication {
-            application(
-                eventManagerModule(eventService, ebmsMessageDetailService)
-            )
-            client.get("/").apply {
+        withTestApplication { httpClient ->
+            httpClient.get("/").apply {
                 status shouldBe HttpStatusCode.OK
             }
         }
