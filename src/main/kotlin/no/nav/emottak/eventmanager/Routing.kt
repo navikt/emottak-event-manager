@@ -65,6 +65,18 @@ fun Application.configureRouting(
             call.respond(messageLoggInfo)
         }
 
+        get("/fetchMottakIdInfo") {
+            if (!validateMottakIdInfoRequest(call)) return@get
+
+            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+
+            log.debug("Retrieving message details for requestId: $requestId")
+            val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(requestId)
+            log.debug("Message details for requestId $requestId retrieved: $mottakIdInfoList")
+
+            call.respond(mottakIdInfoList)
+        }
+
         authenticate(AZURE_AD_AUTH) {
             post("/duplicateCheck") {
                 val duplicateCheckRequestJson = call.receiveText()
