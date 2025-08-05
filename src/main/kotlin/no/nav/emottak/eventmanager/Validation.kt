@@ -114,6 +114,32 @@ object Validation {
         return true
     }
 
+    suspend fun validateMottakIdInfoRequest(call: RoutingCall): Boolean {
+        val parameters = call.request.queryParameters
+        log.info("Validating Mottak ID request parameters: $parameters")
+
+        val requestIdParam = parameters["requestId"]
+
+        var errorMessage = ""
+        if (requestIdParam.isNullOrEmpty()) {
+            errorMessage = "Request parameter is missing: requestId"
+            log.error(IllegalArgumentException(errorMessage))
+            call.respond(HttpStatusCode.BadRequest, errorMessage)
+            return false
+        }
+
+        try {
+            Uuid.parse(requestIdParam)
+        } catch (e: Exception) {
+            errorMessage = "Parameter 'requestId' is not a valid UUID: $requestIdParam"
+            log.error(errorMessage, e)
+            call.respond(HttpStatusCode.BadRequest, errorMessage)
+            return false
+        }
+
+        return true
+    }
+
     fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
         val formatter = DateTimeFormatter.ofPattern(dateFormatString)
         return LocalDateTime.parse(dateString, formatter)

@@ -66,7 +66,7 @@ fun Application.configureRouting(
         }
 
         get("/fetchMottakIdInfo") {
-            if (!validateMottakIdInfoRequest(call)) return@get
+            if (!Validation.validateMottakIdInfoRequest(call)) return@get
 
             val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
 
