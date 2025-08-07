@@ -6,6 +6,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -13,10 +14,11 @@ import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
+import no.nav.emottak.eventmanager.repository.buildTestTransportMessageDetail
 import no.nav.emottak.utils.kafka.model.EventDataType
 import java.time.Instant
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 
 class EbmsMessageDetailServiceTest : StringSpec({
@@ -28,8 +30,10 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
     "Should call database repository on processing EBMS message details" {
 
-        val testDetails = buildTestEbmsMessageDetail()
-        val testDetailsJson = Json.encodeToString(EbmsMessageDetail.serializer(), testDetails)
+        val testTransportMessageDetail = buildTestTransportMessageDetail()
+        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+
+        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
         coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
 

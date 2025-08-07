@@ -2,16 +2,17 @@ package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
-import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.Event as TransportEvent
 
 class EventService(
     private val eventRepository: EventRepository,
@@ -20,7 +21,8 @@ class EventService(
     suspend fun process(value: ByteArray) {
         try {
             log.info("Event read from Kafka: ${String(value)}")
-            val event: Event = Json.decodeFromString(String(value))
+            val transportEvent: TransportEvent = Json.decodeFromString(String(value))
+            val event = Event.fromTransportModel(transportEvent)
 
             updateMessageDetails(event)
 

@@ -5,14 +5,15 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
-import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.Event as TransportEvent
 
 class EventRepositoryTest : StringSpec({
 
@@ -49,12 +50,11 @@ class EventRepositoryTest : StringSpec({
     }
 
     "Should retrieve an event with empty eventData by eventId" {
-        val testEvent = Event(
-            eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-            requestId = Uuid.random(),
-            contentId = "test-content-id",
-            messageId = "test-message-id"
+        val testTransportEvent = buildTestTransportEvent().copy(
+            eventData = "{}"
         )
+
+        val testEvent = Event.fromTransportModel(testTransportEvent)
 
         val eventId = eventRepository.insert(testEvent)
         val retrievedEvent = eventRepository.findEventById(eventId)
@@ -128,7 +128,11 @@ class EventRepositoryTest : StringSpec({
     }
 }
 
-fun buildTestEvent(): Event = Event(
+fun buildTestEvent(): Event {
+    return Event.fromTransportModel(buildTestTransportEvent())
+}
+
+fun buildTestTransportEvent(): TransportEvent = TransportEvent(
     eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
     requestId = Uuid.random(),
     contentId = "test-content-id",

@@ -3,6 +3,7 @@ package no.nav.emottak.eventmanager.persistence.repository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EventTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable.contentId
@@ -10,7 +11,6 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
-import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction

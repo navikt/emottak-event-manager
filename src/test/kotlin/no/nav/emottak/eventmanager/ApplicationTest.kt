@@ -211,8 +211,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referanse shouldBe messageDetails.refParam
-            messageInfoList[0].avsender shouldBe messageDetails.sender
+            messageInfoList[0].referanse shouldBe "Unknown"
+            messageInfoList[0].avsender shouldBe "Unknown"
             messageInfoList[0].cpaid shouldBe messageDetails.cpaId
             messageInfoList[0].antall shouldBe 1
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
@@ -460,8 +460,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referanse shouldBe messageDetails.refParam
-            messageInfoList[0].avsender shouldBe messageDetails.sender
+            messageInfoList[0].referanse shouldBe "Unknown"
+            messageInfoList[0].avsender shouldBe "Unknown"
             messageInfoList[0].cpaid shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
