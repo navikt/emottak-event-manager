@@ -2,19 +2,20 @@ package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MottakIdInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
-import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 class EbmsMessageDetailService(
     private val eventRepository: EventRepository,
@@ -25,9 +26,10 @@ class EbmsMessageDetailService(
         try {
             log.info("EBMS message details read from Kafka: ${String(value)}")
 
-            val details: EbmsMessageDetail = Json.decodeFromString(String(value))
-            ebmsMessageDetailRepository.insert(details)
-            log.info("EBMS message details processed successfully: $details")
+            val transportEbmsMessageDetail: TransportEbmsMessageDetail = Json.decodeFromString(String(value))
+            val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
+            ebmsMessageDetailRepository.insert(ebmsMessageDetail)
+            log.info("EBMS message details processed successfully: $ebmsMessageDetail")
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)
         }

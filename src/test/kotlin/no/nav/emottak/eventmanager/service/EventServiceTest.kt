@@ -5,9 +5,11 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.repository.buildTestEvent
+import no.nav.emottak.eventmanager.repository.buildTestTransportEvent
 import java.time.Instant
 import java.time.ZoneId
 
@@ -19,11 +21,12 @@ class EventServiceTest : StringSpec({
 
     "Should call database repository on processing en event" {
 
-        val testEvent = buildTestEvent()
+        val testTransportEvent = buildTestTransportEvent()
+        val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
 
-        eventService.process(testEvent.toByteArray())
+        eventService.process(testTransportEvent.toByteArray())
 
         coVerify { eventRepository.insert(testEvent) }
     }

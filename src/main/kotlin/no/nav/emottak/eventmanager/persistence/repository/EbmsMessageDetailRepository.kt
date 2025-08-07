@@ -2,6 +2,7 @@ package no.nav.emottak.eventmanager.persistence.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.action
@@ -19,7 +20,6 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.sent
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.service
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias

@@ -5,14 +5,15 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 class EbmsMessageDetailRepositoryTest : StringSpec({
 
@@ -185,7 +186,11 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
 }
 
 fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
-    return EbmsMessageDetail(
+    return EbmsMessageDetail.fromTransportModel(buildTestTransportMessageDetail())
+}
+
+fun buildTestTransportMessageDetail(): TransportEbmsMessageDetail {
+    return TransportEbmsMessageDetail(
         requestId = Uuid.random(),
         cpaId = "test-cpa-id",
         conversationId = "test-conversation-id",
@@ -196,8 +201,6 @@ fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
         toRole = "test-to-role",
         service = "test-service",
         action = "test-action",
-        refParam = "test-ref-param",
-        sender = "test-sender",
         savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
     )
 }
