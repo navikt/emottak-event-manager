@@ -7,6 +7,7 @@ import java.util.UUID
 
 object EbmsMessageDetailTable : Table("ebms_message_details") {
     val requestId: Column<UUID> = uuid("request_id")
+    val mottakId: Column<String?> = varchar("mottak_id", 256).nullable()
     val cpaId: Column<String> = varchar("cpa_id", 256)
     val conversationId: Column<String> = varchar("conversation_id", 256)
     val messageId: Column<String> = varchar("message_id", 256)

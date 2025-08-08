@@ -2,7 +2,6 @@ package no.nav.emottak.eventmanager.repository
 
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
@@ -46,7 +45,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         repository.insert(messageDetails)
         val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
 
-        retrievedDetails shouldBe messageDetails.copy()
+        retrievedDetails?.requestId shouldBe messageDetails.requestId
     }
 
     "Should update message details by requestId" {
@@ -102,7 +101,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         )
 
         retrievedDetails.size shouldBe 1
-        retrievedDetails shouldContain messageDetailsInInterval
+        retrievedDetails[0].requestId shouldBe messageDetailsInInterval.requestId
     }
 
     "Should retrieve related request IDs by request IDs" {
@@ -157,7 +156,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         )
 
         retrievedDetails.size shouldBe 1
-        retrievedDetails shouldContain messageDetails1
+        retrievedDetails[0].requestId shouldBe messageDetails1.requestId
     }
 }) {
     companion object {

@@ -11,6 +11,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.cpaI
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.fromPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.fromRole
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.messageId
+import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.mottakId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.refParam
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.refToMessageId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.requestId
@@ -30,6 +31,8 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -41,6 +44,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction(database.db) {
             EbmsMessageDetailTable.insert {
                 it[requestId] = ebmsMessageDetail.requestId.toJavaUuid()
+                it[mottakId] = calculateMottakId(ebmsMessageDetail)
                 it[cpaId] = ebmsMessageDetail.cpaId
                 it[conversationId] = ebmsMessageDetail.conversationId
                 it[messageId] = ebmsMessageDetail.messageId
@@ -66,6 +70,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .update({
                     requestId eq ebmsMessageDetail.requestId.toJavaUuid()
                 }) {
+                    it[mottakId] = calculateMottakId(ebmsMessageDetail)
                     it[cpaId] = ebmsMessageDetail.cpaId
                     it[conversationId] = ebmsMessageDetail.conversationId
                     it[messageId] = ebmsMessageDetail.messageId
@@ -93,6 +98,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[EbmsMessageDetailTable.requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],
@@ -121,6 +127,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],
@@ -150,6 +157,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],
@@ -208,6 +216,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[EbmsMessageDetailTable.cpaId],
                         conversationId = it[EbmsMessageDetailTable.conversationId],
                         messageId = it[EbmsMessageDetailTable.messageId],
@@ -226,5 +235,20 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 }
                 .toList()
         }
+    }
+
+    private fun calculateMottakId(ebmsMessageDetail: EbmsMessageDetail): String {
+        val direction = if (ebmsMessageDetail.refToMessageId == null) "IN" else "OUT"
+
+        val formatter = DateTimeFormatter.ofPattern("yyMMddHHmm")
+        val savedAtString: String = ebmsMessageDetail.savedAt
+            .atZone(ZoneId.of("Europe/Oslo"))
+            .format(formatter)
+
+        val sender = ebmsMessageDetail.sender?.take(4) ?: "????"
+
+        val id = ebmsMessageDetail.requestId.toString().takeLast(6)
+
+        return "${direction}${savedAtString}${sender}$id"
     }
 }
