@@ -249,6 +249,6 @@ class EbmsMessageDetailRepository(private val database: Database) {
 
         val id = ebmsMessageDetail.requestId.toString().takeLast(6)
 
-        return "${direction}${savedAtString}${sender}$id"
+        return "$direction.$savedAtString.$sender.$id"
     }
 }

@@ -7,6 +7,7 @@ data class EventInfo(
     val hendelsedato: String,
     val hendelsedeskr: String,
     val tillegsinfo: String,
+    val requestId: String? = null,
     val mottakid: String,
     val role: String? = null,
     val service: String? = null,
