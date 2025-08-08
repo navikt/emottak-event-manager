@@ -44,7 +44,7 @@ class EventService(
                 hendelsedato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
                 hendelsedeskr = it.eventType.description,
                 tillegsinfo = it.eventData,
-                requestId = it.requestId.toString(),
+                requestid = it.requestId.toString(),
                 mottakid = ebmsMessageDetail?.mottakId ?: "",
                 role = ebmsMessageDetail?.fromRole,
                 service = ebmsMessageDetail?.service,

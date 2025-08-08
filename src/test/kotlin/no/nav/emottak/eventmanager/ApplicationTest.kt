@@ -131,7 +131,7 @@ class ApplicationTest : StringSpec({
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
-            events[0].requestId shouldBe savedTestMessageDetails?.requestId.toString()
+            events[0].requestid shouldBe savedTestMessageDetails?.requestId.toString()
             events[0].mottakid shouldBe savedTestMessageDetails?.mottakId
             events[0].role shouldBe savedTestMessageDetails?.fromRole
             events[0].service shouldBe savedTestMessageDetails?.service
@@ -155,7 +155,7 @@ class ApplicationTest : StringSpec({
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
-            events[0].requestId shouldBe testEvent.requestId.toString()
+            events[0].requestid shouldBe testEvent.requestId.toString()
             events[0].mottakid shouldBe ""
             events[0].role shouldBe null
             events[0].service shouldBe null
