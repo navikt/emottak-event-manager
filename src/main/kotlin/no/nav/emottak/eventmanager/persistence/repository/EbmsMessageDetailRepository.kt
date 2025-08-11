@@ -31,8 +31,6 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
@@ -44,7 +42,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction(database.db) {
             EbmsMessageDetailTable.insert {
                 it[requestId] = ebmsMessageDetail.requestId.toJavaUuid()
-                it[mottakId] = calculateMottakId(ebmsMessageDetail)
+                it[mottakId] = ebmsMessageDetail.calculateMottakId()
                 it[cpaId] = ebmsMessageDetail.cpaId
                 it[conversationId] = ebmsMessageDetail.conversationId
                 it[messageId] = ebmsMessageDetail.messageId
@@ -70,7 +68,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .update({
                     requestId eq ebmsMessageDetail.requestId.toJavaUuid()
                 }) {
-                    it[mottakId] = calculateMottakId(ebmsMessageDetail)
+                    it[mottakId] = ebmsMessageDetail.calculateMottakId()
                     it[cpaId] = ebmsMessageDetail.cpaId
                     it[conversationId] = ebmsMessageDetail.conversationId
                     it[messageId] = ebmsMessageDetail.messageId
@@ -200,6 +198,26 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
+    suspend fun findRelatedMottakIds(requestIds: List<Uuid>): Map<Uuid, String?> = withContext(Dispatchers.IO) {
+        transaction(database.db) {
+            val relatedMottakIdsColumn = mottakId.groupConcat(",").alias("related_mottak_ids")
+
+            val subQuery = EbmsMessageDetailTable
+                .select(conversationId, relatedMottakIdsColumn)
+                .groupBy(conversationId)
+                .alias("related")
+
+            EbmsMessageDetailTable
+                .join(subQuery, JoinType.INNER, conversationId, subQuery[conversationId])
+                .select(requestId, subQuery[relatedMottakIdsColumn])
+                .where { requestId.inList(requestIds.map { it.toJavaUuid() }) }
+                .mapNotNull {
+                    Pair(it[requestId].toKotlinUuid(), it[subQuery[relatedMottakIdsColumn]])
+                }
+                .toMap()
+        }
+    }
+
     suspend fun findByMessageIdConversationIdAndCpaId(
         messageId: String,
         conversationId: String,
@@ -235,20 +253,5 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 }
                 .toList()
         }
-    }
-
-    private fun calculateMottakId(ebmsMessageDetail: EbmsMessageDetail): String {
-        val direction = if (ebmsMessageDetail.refToMessageId == null) "IN" else "OUT"
-
-        val formatter = DateTimeFormatter.ofPattern("yyMMddHHmm")
-        val savedAtString: String = ebmsMessageDetail.savedAt
-            .atZone(ZoneId.of("Europe/Oslo"))
-            .format(formatter)
-
-        val sender = ebmsMessageDetail.sender?.take(4) ?: "????"
-
-        val id = ebmsMessageDetail.requestId.toString().takeLast(6)
-
-        return "$direction.$savedAtString.$sender.$id"
     }
 }

@@ -119,9 +119,7 @@ class ApplicationTest : StringSpec({
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-
             ebmsMessageDetailRepository.insert(testMessageDetails)
-            val savedTestMessageDetails = ebmsMessageDetailRepository.findByRequestId(testMessageDetails.requestId)
 
             val httpResponse = httpClient.get("/fetchevents?fromDate=2025-04-01T14:00&toDate=2025-04-01T15:00")
 
@@ -131,11 +129,11 @@ class ApplicationTest : StringSpec({
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
-            events[0].requestid shouldBe savedTestMessageDetails?.requestId.toString()
-            events[0].mottakid shouldBe savedTestMessageDetails?.mottakId
-            events[0].role shouldBe savedTestMessageDetails?.fromRole
-            events[0].service shouldBe savedTestMessageDetails?.service
-            events[0].action shouldBe savedTestMessageDetails?.action
+            events[0].requestid shouldBe testMessageDetails.requestId.toString()
+            events[0].mottakid shouldBe testMessageDetails.calculateMottakId()
+            events[0].role shouldBe testMessageDetails.fromRole
+            events[0].service shouldBe testMessageDetails.service
+            events[0].action shouldBe testMessageDetails.action
             events[0].referanse shouldBe testMessageDetails.refParam
             events[0].avsender shouldBe testMessageDetails.sender
         }
@@ -210,7 +208,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MessageInfo> = httpResponse.body()
-            messageInfoList[0].mottakidliste shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].mottakidliste shouldBe messageDetails.calculateMottakId()
             messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service

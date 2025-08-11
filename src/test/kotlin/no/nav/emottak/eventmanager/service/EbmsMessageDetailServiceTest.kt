@@ -56,8 +56,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
-        coEvery { ebmsMessageDetailRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.requestId.toString())
+        coEvery { ebmsMessageDetailRepository.findRelatedMottakIds(listOf(testDetails.requestId)) } returns
+            mapOf(testDetails.requestId to testDetails.calculateMottakId())
         coEvery { eventRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
 
         val messageInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
@@ -66,7 +66,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
 
         messageInfoList.size shouldBe 1
-        messageInfoList[0].mottakidliste shouldBe testDetails.requestId.toString()
+        messageInfoList[0].mottakidliste shouldBe testDetails.calculateMottakId()
         messageInfoList[0].cpaid shouldBe testDetails.cpaId
     }
 
@@ -108,8 +108,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
         )
 
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
-        coEvery { ebmsMessageDetailRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.requestId.toString())
+        coEvery { ebmsMessageDetailRepository.findRelatedMottakIds(listOf(testDetails.requestId)) } returns
+            mapOf(testDetails.requestId to testDetails.calculateMottakId())
         coEvery { eventRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
@@ -133,8 +133,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
         )
 
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
-        coEvery { ebmsMessageDetailRepository.findRelatedRequestIds(listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.requestId.toString())
+        coEvery { ebmsMessageDetailRepository.findRelatedMottakIds(listOf(testDetails.requestId)) } returns
+            mapOf(testDetails.requestId to testDetails.calculateMottakId())
         coEvery { eventRepository.findEventsByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
@@ -153,14 +153,14 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails1, testDetails2, testDetails3)
         coEvery {
-            ebmsMessageDetailRepository.findRelatedRequestIds(
+            ebmsMessageDetailRepository.findRelatedMottakIds(
                 listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
             )
         } returns
             mapOf(
-                testDetails1.requestId to "${testDetails1.requestId},${testDetails2.requestId}",
-                testDetails2.requestId to "${testDetails1.requestId},${testDetails2.requestId}",
-                testDetails3.requestId to "${testDetails3.requestId}"
+                testDetails1.requestId to "${testDetails1.calculateMottakId()},${testDetails2.calculateMottakId()}",
+                testDetails2.requestId to "${testDetails1.calculateMottakId()},${testDetails2.calculateMottakId()}",
+                testDetails3.requestId to testDetails3.calculateMottakId()
             )
         coEvery {
             eventRepository.findEventsByRequestIds(
@@ -171,9 +171,9 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
 
         result.size shouldBe 3
-        result[0].mottakidliste shouldBe "${testDetails1.requestId},${testDetails2.requestId}"
-        result[1].mottakidliste shouldBe "${testDetails1.requestId},${testDetails2.requestId}"
-        result[2].mottakidliste shouldBe "${testDetails3.requestId}"
+        result[0].mottakidliste shouldBe "${testDetails1.calculateMottakId()},${testDetails2.calculateMottakId()}"
+        result[1].mottakidliste shouldBe "${testDetails1.calculateMottakId()},${testDetails2.calculateMottakId()}"
+        result[2].mottakidliste shouldBe testDetails3.calculateMottakId()
     }
 
     "isDuplicate should return true if message is a duplicate" {

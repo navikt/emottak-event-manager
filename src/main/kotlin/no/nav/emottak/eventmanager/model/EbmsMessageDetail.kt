@@ -1,6 +1,8 @@
 package no.nav.emottak.eventmanager.model
 
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
@@ -43,5 +45,20 @@ data class EbmsMessageDetail(
                 savedAt = transportEbmsMessageDetail.savedAt
             )
         }
+    }
+
+    fun calculateMottakId(): String {
+        val direction = if (this.refToMessageId == null) "IN" else "OUT"
+
+        val formatter = DateTimeFormatter.ofPattern("yyMMddHHmm")
+        val savedAtString: String = this.savedAt
+            .atZone(ZoneId.of("Europe/Oslo"))
+            .format(formatter)
+
+        val sender = this.sender?.take(4) ?: "????"
+
+        val id = this.requestId.toString().takeLast(6)
+
+        return "$direction.$savedAtString.$sender.$id"
     }
 }

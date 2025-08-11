@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class MessageInfo(
     val datomottat: String,
+    val requestId: String? = null,
     val mottakidliste: String,
     val role: String? = null,
     val service: String? = null,
