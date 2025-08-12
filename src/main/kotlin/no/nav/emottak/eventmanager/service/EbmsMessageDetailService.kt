@@ -1,6 +1,7 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
@@ -62,15 +63,21 @@ class EbmsMessageDetailService(
         }
     }
 
-    suspend fun fetchEbmsMessageDetails(requestId: Uuid): List<MottakIdInfo> {
-        val messageDetails = ebmsMessageDetailRepository.findByRequestId(requestId)
+    suspend fun fetchEbmsMessageDetails(id: String): List<MottakIdInfo> {
+        val messageDetails = if (Validation.isValidUuid(id)) {
+            log.info("Fetching message details by Request ID: $id")
+            ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id))
+        } else {
+            log.info("Fetching message details by Mottak ID: $id")
+            ebmsMessageDetailRepository.findByMottakId(id)
+        }
 
         if (messageDetails == null) {
-            log.warn("No EBMS message details found for requestId: $requestId")
+            log.warn("No EBMS message details found for requestId: $id")
             return emptyList()
         }
 
-        val relatedEvents = eventRepository.findEventsByRequestId(requestId)
+        val relatedEvents = eventRepository.findEventsByRequestId(messageDetails.requestId)
 
         val sender = messageDetails.sender ?: findSender(messageDetails.requestId, relatedEvents)
         val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)

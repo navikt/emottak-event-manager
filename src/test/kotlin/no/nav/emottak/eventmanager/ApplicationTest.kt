@@ -500,15 +500,11 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMottakIdInfo endpoint should return BadRequest if required parameters are missing or invalid" {
+    "fetchMottakIdInfo endpoint should return BadRequest if required parameters are missing" {
         withTestApplication { httpClient ->
-            forAll(
-                row("/fetchMottakIdInfo?requestId=invalid-uuid"),
-                row("/fetchMottakIdInfo")
-            ) { url ->
-                val httpResponse = httpClient.get(url)
-                httpResponse.status shouldBe HttpStatusCode.BadRequest
-            }
+            val httpResponse = httpClient.get("/fetchMottakIdInfo")
+
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
         }
     }
 }) {

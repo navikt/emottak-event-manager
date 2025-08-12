@@ -15,7 +15,6 @@ import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.model.DuplicateCheckResponse
-import kotlin.uuid.Uuid
 
 fun Application.configureRouting(
     eventService: EventService,
@@ -68,11 +67,11 @@ fun Application.configureRouting(
         get("/fetchMottakIdInfo") {
             if (!Validation.validateMottakIdInfoRequest(call)) return@get
 
-            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+            val id = call.request.queryParameters.get("requestId")!!
 
-            log.debug("Retrieving message details for requestId: $requestId")
-            val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(requestId)
-            log.debug("Message details for requestId $requestId retrieved: $mottakIdInfoList")
+            log.debug("Retrieving message details for mutable ID: $id")
+            val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(id)
+            log.debug("Message details for mutable ID $id retrieved: $mottakIdInfoList")
 
             call.respond(mottakIdInfoList)
         }

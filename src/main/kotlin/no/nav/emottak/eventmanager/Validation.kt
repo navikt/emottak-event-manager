@@ -119,15 +119,6 @@ object Validation {
             return false
         }
 
-        try {
-            Uuid.parse(requestIdParam)
-        } catch (e: Exception) {
-            errorMessage = "Parameter 'requestId' is not a valid UUID: $requestIdParam"
-            log.error(errorMessage, e)
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-
         return true
     }
 

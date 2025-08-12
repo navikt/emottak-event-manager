@@ -83,7 +83,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { eventRepository.findEventsByRequestId(testDetails.requestId) } returns listOf(testEvent)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
-        val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.requestId)
+        val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.requestId.toString())
 
         coVerify { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) }
         coVerify { eventRepository.findEventsByRequestId(testDetails.requestId) }
