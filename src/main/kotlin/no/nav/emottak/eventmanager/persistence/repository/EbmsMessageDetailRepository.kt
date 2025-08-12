@@ -117,6 +117,35 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
+    suspend fun findByMottakId(mottakId: String): EbmsMessageDetail? = withContext(Dispatchers.IO) {
+        transaction {
+            EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where { EbmsMessageDetailTable.mottakId eq mottakId }
+                .mapNotNull {
+                    EbmsMessageDetail(
+                        requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[EbmsMessageDetailTable.mottakId],
+                        cpaId = it[cpaId],
+                        conversationId = it[conversationId],
+                        messageId = it[messageId],
+                        refToMessageId = it[refToMessageId],
+                        fromPartyId = it[fromPartyId],
+                        fromRole = it[fromRole],
+                        toPartyId = it[toPartyId],
+                        toRole = it[toRole],
+                        service = it[service],
+                        action = it[action],
+                        refParam = it[refParam],
+                        sender = it[sender],
+                        sentAt = it[sentAt],
+                        savedAt = it[savedAt]
+                    )
+                }
+                .singleOrNull()
+        }
+    }
+
     suspend fun findByRequestIds(requestIds: List<Uuid>): Map<Uuid, EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable

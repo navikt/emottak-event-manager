@@ -54,9 +54,9 @@ object Validation {
         return true
     }
 
-    suspend fun validateRequestIdRequest(call: RoutingCall): Boolean {
+    suspend fun validateMessageLoggInfoRequest(call: RoutingCall): Boolean {
         val parameters = call.request.queryParameters
-        log.info("Validating date request ID parameters: $parameters")
+        log.info("Validating Message logg info request parameters: $parameters")
 
         val requestIdParam = parameters["requestId"]
 
@@ -64,15 +64,6 @@ object Validation {
         if (requestIdParam.isNullOrEmpty()) {
             errorMessage = "Request parameter is missing: requestId"
             log.error(IllegalArgumentException(errorMessage))
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-
-        try {
-            Uuid.parse(requestIdParam)
-        } catch (e: Exception) {
-            errorMessage = "Parameter 'requestId' is not a valid UUID: $requestIdParam"
-            log.error(errorMessage, e)
             call.respond(HttpStatusCode.BadRequest, errorMessage)
             return false
         }
@@ -145,5 +136,14 @@ object Validation {
         return LocalDateTime.parse(dateString, formatter)
             .atZone(ZoneId.of("Europe/Oslo"))
             .toInstant()
+    }
+
+    fun isValidUuid(value: String): Boolean {
+        return try {
+            Uuid.parse(value)
+            true
+        } catch (e: IllegalArgumentException) {
+            false
+        }
     }
 }

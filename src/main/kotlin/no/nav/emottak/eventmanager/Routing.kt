@@ -54,12 +54,12 @@ fun Application.configureRouting(
         }
 
         get("/fetchMessageLoggInfo") {
-            if (!Validation.validateRequestIdRequest(call)) return@get
+            if (!Validation.validateMessageLoggInfoRequest(call)) return@get
 
-            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+            val id = call.request.queryParameters.get("requestId")!!
 
             log.debug("Retrieving related events info from database")
-            val messageLoggInfo = eventService.fetchMessageLoggInfo(requestId)
+            val messageLoggInfo = eventService.fetchMessageLoggInfo(id)
             log.debug("Related events info retrieved: $messageLoggInfo")
 
             call.respond(messageLoggInfo)

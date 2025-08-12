@@ -288,15 +288,11 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMessageLoggInfo endpoint should return BadRequest if parameters are missing or invalid" {
+    "fetchMessageLoggInfo endpoint should return BadRequest if parameters are missing" {
         withTestApplication { httpClient ->
-            forAll(
-                row("/fetchMessageLoggInfo?requestId=invalid-uuid"),
-                row("/fetchMessageLoggInfo")
-            ) { url ->
-                val httpResponse = httpClient.get(url)
-                httpResponse.status shouldBe HttpStatusCode.BadRequest
-            }
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo")
+
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
         }
     }
 

@@ -1,6 +1,7 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
@@ -55,8 +56,22 @@ class EventService(
         }.toList()
     }
 
-    suspend fun fetchMessageLoggInfo(requestId: Uuid): List<MessageLoggInfo> {
-        val eventsList = eventRepository.findEventsByRequestId(requestId)
+    suspend fun fetchMessageLoggInfo(id: String): List<MessageLoggInfo> {
+        val eventsList = if (Validation.isValidUuid(id)) {
+            log.info("Fetching events by Request ID: $id")
+            eventRepository.findEventsByRequestId(Uuid.parse(id))
+        } else {
+            log.info("Fetching events by Mottak ID: $id")
+            val messageDetails = ebmsMessageDetailRepository.findByMottakId(id)
+
+            if (messageDetails == null) {
+                log.warn("No EbmsMessageDetail found for Mottak ID: $id")
+                emptyList()
+            } else {
+                eventRepository.findEventsByRequestId(messageDetails.requestId)
+            }
+        }
+
         return eventsList.sortedBy { it.createdAt }
             .map {
                 MessageLoggInfo(

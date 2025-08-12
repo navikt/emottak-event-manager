@@ -56,7 +56,7 @@ class EventServiceTest : StringSpec({
 
         coEvery { eventRepository.findEventsByRequestId(testEvent.requestId) } returns listOf(testEvent)
 
-        val eventsList = eventService.fetchMessageLoggInfo(testEvent.requestId)
+        val eventsList = eventService.fetchMessageLoggInfo(testEvent.requestId.toString())
 
         eventsList.size shouldBe 1
         eventsList[0].hendelsesdato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
