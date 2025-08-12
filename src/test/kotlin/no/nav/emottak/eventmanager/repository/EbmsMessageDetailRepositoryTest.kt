@@ -106,15 +106,12 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
 
     "Should retrieve related request IDs by request IDs" {
         val messageDetails1 = buildTestEbmsMessageDetail().copy(
-            requestId = Uuid.random(),
             conversationId = "conversationId-1"
         )
         val messageDetails2 = buildTestEbmsMessageDetail().copy(
-            requestId = Uuid.random(),
             conversationId = "conversationId-1"
         )
         val messageDetails3 = buildTestEbmsMessageDetail().copy(
-            requestId = Uuid.random(),
             conversationId = "conversationId-2"
         )
 
@@ -122,14 +119,40 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         repository.insert(messageDetails2)
         repository.insert(messageDetails3)
 
-        val requestIds = listOf(messageDetails1.requestId, messageDetails3.requestId)
+        val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
         val relatedRequestIds = repository.findRelatedRequestIds(requestIds)
 
-        relatedRequestIds.size shouldBe 2
+        relatedRequestIds.size shouldBe 3
         relatedRequestIds shouldContainKey messageDetails1.requestId
         relatedRequestIds[messageDetails1.requestId] shouldBe "${messageDetails1.requestId},${messageDetails2.requestId}"
+        relatedRequestIds shouldContainKey messageDetails2.requestId
+        relatedRequestIds[messageDetails2.requestId] shouldBe "${messageDetails1.requestId},${messageDetails2.requestId}"
         relatedRequestIds shouldContainKey messageDetails3.requestId
         relatedRequestIds[messageDetails3.requestId] shouldBe messageDetails3.requestId.toString()
+    }
+
+    "Should retrieve related mottak IDs by request IDs" {
+        val messageDetails1 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversationId-1"
+        )
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversationId-1"
+        )
+        val messageDetails3 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversationId-2"
+        )
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+        repository.insert(messageDetails3)
+
+        val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
+        val relatedMottakIds = repository.findRelatedMottakIds(requestIds)
+
+        relatedMottakIds.size shouldBe 3
+        relatedMottakIds[messageDetails1.requestId] shouldBe "${messageDetails1.calculateMottakId()},${messageDetails2.calculateMottakId()}"
+        relatedMottakIds[messageDetails2.requestId] shouldBe "${messageDetails1.calculateMottakId()},${messageDetails2.calculateMottakId()}"
+        relatedMottakIds[messageDetails3.requestId] shouldBe messageDetails3.calculateMottakId()
     }
 
     "Should retrieve records by message ID, conversation ID, and cpa ID" {
