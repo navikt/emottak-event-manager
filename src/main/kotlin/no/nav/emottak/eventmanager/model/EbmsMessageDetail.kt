@@ -55,7 +55,11 @@ data class EbmsMessageDetail(
             .atZone(ZoneId.of("Europe/Oslo"))
             .format(formatter)
 
-        val sender = this.sender?.take(4) ?: "????"
+        val sender = if (this.refToMessageId != null) {
+            "NAVM"
+        } else {
+            this.sender?.take(4)?.lowercase() ?: "????"
+        }
 
         val id = this.requestId.toString().takeLast(6)
 

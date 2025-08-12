@@ -83,6 +83,15 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails?.refParam shouldBe updatedMessageDetail.refParam
     }
 
+    "Should retrieve message details by mottakId" {
+        val messageDetails = buildTestEbmsMessageDetail()
+
+        repository.insert(messageDetails)
+        val retrievedDetails = repository.findByMottakId(messageDetails.calculateMottakId())
+
+        retrievedDetails?.requestId shouldBe messageDetails.requestId
+    }
+
     "Should retrieve records by time interval" {
         val messageDetailsInInterval = buildTestEbmsMessageDetail().copy(
             savedAt = Instant.parse("2025-04-30T12:54:45.386Z")

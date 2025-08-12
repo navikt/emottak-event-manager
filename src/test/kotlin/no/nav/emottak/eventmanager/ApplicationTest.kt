@@ -249,7 +249,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMessageLoggInfo endpoint should return list of related events info" {
+    "fetchMessageLoggInfo endpoint should return list of related events info by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -260,6 +260,28 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(unrelatedEvent)
 
             val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MessageLoggInfo> = httpResponse.body()
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].hendelsesdato shouldBe relatedEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].hendelsesbeskrivelse shouldBe relatedEvent.eventType.description
+            messageInfoList[0].hendelsesid shouldBe relatedEvent.eventType.value.toString()
+        }
+    }
+
+    "fetchMessageLoggInfo endpoint should return list of related events info by Mottak ID" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val unrelatedEvent = buildTestEvent()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(relatedEvent)
+            eventRepository.insert(unrelatedEvent)
+
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.calculateMottakId()}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
