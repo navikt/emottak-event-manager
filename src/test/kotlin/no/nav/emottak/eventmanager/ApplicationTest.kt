@@ -475,7 +475,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MottakIdInfo> = httpResponse.body()
-            messageInfoList[0].mottakid shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].mottakid shouldBe messageDetails.calculateMottakId()
             messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service

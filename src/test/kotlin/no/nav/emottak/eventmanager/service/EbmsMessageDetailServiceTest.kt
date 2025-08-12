@@ -71,7 +71,11 @@ class EbmsMessageDetailServiceTest : StringSpec({
     }
 
     "Should call database repository on fetching EBMS message details by request ID" {
-        val testDetails = buildTestEbmsMessageDetail()
+        var testDetails = buildTestEbmsMessageDetail()
+        testDetails = testDetails.copy(
+            mottakId = testDetails.calculateMottakId()
+        )
+
         val testEvent = buildTestEvent()
         val testEventType = EventType(
             eventTypeId = 19,
@@ -89,7 +93,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coVerify { eventRepository.findEventsByRequestId(testDetails.requestId) }
 
         mottakIdInfoList.size shouldBe 1
-        mottakIdInfoList[0].mottakid shouldBe testDetails.requestId.toString()
+        mottakIdInfoList[0].mottakid shouldBe testDetails.calculateMottakId()
         mottakIdInfoList[0].cpaid shouldBe testDetails.cpaId
     }
 

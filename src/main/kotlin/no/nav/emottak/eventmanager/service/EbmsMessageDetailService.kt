@@ -87,7 +87,7 @@ class EbmsMessageDetailService(
         return listOf(
             MottakIdInfo(
                 datomottat = messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakid = messageDetails.requestId.toString(),
+                mottakid = messageDetails.mottakId ?: "Not defined",
                 cpaid = messageDetails.cpaId,
                 role = messageDetails.fromRole,
                 service = messageDetails.service,
