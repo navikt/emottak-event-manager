@@ -55,7 +55,7 @@ fun Application.configureRouting(
         get("/fetchMessageLoggInfo") {
             if (!Validation.validateMessageLoggInfoRequest(call)) return@get
 
-            val id = call.request.queryParameters.get("requestId")!!
+            val id = call.request.queryParameters.get("id")!!
 
             log.debug("Retrieving related events info from database")
             val messageLoggInfo = eventService.fetchMessageLoggInfo(id)
@@ -67,7 +67,7 @@ fun Application.configureRouting(
         get("/fetchMottakIdInfo") {
             if (!Validation.validateMottakIdInfoRequest(call)) return@get
 
-            val id = call.request.queryParameters.get("requestId")!!
+            val id = call.request.queryParameters.get("id")!!
 
             log.debug("Retrieving message details for mutable ID: $id")
             val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(id)

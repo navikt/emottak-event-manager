@@ -58,7 +58,7 @@ object Validation {
         val parameters = call.request.queryParameters
         log.info("Validating Message logg info request parameters: $parameters")
 
-        val requestIdParam = parameters["requestId"]
+        val requestIdParam = parameters["id"]
 
         var errorMessage = ""
         if (requestIdParam.isNullOrEmpty()) {
@@ -109,7 +109,7 @@ object Validation {
         val parameters = call.request.queryParameters
         log.info("Validating Mottak ID request parameters: $parameters")
 
-        val requestIdParam = parameters["requestId"]
+        val requestIdParam = parameters["id"]
 
         var errorMessage = ""
         if (requestIdParam.isNullOrEmpty()) {
