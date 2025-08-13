@@ -46,7 +46,6 @@ class EventServiceTest : StringSpec({
         eventsList[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
         eventsList[0].hendelsedeskr shouldBe testEvent.eventType.description
         eventsList[0].tillegsinfo shouldBe testEvent.eventData
-        eventsList[0].requestid shouldBe testEvent.requestId.toString()
 
         coVerify { eventRepository.findEventByTimeInterval(from, to) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }

@@ -49,7 +49,6 @@ class EbmsMessageDetailService(
 
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                requestid = it.requestId.toString(),
                 mottakidliste = relatedMottakIds[it.requestId] ?: "Not found",
                 role = it.fromRole,
                 service = it.service,
