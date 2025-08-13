@@ -259,7 +259,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/fetchMessageLoggInfo?id=${messageDetails.requestId}")
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -281,7 +281,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/fetchMessageLoggInfo?id=${messageDetails.calculateMottakId()}")
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.calculateMottakId()}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -301,7 +301,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/fetchMessageLoggInfo?id=${messageDetails.requestId}")
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -470,7 +470,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${messageDetails.requestId}")
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?requestId=${messageDetails.requestId}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -492,7 +492,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             ebmsMessageDetailRepository.insert(messageDetails)
 
-            val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${Uuid.random()}")
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?requestId=${Uuid.random()}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<MessageInfo> = httpResponse.body()
