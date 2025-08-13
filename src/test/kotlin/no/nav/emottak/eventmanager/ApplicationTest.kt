@@ -462,7 +462,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMottakIdInfo endpoint should return list of message details" {
+    "fetchMottakIdInfo endpoint should return list of message details by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -471,6 +471,31 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${messageDetails.requestId}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MottakIdInfo> = httpResponse.body()
+            messageInfoList[0].mottakid shouldBe messageDetails.calculateMottakId()
+            messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].role shouldBe messageDetails.fromRole
+            messageInfoList[0].service shouldBe messageDetails.service
+            messageInfoList[0].action shouldBe messageDetails.action
+            messageInfoList[0].referanse shouldBe "Unknown"
+            messageInfoList[0].avsender shouldBe "Unknown"
+            messageInfoList[0].cpaid shouldBe messageDetails.cpaId
+            messageInfoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "fetchMottakIdInfo endpoint should return list of message details by Muttak ID" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(testEvent)
+
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 

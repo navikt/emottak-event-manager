@@ -70,7 +70,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         messageInfoList[0].cpaid shouldBe testDetails.cpaId
     }
 
-    "Should call database repository on fetching EBMS message details by request ID" {
+    "Should call database repository on fetching EBMS message details by Request ID" {
         var testDetails = buildTestEbmsMessageDetail()
         testDetails = testDetails.copy(
             mottakId = testDetails.calculateMottakId()
@@ -90,6 +90,33 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.requestId.toString())
 
         coVerify { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) }
+        coVerify { eventRepository.findEventsByRequestId(testDetails.requestId) }
+
+        mottakIdInfoList.size shouldBe 1
+        mottakIdInfoList[0].mottakid shouldBe testDetails.calculateMottakId()
+        mottakIdInfoList[0].cpaid shouldBe testDetails.cpaId
+    }
+
+    "Should call database repository on fetching EBMS message details by Mottak ID" {
+        var testDetails = buildTestEbmsMessageDetail()
+        testDetails = testDetails.copy(
+            mottakId = testDetails.calculateMottakId()
+        )
+
+        val testEvent = buildTestEvent()
+        val testEventType = EventType(
+            eventTypeId = 19,
+            description = "Melding lagret i juridisk logg",
+            status = EventStatusEnum.INFORMATION
+        )
+
+        coEvery { ebmsMessageDetailRepository.findByMottakId(testDetails.calculateMottakId()) } returns testDetails
+        coEvery { eventRepository.findEventsByRequestId(testDetails.requestId) } returns listOf(testEvent)
+        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+        val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.calculateMottakId())
+
+        coVerify { ebmsMessageDetailRepository.findByMottakId(testDetails.calculateMottakId()) }
         coVerify { eventRepository.findEventsByRequestId(testDetails.requestId) }
 
         mottakIdInfoList.size shouldBe 1
