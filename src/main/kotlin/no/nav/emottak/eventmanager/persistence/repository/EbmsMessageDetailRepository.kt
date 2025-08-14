@@ -152,6 +152,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { mottakId.lowerCase() like "%$mottakIdPattern%".lowercase() }
+                .limit(100)
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
