@@ -102,6 +102,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
 
         forAll(
             row(messageDetails.calculateMottakId().substring(0, 6)),
+            row(messageDetails.calculateMottakId().substring(0, 6).lowercase()),
+            row(messageDetails.calculateMottakId().substring(0, 6).uppercase()),
             row(messageDetails.calculateMottakId().takeLast(6)),
             row(messageDetails.calculateMottakId().substring(6, 12))
         ) { mottakIdPattern ->

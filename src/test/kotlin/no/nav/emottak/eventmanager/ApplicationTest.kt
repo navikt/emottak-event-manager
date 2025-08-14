@@ -520,6 +520,8 @@ class ApplicationTest : StringSpec({
 
             forAll(
                 row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)?.lowercase()}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)?.uppercase()}"),
                 row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.takeLast(6)}"),
                 row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(6, 12)}")
             ) { url ->
