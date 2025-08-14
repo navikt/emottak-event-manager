@@ -2,8 +2,11 @@ package no.nav.emottak.eventmanager.repository
 
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.data.forAll
+import io.kotest.data.row
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import io.ktor.client.request.get
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
@@ -83,13 +86,29 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails?.refParam shouldBe updatedMessageDetail.refParam
     }
 
-    "Should retrieve message details by mottakId" {
+    "Should retrieve message details by Mottak ID" {
         val messageDetails = buildTestEbmsMessageDetail()
 
         repository.insert(messageDetails)
         val retrievedDetails = repository.findByMottakId(messageDetails.calculateMottakId())
 
         retrievedDetails?.requestId shouldBe messageDetails.requestId
+    }
+
+    "Should retrieve message details by Mottak ID pattern" {
+        val messageDetails = buildTestEbmsMessageDetail()
+
+        repository.insert(messageDetails)
+
+        forAll(
+            row(messageDetails.calculateMottakId().substring(0, 6)),
+            row(messageDetails.calculateMottakId().takeLast(6)),
+            row(messageDetails.calculateMottakId().substring(6, 12))
+        ) { mottakIdPattern ->
+            val retrievedDetails = repository.findByMottakIdPattern(mottakIdPattern)
+
+            retrievedDetails?.requestId shouldBe messageDetails.requestId
+        }
     }
 
     "Should retrieve records by time interval" {

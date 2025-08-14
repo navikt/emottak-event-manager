@@ -110,13 +110,13 @@ class EbmsMessageDetailServiceTest : StringSpec({
             status = EventStatusEnum.INFORMATION
         )
 
-        coEvery { ebmsMessageDetailRepository.findByMottakId(testDetails.calculateMottakId()) } returns testDetails
+        coEvery { ebmsMessageDetailRepository.findByMottakIdPattern(testDetails.calculateMottakId()) } returns testDetails
         coEvery { eventRepository.findEventsByRequestId(testDetails.requestId) } returns listOf(testEvent)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.calculateMottakId())
 
-        coVerify { ebmsMessageDetailRepository.findByMottakId(testDetails.calculateMottakId()) }
+        coVerify { ebmsMessageDetailRepository.findByMottakIdPattern(testDetails.calculateMottakId()) }
         coVerify { eventRepository.findEventsByRequestId(testDetails.requestId) }
 
         mottakIdInfoList.size shouldBe 1

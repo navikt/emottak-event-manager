@@ -510,6 +510,29 @@ class ApplicationTest : StringSpec({
         }
     }
 
+    "fetchMottakIdInfo endpoint should return list of message details by Muttak ID pattern" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(testEvent)
+
+            forAll(
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.takeLast(6)}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(6, 12)}")
+            ) { url ->
+                val httpResponse = httpClient.get(url)
+
+                httpResponse.status shouldBe HttpStatusCode.OK
+
+                val messageInfoList: List<MottakIdInfo> = httpResponse.body()
+                messageInfoList[0].mottakid shouldBe messageDetails.calculateMottakId()
+            }
+        }
+    }
+
     "fetchMottakIdInfo endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()

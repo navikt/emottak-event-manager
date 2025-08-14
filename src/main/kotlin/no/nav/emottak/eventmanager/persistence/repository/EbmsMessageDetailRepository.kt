@@ -28,6 +28,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
@@ -126,6 +127,35 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
                         mottakId = it[EbmsMessageDetailTable.mottakId],
+                        cpaId = it[cpaId],
+                        conversationId = it[conversationId],
+                        messageId = it[messageId],
+                        refToMessageId = it[refToMessageId],
+                        fromPartyId = it[fromPartyId],
+                        fromRole = it[fromRole],
+                        toPartyId = it[toPartyId],
+                        toRole = it[toRole],
+                        service = it[service],
+                        action = it[action],
+                        refParam = it[refParam],
+                        sender = it[sender],
+                        sentAt = it[sentAt],
+                        savedAt = it[savedAt]
+                    )
+                }
+                .singleOrNull()
+        }
+    }
+
+    suspend fun findByMottakIdPattern(mottakIdPattern: String): EbmsMessageDetail? = withContext(Dispatchers.IO) {
+        transaction {
+            EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where { mottakId.lowerCase() like "%$mottakIdPattern%".lowercase() }
+                .mapNotNull {
+                    EbmsMessageDetail(
+                        requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],

@@ -68,7 +68,7 @@ class EbmsMessageDetailService(
             ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id))
         } else {
             log.info("Fetching message details by Mottak ID: $id")
-            ebmsMessageDetailRepository.findByMottakId(id)
+            ebmsMessageDetailRepository.findByMottakIdPattern(id)
         }
 
         if (messageDetails == null) {
