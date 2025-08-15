@@ -58,7 +58,7 @@ data class EbmsMessageDetail(
         val sender = if (this.refToMessageId != null) {
             "NAVM"
         } else {
-            this.sender?.take(4)?.lowercase() ?: "????"
+            this.sender?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "????"
         }
 
         val id = this.requestId.toString().takeLast(6)
