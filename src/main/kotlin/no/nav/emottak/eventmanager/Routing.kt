@@ -27,8 +27,8 @@ fun Application.configureRouting(
         get("/fetchevents") {
             if (!Validation.validateDateRangeRequest(call)) return@get
 
-            val fromDate = Validation.parseDate(call.request.queryParameters.get("fromDate")!!)
-            val toDate = Validation.parseDate(call.request.queryParameters.get("toDate")!!)
+            val fromDate = Validation.parseDate(requireNotNull(call.request.queryParameters.get("fromDate")))
+            val toDate = Validation.parseDate(requireNotNull(call.request.queryParameters.get("toDate")))
 
             log.debug("Retrieving events from database")
             val events = eventService.fetchEvents(fromDate, toDate)
@@ -41,8 +41,8 @@ fun Application.configureRouting(
         get("/fetchMessageDetails") {
             if (!Validation.validateDateRangeRequest(call)) return@get
 
-            val fromDate = Validation.parseDate(call.request.queryParameters.get("fromDate")!!)
-            val toDate = Validation.parseDate(call.request.queryParameters.get("toDate")!!)
+            val fromDate = Validation.parseDate(requireNotNull(call.request.queryParameters.get("fromDate")))
+            val toDate = Validation.parseDate(requireNotNull(call.request.queryParameters.get("toDate")))
 
             log.debug("Retrieving message details from database")
             val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate)
@@ -55,7 +55,7 @@ fun Application.configureRouting(
         get("/fetchMessageLoggInfo") {
             if (!Validation.validateMessageLoggInfoRequest(call)) return@get
 
-            val id = call.request.queryParameters.get("id")!!
+            val id = requireNotNull(call.request.queryParameters["id"])
 
             log.debug("Retrieving related events info from database")
             val messageLoggInfo = eventService.fetchMessageLoggInfo(id)
@@ -67,7 +67,7 @@ fun Application.configureRouting(
         get("/fetchMottakIdInfo") {
             if (!Validation.validateMottakIdInfoRequest(call)) return@get
 
-            val id = call.request.queryParameters.get("id")!!
+            val id = requireNotNull(call.request.queryParameters["id"])
 
             log.debug("Retrieving message details for mutable ID: $id")
             val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(id)

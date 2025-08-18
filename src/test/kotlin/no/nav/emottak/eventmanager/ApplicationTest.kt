@@ -485,7 +485,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMottakIdInfo endpoint should return list of message details by Muttak ID" {
+    "fetchMottakIdInfo endpoint should return list of message details by Mottak ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -510,7 +510,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMottakIdInfo endpoint should return list of message details by Muttak ID pattern" {
+    "fetchMottakIdInfo endpoint should return list of message details by Mottak ID pattern" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
