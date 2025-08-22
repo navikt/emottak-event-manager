@@ -129,7 +129,7 @@ class ApplicationTest : StringSpec({
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
-            events[0].mottakid shouldBe testEvent.requestId.toString()
+            events[0].mottakid shouldBe testMessageDetails.calculateMottakId()
             events[0].role shouldBe testMessageDetails.fromRole
             events[0].service shouldBe testMessageDetails.service
             events[0].action shouldBe testMessageDetails.action
@@ -152,7 +152,7 @@ class ApplicationTest : StringSpec({
             events[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             events[0].hendelsedeskr shouldBe testEvent.eventType.description
             events[0].tillegsinfo shouldBe testEvent.eventData
-            events[0].mottakid shouldBe testEvent.requestId.toString()
+            events[0].mottakid shouldBe ""
             events[0].role shouldBe null
             events[0].service shouldBe null
             events[0].action shouldBe null
@@ -206,13 +206,13 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MessageInfo> = httpResponse.body()
-            messageInfoList[0].mottakidliste shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].mottakidliste shouldBe messageDetails.calculateMottakId()
             messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referanse shouldBe messageDetails.refParam
-            messageInfoList[0].avsender shouldBe messageDetails.sender
+            messageInfoList[0].referanse shouldBe "Unknown"
+            messageInfoList[0].avsender shouldBe "Unknown"
             messageInfoList[0].cpaid shouldBe messageDetails.cpaId
             messageInfoList[0].antall shouldBe 1
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
@@ -247,7 +247,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMessageLoggInfo endpoint should return list of related events info" {
+    "fetchMessageLoggInfo endpoint should return list of related events info by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -257,7 +257,29 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?id=${messageDetails.requestId}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MessageLoggInfo> = httpResponse.body()
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].hendelsesdato shouldBe relatedEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].hendelsesbeskrivelse shouldBe relatedEvent.eventType.description
+            messageInfoList[0].hendelsesid shouldBe relatedEvent.eventType.value.toString()
+        }
+    }
+
+    "fetchMessageLoggInfo endpoint should return list of related events info by Mottak ID" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val unrelatedEvent = buildTestEvent()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(relatedEvent)
+            eventRepository.insert(unrelatedEvent)
+
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?id=${messageDetails.calculateMottakId()}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -277,7 +299,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/fetchMessageLoggInfo?requestId=${messageDetails.requestId}")
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo?id=${messageDetails.requestId}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -286,15 +308,11 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMessageLoggInfo endpoint should return BadRequest if parameters are missing or invalid" {
+    "fetchMessageLoggInfo endpoint should return BadRequest if parameters are missing" {
         withTestApplication { httpClient ->
-            forAll(
-                row("/fetchMessageLoggInfo?requestId=invalid-uuid"),
-                row("/fetchMessageLoggInfo")
-            ) { url ->
-                val httpResponse = httpClient.get(url)
-                httpResponse.status shouldBe HttpStatusCode.BadRequest
-            }
+            val httpResponse = httpClient.get("/fetchMessageLoggInfo")
+
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
         }
     }
 
@@ -442,7 +460,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMottakIdInfo endpoint should return list of message details" {
+    "fetchMottakIdInfo endpoint should return list of message details by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -450,20 +468,70 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/fetchMottakIdInfo?requestId=${messageDetails.requestId}")
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${messageDetails.requestId}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MottakIdInfo> = httpResponse.body()
-            messageInfoList[0].mottakid shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].mottakid shouldBe messageDetails.calculateMottakId()
             messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referanse shouldBe messageDetails.refParam
-            messageInfoList[0].avsender shouldBe messageDetails.sender
+            messageInfoList[0].referanse shouldBe "Unknown"
+            messageInfoList[0].avsender shouldBe "Unknown"
             messageInfoList[0].cpaid shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "fetchMottakIdInfo endpoint should return list of message details by Mottak ID" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(testEvent)
+
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()}")
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MottakIdInfo> = httpResponse.body()
+            messageInfoList[0].mottakid shouldBe messageDetails.calculateMottakId()
+            messageInfoList[0].datomottat shouldBe messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString()
+            messageInfoList[0].role shouldBe messageDetails.fromRole
+            messageInfoList[0].service shouldBe messageDetails.service
+            messageInfoList[0].action shouldBe messageDetails.action
+            messageInfoList[0].referanse shouldBe "Unknown"
+            messageInfoList[0].avsender shouldBe "Unknown"
+            messageInfoList[0].cpaid shouldBe messageDetails.cpaId
+            messageInfoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "fetchMottakIdInfo endpoint should return list of message details by Mottak ID pattern" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(testEvent)
+
+            forAll(
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)?.lowercase()}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(0, 6)?.uppercase()}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.takeLast(6)}"),
+                row("/fetchMottakIdInfo?id=${messageDetails.calculateMottakId()?.substring(6, 12)}")
+            ) { url ->
+                val httpResponse = httpClient.get(url)
+
+                httpResponse.status shouldBe HttpStatusCode.OK
+
+                val messageInfoList: List<MottakIdInfo> = httpResponse.body()
+                messageInfoList[0].mottakid shouldBe messageDetails.calculateMottakId()
+            }
         }
     }
 
@@ -472,7 +540,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             ebmsMessageDetailRepository.insert(messageDetails)
 
-            val httpResponse = httpClient.get("/fetchMottakIdInfo?requestId=${Uuid.random()}")
+            val httpResponse = httpClient.get("/fetchMottakIdInfo?id=${Uuid.random()}")
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<MessageInfo> = httpResponse.body()
@@ -480,15 +548,11 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "fetchMottakIdInfo endpoint should return BadRequest if required parameters are missing or invalid" {
+    "fetchMottakIdInfo endpoint should return BadRequest if required parameters are missing" {
         withTestApplication { httpClient ->
-            forAll(
-                row("/fetchMottakIdInfo?requestId=invalid-uuid"),
-                row("/fetchMottakIdInfo")
-            ) { url ->
-                val httpResponse = httpClient.get(url)
-                httpResponse.status shouldBe HttpStatusCode.BadRequest
-            }
+            val httpResponse = httpClient.get("/fetchMottakIdInfo")
+
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
         }
     }
 }) {

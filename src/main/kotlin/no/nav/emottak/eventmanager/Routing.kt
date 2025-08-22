@@ -15,7 +15,6 @@ import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.model.DuplicateCheckResponse
-import kotlin.uuid.Uuid
 
 fun Application.configureRouting(
     eventService: EventService,
@@ -28,8 +27,8 @@ fun Application.configureRouting(
         get("/fetchevents") {
             if (!Validation.validateDateRangeRequest(call)) return@get
 
-            val fromDate = Validation.parseDate(call.request.queryParameters.get("fromDate")!!)
-            val toDate = Validation.parseDate(call.request.queryParameters.get("toDate")!!)
+            val fromDate = Validation.parseDate(call.request.queryParameters["fromDate"]!!)
+            val toDate = Validation.parseDate(call.request.queryParameters["toDate"]!!)
 
             log.debug("Retrieving events from database")
             val events = eventService.fetchEvents(fromDate, toDate)
@@ -42,8 +41,8 @@ fun Application.configureRouting(
         get("/fetchMessageDetails") {
             if (!Validation.validateDateRangeRequest(call)) return@get
 
-            val fromDate = Validation.parseDate(call.request.queryParameters.get("fromDate")!!)
-            val toDate = Validation.parseDate(call.request.queryParameters.get("toDate")!!)
+            val fromDate = Validation.parseDate(call.request.queryParameters["fromDate"]!!)
+            val toDate = Validation.parseDate(call.request.queryParameters["toDate"]!!)
 
             log.debug("Retrieving message details from database")
             val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate)
@@ -54,12 +53,12 @@ fun Application.configureRouting(
         }
 
         get("/fetchMessageLoggInfo") {
-            if (!Validation.validateRequestIdRequest(call)) return@get
+            if (!Validation.validateMessageLoggInfoRequest(call)) return@get
 
-            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+            val id = call.request.queryParameters["id"]!!
 
             log.debug("Retrieving related events info from database")
-            val messageLoggInfo = eventService.fetchMessageLoggInfo(requestId)
+            val messageLoggInfo = eventService.fetchMessageLoggInfo(id)
             log.debug("Related events info retrieved: $messageLoggInfo")
 
             call.respond(messageLoggInfo)
@@ -68,11 +67,11 @@ fun Application.configureRouting(
         get("/fetchMottakIdInfo") {
             if (!Validation.validateMottakIdInfoRequest(call)) return@get
 
-            val requestId = Uuid.parse(call.request.queryParameters.get("requestId")!!)
+            val id = call.request.queryParameters["id"]!!
 
-            log.debug("Retrieving message details for requestId: $requestId")
-            val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(requestId)
-            log.debug("Message details for requestId $requestId retrieved: $mottakIdInfoList")
+            log.debug("Retrieving message details for mutable ID: $id")
+            val mottakIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(id)
+            log.debug("Message details for mutable ID $id retrieved: $mottakIdInfoList")
 
             call.respond(mottakIdInfoList)
         }

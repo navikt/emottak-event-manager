@@ -1,17 +1,19 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
-import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.Event as TransportEvent
 
 class EventService(
     private val eventRepository: EventRepository,
@@ -20,7 +22,8 @@ class EventService(
     suspend fun process(value: ByteArray) {
         try {
             log.info("Event read from Kafka: ${String(value)}")
-            val event: Event = Json.decodeFromString(String(value))
+            val transportEvent: TransportEvent = Json.decodeFromString(String(value))
+            val event = Event.fromTransportModel(transportEvent)
 
             updateMessageDetails(event)
 
@@ -42,7 +45,7 @@ class EventService(
                 hendelsedato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
                 hendelsedeskr = it.eventType.description,
                 tillegsinfo = it.eventData,
-                mottakid = it.requestId.toString(),
+                mottakid = ebmsMessageDetail?.mottakId ?: "",
                 role = ebmsMessageDetail?.fromRole,
                 service = ebmsMessageDetail?.service,
                 action = ebmsMessageDetail?.action,
@@ -52,8 +55,22 @@ class EventService(
         }.toList()
     }
 
-    suspend fun fetchMessageLoggInfo(requestId: Uuid): List<MessageLoggInfo> {
-        val eventsList = eventRepository.findEventsByRequestId(requestId)
+    suspend fun fetchMessageLoggInfo(id: String): List<MessageLoggInfo> {
+        val eventsList = if (Validation.isValidUuid(id)) {
+            log.info("Fetching events by Request ID: $id")
+            eventRepository.findEventsByRequestId(Uuid.parse(id))
+        } else {
+            log.info("Fetching events by Mottak ID: $id")
+            val messageDetails = ebmsMessageDetailRepository.findByMottakId(id)
+
+            if (messageDetails == null) {
+                log.warn("No EbmsMessageDetail found for Mottak ID: $id")
+                emptyList()
+            } else {
+                eventRepository.findEventsByRequestId(messageDetails.requestId)
+            }
+        }
+
         return eventsList.sortedBy { it.createdAt }
             .map {
                 MessageLoggInfo(

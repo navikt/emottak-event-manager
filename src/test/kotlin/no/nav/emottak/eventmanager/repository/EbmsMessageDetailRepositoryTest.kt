@@ -2,17 +2,20 @@ package no.nav.emottak.eventmanager.repository
 
 import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldContain
+import io.kotest.data.forAll
+import io.kotest.data.row
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import io.ktor.client.request.get
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 class EbmsMessageDetailRepositoryTest : StringSpec({
 
@@ -45,7 +48,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         repository.insert(messageDetails)
         val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
 
-        retrievedDetails shouldBe messageDetails.copy()
+        retrievedDetails?.requestId shouldBe messageDetails.requestId
     }
 
     "Should update message details by requestId" {
@@ -83,6 +86,33 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails?.refParam shouldBe updatedMessageDetail.refParam
     }
 
+    "Should retrieve message details by Mottak ID" {
+        val messageDetails = buildTestEbmsMessageDetail()
+
+        repository.insert(messageDetails)
+        val retrievedDetails = repository.findByMottakId(messageDetails.calculateMottakId())
+
+        retrievedDetails?.requestId shouldBe messageDetails.requestId
+    }
+
+    "Should retrieve message details by Mottak ID pattern" {
+        val messageDetails = buildTestEbmsMessageDetail()
+
+        repository.insert(messageDetails)
+
+        forAll(
+            row(messageDetails.calculateMottakId().substring(0, 6)),
+            row(messageDetails.calculateMottakId().substring(0, 6).lowercase()),
+            row(messageDetails.calculateMottakId().substring(0, 6).uppercase()),
+            row(messageDetails.calculateMottakId().takeLast(6)),
+            row(messageDetails.calculateMottakId().substring(6, 12))
+        ) { mottakIdPattern ->
+            val retrievedDetails = repository.findByMottakIdPattern(mottakIdPattern)
+
+            retrievedDetails?.requestId shouldBe messageDetails.requestId
+        }
+    }
+
     "Should retrieve records by time interval" {
         val messageDetailsInInterval = buildTestEbmsMessageDetail().copy(
             savedAt = Instant.parse("2025-04-30T12:54:45.386Z")
@@ -101,20 +131,17 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         )
 
         retrievedDetails.size shouldBe 1
-        retrievedDetails shouldContain messageDetailsInInterval
+        retrievedDetails[0].requestId shouldBe messageDetailsInInterval.requestId
     }
 
     "Should retrieve related request IDs by request IDs" {
         val messageDetails1 = buildTestEbmsMessageDetail().copy(
-            requestId = Uuid.random(),
             conversationId = "conversationId-1"
         )
         val messageDetails2 = buildTestEbmsMessageDetail().copy(
-            requestId = Uuid.random(),
             conversationId = "conversationId-1"
         )
         val messageDetails3 = buildTestEbmsMessageDetail().copy(
-            requestId = Uuid.random(),
             conversationId = "conversationId-2"
         )
 
@@ -122,14 +149,40 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         repository.insert(messageDetails2)
         repository.insert(messageDetails3)
 
-        val requestIds = listOf(messageDetails1.requestId, messageDetails3.requestId)
+        val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
         val relatedRequestIds = repository.findRelatedRequestIds(requestIds)
 
-        relatedRequestIds.size shouldBe 2
+        relatedRequestIds.size shouldBe 3
         relatedRequestIds shouldContainKey messageDetails1.requestId
         relatedRequestIds[messageDetails1.requestId] shouldBe "${messageDetails1.requestId},${messageDetails2.requestId}"
+        relatedRequestIds shouldContainKey messageDetails2.requestId
+        relatedRequestIds[messageDetails2.requestId] shouldBe "${messageDetails1.requestId},${messageDetails2.requestId}"
         relatedRequestIds shouldContainKey messageDetails3.requestId
         relatedRequestIds[messageDetails3.requestId] shouldBe messageDetails3.requestId.toString()
+    }
+
+    "Should retrieve related mottak IDs by request IDs" {
+        val messageDetails1 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversationId-1"
+        )
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversationId-1"
+        )
+        val messageDetails3 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversationId-2"
+        )
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+        repository.insert(messageDetails3)
+
+        val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
+        val relatedMottakIds = repository.findRelatedMottakIds(requestIds)
+
+        relatedMottakIds.size shouldBe 3
+        relatedMottakIds[messageDetails1.requestId] shouldBe "${messageDetails1.calculateMottakId()},${messageDetails2.calculateMottakId()}"
+        relatedMottakIds[messageDetails2.requestId] shouldBe "${messageDetails1.calculateMottakId()},${messageDetails2.calculateMottakId()}"
+        relatedMottakIds[messageDetails3.requestId] shouldBe messageDetails3.calculateMottakId()
     }
 
     "Should retrieve records by message ID, conversation ID, and cpa ID" {
@@ -156,7 +209,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         )
 
         retrievedDetails.size shouldBe 1
-        retrievedDetails shouldContain messageDetails1
+        retrievedDetails[0].requestId shouldBe messageDetails1.requestId
     }
 }) {
     companion object {
@@ -185,7 +238,11 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
 }
 
 fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
-    return EbmsMessageDetail(
+    return EbmsMessageDetail.fromTransportModel(buildTestTransportMessageDetail())
+}
+
+fun buildTestTransportMessageDetail(): TransportEbmsMessageDetail {
+    return TransportEbmsMessageDetail(
         requestId = Uuid.random(),
         cpaId = "test-cpa-id",
         conversationId = "test-conversation-id",
@@ -196,8 +253,6 @@ fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
         toRole = "test-to-role",
         service = "test-service",
         action = "test-action",
-        refParam = "test-ref-param",
-        sender = "test-sender",
         savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
     )
 }

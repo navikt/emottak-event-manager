@@ -2,6 +2,7 @@ package no.nav.emottak.eventmanager.persistence.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.action
@@ -10,6 +11,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.cpaI
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.fromPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.fromRole
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.messageId
+import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.mottakId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.refParam
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.refToMessageId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.requestId
@@ -19,7 +21,6 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.sent
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.service
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
@@ -27,6 +28,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
@@ -41,6 +43,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction(database.db) {
             EbmsMessageDetailTable.insert {
                 it[requestId] = ebmsMessageDetail.requestId.toJavaUuid()
+                it[mottakId] = ebmsMessageDetail.calculateMottakId()
                 it[cpaId] = ebmsMessageDetail.cpaId
                 it[conversationId] = ebmsMessageDetail.conversationId
                 it[messageId] = ebmsMessageDetail.messageId
@@ -66,6 +69,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .update({
                     requestId eq ebmsMessageDetail.requestId.toJavaUuid()
                 }) {
+                    it[mottakId] = ebmsMessageDetail.calculateMottakId()
                     it[cpaId] = ebmsMessageDetail.cpaId
                     it[conversationId] = ebmsMessageDetail.conversationId
                     it[messageId] = ebmsMessageDetail.messageId
@@ -93,6 +97,66 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[EbmsMessageDetailTable.requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
+                        cpaId = it[cpaId],
+                        conversationId = it[conversationId],
+                        messageId = it[messageId],
+                        refToMessageId = it[refToMessageId],
+                        fromPartyId = it[fromPartyId],
+                        fromRole = it[fromRole],
+                        toPartyId = it[toPartyId],
+                        toRole = it[toRole],
+                        service = it[service],
+                        action = it[action],
+                        refParam = it[refParam],
+                        sender = it[sender],
+                        sentAt = it[sentAt],
+                        savedAt = it[savedAt]
+                    )
+                }
+                .singleOrNull()
+        }
+    }
+
+    suspend fun findByMottakId(mottakId: String): EbmsMessageDetail? = withContext(Dispatchers.IO) {
+        transaction {
+            EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where { EbmsMessageDetailTable.mottakId eq mottakId }
+                .mapNotNull {
+                    EbmsMessageDetail(
+                        requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[EbmsMessageDetailTable.mottakId],
+                        cpaId = it[cpaId],
+                        conversationId = it[conversationId],
+                        messageId = it[messageId],
+                        refToMessageId = it[refToMessageId],
+                        fromPartyId = it[fromPartyId],
+                        fromRole = it[fromRole],
+                        toPartyId = it[toPartyId],
+                        toRole = it[toRole],
+                        service = it[service],
+                        action = it[action],
+                        refParam = it[refParam],
+                        sender = it[sender],
+                        sentAt = it[sentAt],
+                        savedAt = it[savedAt]
+                    )
+                }
+                .singleOrNull()
+        }
+    }
+
+    suspend fun findByMottakIdPattern(mottakIdPattern: String): EbmsMessageDetail? = withContext(Dispatchers.IO) {
+        transaction {
+            EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where { mottakId.lowerCase() like "%$mottakIdPattern%".lowercase() }
+                .limit(100)
+                .mapNotNull {
+                    EbmsMessageDetail(
+                        requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],
@@ -121,6 +185,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],
@@ -150,6 +215,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[cpaId],
                         conversationId = it[conversationId],
                         messageId = it[messageId],
@@ -192,6 +258,26 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
+    suspend fun findRelatedMottakIds(requestIds: List<Uuid>): Map<Uuid, String?> = withContext(Dispatchers.IO) {
+        transaction(database.db) {
+            val relatedMottakIdsColumn = mottakId.groupConcat(",").alias("related_mottak_ids")
+
+            val subQuery = EbmsMessageDetailTable
+                .select(conversationId, relatedMottakIdsColumn)
+                .groupBy(conversationId)
+                .alias("related")
+
+            EbmsMessageDetailTable
+                .join(subQuery, JoinType.INNER, conversationId, subQuery[conversationId])
+                .select(requestId, subQuery[relatedMottakIdsColumn])
+                .where { requestId.inList(requestIds.map { it.toJavaUuid() }) }
+                .mapNotNull {
+                    Pair(it[requestId].toKotlinUuid(), it[subQuery[relatedMottakIdsColumn]])
+                }
+                .toMap()
+        }
+    }
+
     suspend fun findByMessageIdConversationIdAndCpaId(
         messageId: String,
         conversationId: String,
@@ -208,6 +294,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
+                        mottakId = it[mottakId],
                         cpaId = it[EbmsMessageDetailTable.cpaId],
                         conversationId = it[EbmsMessageDetailTable.conversationId],
                         messageId = it[EbmsMessageDetailTable.messageId],

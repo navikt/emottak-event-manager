@@ -1,20 +1,22 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MottakIdInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail
-import no.nav.emottak.utils.kafka.model.Event
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
+import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 class EbmsMessageDetailService(
     private val eventRepository: EventRepository,
@@ -25,9 +27,10 @@ class EbmsMessageDetailService(
         try {
             log.info("EBMS message details read from Kafka: ${String(value)}")
 
-            val details: EbmsMessageDetail = Json.decodeFromString(String(value))
-            ebmsMessageDetailRepository.insert(details)
-            log.info("EBMS message details processed successfully: $details")
+            val transportEbmsMessageDetail: TransportEbmsMessageDetail = Json.decodeFromString(String(value))
+            val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
+            ebmsMessageDetailRepository.insert(ebmsMessageDetail)
+            log.info("EBMS message details processed successfully: $ebmsMessageDetail")
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)
         }
@@ -35,7 +38,7 @@ class EbmsMessageDetailService(
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
         val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to)
-        val relatedRequestIds = ebmsMessageDetailRepository.findRelatedRequestIds(messageDetailsList.map { it.requestId })
+        val relatedMottakIds = ebmsMessageDetailRepository.findRelatedMottakIds(messageDetailsList.map { it.requestId })
         val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
 
         return messageDetailsList.map {
@@ -46,7 +49,7 @@ class EbmsMessageDetailService(
 
             MessageInfo(
                 datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakidliste = relatedRequestIds[it.requestId] ?: "Not found",
+                mottakidliste = relatedMottakIds[it.requestId] ?: "Not found",
                 role = it.fromRole,
                 service = it.service,
                 action = it.action,
@@ -59,15 +62,21 @@ class EbmsMessageDetailService(
         }
     }
 
-    suspend fun fetchEbmsMessageDetails(requestId: Uuid): List<MottakIdInfo> {
-        val messageDetails = ebmsMessageDetailRepository.findByRequestId(requestId)
+    suspend fun fetchEbmsMessageDetails(id: String): List<MottakIdInfo> {
+        val messageDetails = if (Validation.isValidUuid(id)) {
+            log.info("Fetching message details by Request ID: $id")
+            ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id))
+        } else {
+            log.info("Fetching message details by Mottak ID: $id")
+            ebmsMessageDetailRepository.findByMottakIdPattern(id)
+        }
 
         if (messageDetails == null) {
-            log.warn("No EBMS message details found for requestId: $requestId")
+            log.warn("No EBMS message details found for requestId: $id")
             return emptyList()
         }
 
-        val relatedEvents = eventRepository.findEventsByRequestId(requestId)
+        val relatedEvents = eventRepository.findEventsByRequestId(messageDetails.requestId)
 
         val sender = messageDetails.sender ?: findSender(messageDetails.requestId, relatedEvents)
         val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
@@ -77,7 +86,7 @@ class EbmsMessageDetailService(
         return listOf(
             MottakIdInfo(
                 datomottat = messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakid = messageDetails.requestId.toString(),
+                mottakid = messageDetails.mottakId ?: "Not defined",
                 cpaid = messageDetails.cpaId,
                 role = messageDetails.fromRole,
                 service = messageDetails.service,
