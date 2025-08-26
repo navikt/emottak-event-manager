@@ -40,7 +40,7 @@ fun Application.configureRouting(
             call.respond(events)
 
             val endTime = System.currentTimeMillis()
-            log.info("Processing time diapason $fromDate - $toDate in /fetchevents : ${endTime - startTime} ms")
+            log.info("Profiling: Processing time for time diapason $fromDate - $toDate in /fetchevents : ${endTime - startTime} ms")
         }
 
         get("/fetchMessageDetails") {
@@ -59,7 +59,7 @@ fun Application.configureRouting(
             call.respond(messageDetails)
 
             val endTime = System.currentTimeMillis()
-            log.info("Processing time diapason $fromDate - $toDate in /fetchMessageDetails : ${endTime - startTime} ms")
+            log.info("Profiling: Processing time for time diapason $fromDate - $toDate in /fetchMessageDetails : ${endTime - startTime} ms")
         }
 
         get("/fetchMessageLoggInfo") {
