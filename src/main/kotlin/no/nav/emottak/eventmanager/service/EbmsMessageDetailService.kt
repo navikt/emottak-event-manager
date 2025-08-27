@@ -40,13 +40,15 @@ class EbmsMessageDetailService(
         val startTime = System.currentTimeMillis()
 
         val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to)
-        log.info("Profiling: findByTimeInterval executed in ${System.currentTimeMillis() - startTime} ms")
+        val step1 = System.currentTimeMillis()
+        log.info("Profiling: findByTimeInterval executed in ${step1 - startTime} ms")
 
         val relatedMottakIds = ebmsMessageDetailRepository.findRelatedMottakIds(messageDetailsList.map { it.requestId })
-        log.info("Profiling: findRelatedMottakIds executed in ${System.currentTimeMillis() - startTime} ms")
+        val step2 = System.currentTimeMillis()
+        log.info("Profiling: findRelatedMottakIds executed in ${step2 - step1} ms")
 
         val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
-        log.info("Profiling: findEventsByRequestIds executed in ${System.currentTimeMillis() - startTime} ms")
+        log.info("Profiling: findEventsByRequestIds executed in ${System.currentTimeMillis() - step2} ms")
 
         return messageDetailsList.map {
             val sender = it.sender ?: findSender(it.requestId, relatedEvents)

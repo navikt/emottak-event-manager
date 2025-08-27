@@ -207,11 +207,12 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int = 1000): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { savedAt.between(from, to) }
+                .limit(limit)
                 .mapNotNull {
                     EbmsMessageDetail(
                         requestId = it[requestId].toKotlinUuid(),
