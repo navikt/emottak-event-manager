@@ -37,18 +37,9 @@ class EbmsMessageDetailService(
     }
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
-        val startTime = System.currentTimeMillis()
-
         val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to)
-        val step1 = System.currentTimeMillis()
-        log.info("Profiling: findByTimeInterval executed in ${step1 - startTime} ms")
-
         val relatedMottakIds = ebmsMessageDetailRepository.findRelatedMottakIds(messageDetailsList.map { it.requestId })
-        val step2 = System.currentTimeMillis()
-        log.info("Profiling: findRelatedMottakIds executed in ${step2 - step1} ms")
-
         val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
-        log.info("Profiling: findEventsByRequestIds executed in ${System.currentTimeMillis() - step2} ms")
 
         return messageDetailsList.map {
             val sender = it.sender ?: findSender(it.requestId, relatedEvents)

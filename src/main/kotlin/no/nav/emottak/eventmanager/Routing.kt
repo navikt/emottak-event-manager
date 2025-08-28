@@ -25,8 +25,6 @@ fun Application.configureRouting(
             call.respondText("Hello World!")
         }
         get("/fetchevents") {
-            val startTime = System.currentTimeMillis()
-
             if (!Validation.validateDateRangeRequest(call)) return@get
 
             val fromDate = Validation.parseDate(call.request.queryParameters["fromDate"]!!)
@@ -38,14 +36,9 @@ fun Application.configureRouting(
             log.debug("The last event: ${events.lastOrNull()}")
 
             call.respond(events)
-
-            val endTime = System.currentTimeMillis()
-            log.info("Profiling: Processing time for time diapason $fromDate - $toDate in /fetchevents : ${endTime - startTime} ms")
         }
 
         get("/fetchMessageDetails") {
-            val startTime = System.currentTimeMillis()
-
             if (!Validation.validateDateRangeRequest(call)) return@get
 
             val fromDate = Validation.parseDate(call.request.queryParameters["fromDate"]!!)
@@ -57,9 +50,6 @@ fun Application.configureRouting(
             log.debug("The last message details retrieved: ${messageDetails.lastOrNull()}")
 
             call.respond(messageDetails)
-
-            val endTime = System.currentTimeMillis()
-            log.info("Profiling: Processing time for time diapason $fromDate - $toDate in /fetchMessageDetails : ${endTime - startTime} ms")
         }
 
         get("/fetchMessageLoggInfo") {
