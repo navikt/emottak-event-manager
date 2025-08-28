@@ -42,11 +42,10 @@ spec:
     max: 1
   resources:
     limits:
-      cpu: "1000m"
-      memory: "512Mi"
+      memory: "1024Mi"
     requests:
-      cpu: "100m"
-      memory: "256Mi"
+      cpu: "500m"
+      memory: "512Mi"
   ingresses:
     - "https://emottak-event-manager.intern.nav.no"
   vault:
