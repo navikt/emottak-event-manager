@@ -269,7 +269,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .alias("related")
 
             EbmsMessageDetailTable
-                .join(subQuery, JoinType.INNER, conversationId, subQuery[conversationId])
+                .join(subQuery, JoinType.LEFT, conversationId, subQuery[conversationId])
                 .select(requestId, subQuery[relatedMottakIdsColumn])
                 .where { requestId.inList(requestIds.map { it.toJavaUuid() }) }
                 .mapNotNull {
