@@ -27,9 +27,10 @@ import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.security.token.support.v3.tokenValidationSupport
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
+val log: Logger = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
 val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val config = config()
 
@@ -52,7 +53,7 @@ fun main(args: Array<String>) = SuspendApp {
                 module = eventManagerModule(eventService, ebmsMessageDetailService)
             )
 
-            log.debug("Configuration: $config")
+            log.debug("Configuration: {}", config)
             if (config.eventConsumer.active) {
                 log.info("Starting event receiver")
                 launch(Dispatchers.IO) {

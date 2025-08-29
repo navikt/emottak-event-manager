@@ -4,14 +4,14 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class MessageInfo(
-    val datomottat: String,
-    val mottakidliste: String,
+    val receivedDate: String,
+    val readableIdList: String,
     val role: String? = null,
     val service: String? = null,
     val action: String? = null,
-    val referanse: String? = null,
-    val avsender: String? = null,
-    val cpaid: String? = null,
-    val antall: Int,
+    val referenceId: String? = null,
+    val senderName: String? = null,
+    val cpaId: String? = null,
+    val count: Int,
     val status: String? = null
 )

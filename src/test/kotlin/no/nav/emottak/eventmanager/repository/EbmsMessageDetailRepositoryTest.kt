@@ -6,7 +6,6 @@ import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
-import io.ktor.client.request.get
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
@@ -86,28 +85,28 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails?.refParam shouldBe updatedMessageDetail.refParam
     }
 
-    "Should retrieve message details by Mottak ID" {
+    "Should retrieve message details by Readable ID" {
         val messageDetails = buildTestEbmsMessageDetail()
 
         repository.insert(messageDetails)
-        val retrievedDetails = repository.findByMottakId(messageDetails.calculateMottakId())
+        val retrievedDetails = repository.findByReadableId(messageDetails.generateReadableId())
 
         retrievedDetails?.requestId shouldBe messageDetails.requestId
     }
 
-    "Should retrieve message details by Mottak ID pattern" {
+    "Should retrieve message details by Readable ID pattern" {
         val messageDetails = buildTestEbmsMessageDetail()
 
         repository.insert(messageDetails)
 
         forAll(
-            row(messageDetails.calculateMottakId().substring(0, 6)),
-            row(messageDetails.calculateMottakId().substring(0, 6).lowercase()),
-            row(messageDetails.calculateMottakId().substring(0, 6).uppercase()),
-            row(messageDetails.calculateMottakId().takeLast(6)),
-            row(messageDetails.calculateMottakId().substring(6, 12))
-        ) { mottakIdPattern ->
-            val retrievedDetails = repository.findByMottakIdPattern(mottakIdPattern)
+            row(messageDetails.generateReadableId().substring(0, 6)),
+            row(messageDetails.generateReadableId().substring(0, 6).lowercase()),
+            row(messageDetails.generateReadableId().substring(0, 6).uppercase()),
+            row(messageDetails.generateReadableId().takeLast(6)),
+            row(messageDetails.generateReadableId().substring(6, 12))
+        ) { readableIdPattern ->
+            val retrievedDetails = repository.findByReadableIdPattern(readableIdPattern)
 
             retrievedDetails?.requestId shouldBe messageDetails.requestId
         }
@@ -161,7 +160,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         relatedRequestIds[messageDetails3.requestId] shouldBe messageDetails3.requestId.toString()
     }
 
-    "Should retrieve related mottak IDs by request IDs" {
+    "Should retrieve related readable IDs by request IDs" {
         val messageDetails1 = buildTestEbmsMessageDetail().copy(
             conversationId = "conversationId-1"
         )
@@ -177,12 +176,12 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         repository.insert(messageDetails3)
 
         val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
-        val relatedMottakIds = repository.findRelatedMottakIds(requestIds)
+        val relatedReadableIds = repository.findRelatedReadableIds(requestIds)
 
-        relatedMottakIds.size shouldBe 3
-        relatedMottakIds[messageDetails1.requestId] shouldBe "${messageDetails1.calculateMottakId()},${messageDetails2.calculateMottakId()}"
-        relatedMottakIds[messageDetails2.requestId] shouldBe "${messageDetails1.calculateMottakId()},${messageDetails2.calculateMottakId()}"
-        relatedMottakIds[messageDetails3.requestId] shouldBe messageDetails3.calculateMottakId()
+        relatedReadableIds.size shouldBe 3
+        relatedReadableIds[messageDetails1.requestId] shouldBe "${messageDetails1.generateReadableId()},${messageDetails2.generateReadableId()}"
+        relatedReadableIds[messageDetails2.requestId] shouldBe "${messageDetails1.generateReadableId()},${messageDetails2.generateReadableId()}"
+        relatedReadableIds[messageDetails3.requestId] shouldBe messageDetails3.generateReadableId()
     }
 
     "Should retrieve records by message ID, conversation ID, and cpa ID" {

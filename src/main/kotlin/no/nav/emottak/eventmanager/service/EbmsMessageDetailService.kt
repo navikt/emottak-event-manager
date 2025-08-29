@@ -1,12 +1,13 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.Constants
 import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.MessageInfo
-import no.nav.emottak.eventmanager.model.MottakIdInfo
+import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
@@ -38,61 +39,60 @@ class EbmsMessageDetailService(
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
         val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to)
-        val relatedMottakIds = ebmsMessageDetailRepository.findRelatedMottakIds(messageDetailsList.map { it.requestId })
-        val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
+        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.requestId })
+        val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
         return messageDetailsList.map {
-            val sender = it.sender ?: findSender(it.requestId, relatedEvents)
+            val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
             val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
 
-            val messageStatus = calculateMessageStatus(relatedEvents)
+            val messageStatus = getMessageStatus(relatedEvents)
 
             MessageInfo(
-                datomottat = it.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakidliste = relatedMottakIds[it.requestId] ?: "Not found",
+                receivedDate = it.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                readableIdList = relatedReadableIds[it.requestId] ?: Constants.NOT_FOUND,
                 role = it.fromRole,
                 service = it.service,
                 action = it.action,
-                referanse = refParam,
-                avsender = sender,
-                cpaid = it.cpaId,
-                antall = relatedEvents.count(),
+                referenceId = refParam,
+                senderName = senderName,
+                cpaId = it.cpaId,
+                count = relatedEvents.count(),
                 status = messageStatus
             )
         }
     }
 
-    suspend fun fetchEbmsMessageDetails(id: String): List<MottakIdInfo> {
-        val messageDetails = if (Validation.isValidUuid(id)) {
+    suspend fun fetchEbmsMessageDetails(id: String): List<ReadableIdInfo> {
+        val (idType, messageDetails) = if (Validation.isValidUuid(id)) {
             log.info("Fetching message details by Request ID: $id")
-            ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id))
+            Pair("Request ID", ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id)))
         } else {
-            log.info("Fetching message details by Mottak ID: $id")
-            ebmsMessageDetailRepository.findByMottakIdPattern(id)
+            log.info("Fetching message details by Readable ID: $id")
+            Pair("Readable ID", ebmsMessageDetailRepository.findByReadableIdPattern(id))
         }
 
         if (messageDetails == null) {
-            log.warn("No EBMS message details found for requestId: $id")
+            log.warn("No EBMS message details found for $idType: $id")
             return emptyList()
         }
 
-        val relatedEvents = eventRepository.findEventsByRequestId(messageDetails.requestId)
+        val relatedEvents = eventRepository.findByRequestId(messageDetails.requestId)
 
-        val sender = messageDetails.sender ?: findSender(messageDetails.requestId, relatedEvents)
+        val senderName = messageDetails.senderName ?: findSenderName(messageDetails.requestId, relatedEvents)
         val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
-
-        val messageStatus = calculateMessageStatus(relatedEvents)
+        val messageStatus = getMessageStatus(relatedEvents)
 
         return listOf(
-            MottakIdInfo(
-                datomottat = messageDetails.savedAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                mottakid = messageDetails.mottakId ?: "Not defined",
-                cpaid = messageDetails.cpaId,
+            ReadableIdInfo(
+                receivedDate = messageDetails.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                readableId = messageDetails.readableId ?: Constants.NOT_DEFINED,
+                cpaId = messageDetails.cpaId,
                 role = messageDetails.fromRole,
                 service = messageDetails.service,
                 action = messageDetails.action,
-                referanse = refParam,
-                avsender = sender,
+                referenceId = refParam,
+                senderName = senderName,
                 status = messageStatus
             )
         )
@@ -108,16 +108,16 @@ class EbmsMessageDetailService(
             .isNotEmpty()
     }
 
-    private fun findSender(requestId: Uuid, events: List<Event>): String {
+    private fun findSenderName(requestId: Uuid, events: List<Event>): String {
         events.firstOrNull {
             it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
-            eventData["sender"]
+            eventData["sender"] // TODO: Skal vel være sender_name? Eller senderName?
         }?.let {
             return it
         }
-        return "Unknown"
+        return Constants.UNKNOWN
     }
 
     private fun findRefParam(requestId: Uuid, events: List<Event>): String {
@@ -129,10 +129,10 @@ class EbmsMessageDetailService(
         }?.let {
             return it
         }
-        return "Unknown"
+        return Constants.UNKNOWN
     }
 
-    private suspend fun calculateMessageStatus(relatedEvents: List<Event>): String {
+    private suspend fun getMessageStatus(relatedEvents: List<Event>): String {
         val relatedEventTypeIds = relatedEvents.map { event ->
             event.eventType.value
         }
@@ -145,7 +145,7 @@ class EbmsMessageDetailService(
             -> EventStatusEnum.ERROR.description
             relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
             -> EventStatusEnum.INFORMATION.description
-            else -> "Status is unknown"
+            else -> Constants.UNKNOWN
         }
     }
 }

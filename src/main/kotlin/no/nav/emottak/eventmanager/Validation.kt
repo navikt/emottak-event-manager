@@ -1,10 +1,18 @@
 package no.nav.emottak.eventmanager
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
 import io.ktor.server.response.respond
 import io.ktor.server.routing.RoutingCall
 import io.ktor.util.logging.error
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.QueryConstants.CONVERSATION_ID
+import no.nav.emottak.eventmanager.QueryConstants.CPA_ID
+import no.nav.emottak.eventmanager.QueryConstants.FROM_DATE
+import no.nav.emottak.eventmanager.QueryConstants.ID
+import no.nav.emottak.eventmanager.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.QueryConstants.REQUEST_ID
+import no.nav.emottak.eventmanager.QueryConstants.TO_DATE
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import java.time.Instant
 import java.time.LocalDateTime
@@ -17,58 +25,17 @@ object Validation {
     suspend fun validateDateRangeRequest(call: RoutingCall): Boolean {
         val parameters = call.request.queryParameters
         log.info("Validating date range request parameters: $parameters")
-
-        val fromDateParam = parameters["fromDate"]
-        val toDateParam = parameters["toDate"]
-
-        var errorMessage = ""
-        if (fromDateParam.isNullOrEmpty()) {
-            errorMessage = "Request parameter is missing: fromDate"
-            log.error(IllegalArgumentException(errorMessage))
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-        if (toDateParam.isNullOrEmpty()) {
-            errorMessage = "Request parameter is missing: toDate"
-            log.error(IllegalArgumentException(errorMessage))
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-
-        try {
-            parseDate(fromDateParam)
-        } catch (e: Exception) {
-            errorMessage = "Invalid date format for fromDate: $fromDateParam"
-            log.error(errorMessage, e)
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-        try {
-            parseDate(toDateParam)
-        } catch (e: Exception) {
-            errorMessage = "Invalid date format for toDate: $toDateParam"
-            log.error(errorMessage, e)
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-        return true
+        if (!validateIsValidDate(call, parameters, FROM_DATE)) return false
+        if (!validateIsValidDate(call, parameters, TO_DATE)) return false
+        val fromDate = parseDate(parameters[FROM_DATE]!!)
+        val toDate = parseDate(parameters[TO_DATE]!!)
+        return !fromDate.isAfter(toDate)
     }
 
-    suspend fun validateMessageLoggInfoRequest(call: RoutingCall): Boolean {
-        val parameters = call.request.queryParameters
-        log.info("Validating Message logg info request parameters: $parameters")
-
-        val requestIdParam = parameters["id"]
-
-        var errorMessage = ""
-        if (requestIdParam.isNullOrEmpty()) {
-            errorMessage = "Request parameter is missing: requestId"
-            log.error(IllegalArgumentException(errorMessage))
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-
-        return true
+    suspend fun validateMessageLogInfoRequest(call: RoutingCall): Boolean {
+        val parameters = call.pathParameters
+        log.info("Validating Message log info request parameters: $parameters")
+        return validateIsNotNullOrEmpty(call, parameters, ID)
     }
 
     suspend fun validateDuplicateCheckRequest(
@@ -77,26 +44,25 @@ object Validation {
     ): Boolean {
         log.info("Validating duplicate check request: $duplicateCheckRequestJson")
 
-        var errorMessage = ""
         val duplicateCheckRequest: DuplicateCheckRequest = try {
             Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
         } catch (e: Exception) {
-            errorMessage = "DuplicateCheckRequest is not valid: $duplicateCheckRequestJson"
+            val errorMessage = "DuplicateCheckRequest is not valid: $duplicateCheckRequestJson"
             log.error(errorMessage, e)
             call.respond(HttpStatusCode.BadRequest, errorMessage)
             return false
         }
 
         val requiredFieldMissing = when {
-            duplicateCheckRequest.requestId.isBlank() -> "requestId"
-            duplicateCheckRequest.messageId.isBlank() -> "messageId"
-            duplicateCheckRequest.conversationId.isBlank() -> "conversationId"
-            duplicateCheckRequest.cpaId.isBlank() -> "cpaId"
+            duplicateCheckRequest.requestId.isBlank() -> REQUEST_ID
+            duplicateCheckRequest.messageId.isBlank() -> MESSAGE_ID
+            duplicateCheckRequest.conversationId.isBlank() -> CONVERSATION_ID
+            duplicateCheckRequest.cpaId.isBlank() -> CPA_ID
             else -> ""
         }
 
         if (requiredFieldMissing.isNotEmpty()) {
-            errorMessage = "Required request parameter is missing: $requiredFieldMissing"
+            val errorMessage = "Required request parameter is missing: $requiredFieldMissing"
             log.error(IllegalArgumentException(errorMessage))
             call.respond(HttpStatusCode.BadRequest, errorMessage)
             return false
@@ -105,27 +71,41 @@ object Validation {
         return true
     }
 
-    suspend fun validateMottakIdInfoRequest(call: RoutingCall): Boolean {
-        val parameters = call.request.queryParameters
-        log.info("Validating Mottak ID request parameters: $parameters")
+    suspend fun validateReadableIdInfoRequest(call: RoutingCall): Boolean {
+        val parameters = call.pathParameters
+        log.info("Validating Readable ID request parameters: $parameters")
+        return validateIsNotNullOrEmpty(call, parameters, ID)
+    }
 
-        val requestIdParam = parameters["id"]
-
-        var errorMessage = ""
+    private suspend fun validateIsNotNullOrEmpty(call: RoutingCall, parameters: Parameters, field: String): Boolean {
+        val requestIdParam = parameters[field]
         if (requestIdParam.isNullOrEmpty()) {
-            errorMessage = "Request parameter is missing: requestId"
+            val errorMessage = "Request parameter is missing: $field"
             log.error(IllegalArgumentException(errorMessage))
             call.respond(HttpStatusCode.BadRequest, errorMessage)
             return false
         }
+        return true
+    }
 
+    private suspend fun validateIsValidDate(call: RoutingCall, parameters: Parameters, field: String): Boolean {
+        if (!validateIsNotNullOrEmpty(call, parameters, field)) return false
+        val dateParam = parameters[field]!!
+        try {
+            parseDate(dateParam)
+        } catch (e: Exception) {
+            val errorMessage = "Invalid date format for $field: $dateParam"
+            log.error(errorMessage, e)
+            call.respond(HttpStatusCode.BadRequest, errorMessage)
+            return false
+        }
         return true
     }
 
     fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
         val formatter = DateTimeFormatter.ofPattern(dateFormatString)
         return LocalDateTime.parse(dateString, formatter)
-            .atZone(ZoneId.of("Europe/Oslo"))
+            .atZone(ZoneId.of(Constants.ZONE_ID_OSLO))
             .toInstant()
     }
 

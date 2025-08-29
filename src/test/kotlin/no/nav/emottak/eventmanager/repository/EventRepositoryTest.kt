@@ -44,7 +44,7 @@ class EventRepositoryTest : StringSpec({
         val testEvent = buildTestEvent()
 
         val eventId = eventRepository.insert(testEvent)
-        val retrievedEvent = eventRepository.findEventById(eventId)
+        val retrievedEvent = eventRepository.findById(eventId)
 
         retrievedEvent shouldBe testEvent.copy()
     }
@@ -57,7 +57,7 @@ class EventRepositoryTest : StringSpec({
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         val eventId = eventRepository.insert(testEvent)
-        val retrievedEvent = eventRepository.findEventById(eventId)
+        val retrievedEvent = eventRepository.findById(eventId)
 
         retrievedEvent shouldBe testEvent.copy()
     }
@@ -76,7 +76,7 @@ class EventRepositoryTest : StringSpec({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findEventsByRequestId(sharedRequestId)
+        val retrievedEvents = eventRepository.findByRequestId(sharedRequestId)
 
         retrievedEvents shouldContainExactlyInAnyOrder listOf(event1.copy(), event2.copy())
     }
@@ -94,7 +94,7 @@ class EventRepositoryTest : StringSpec({
         eventRepository.insert(eventInTimeInterval)
         eventRepository.insert(eventOutOfTimeInterval)
 
-        val retrievedEvents = eventRepository.findEventByTimeInterval(
+        val retrievedEvents = eventRepository.findByTimeInterval(
             Instant.parse("2025-04-01T14:00:00Z"),
             Instant.parse("2025-04-01T15:00:00Z")
         )

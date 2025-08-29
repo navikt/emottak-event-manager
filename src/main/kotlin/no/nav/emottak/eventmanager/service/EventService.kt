@@ -1,11 +1,12 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.Constants
 import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
-import no.nav.emottak.eventmanager.model.MessageLoggInfo
+import no.nav.emottak.eventmanager.model.MessageLogInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.utils.kafka.model.EventDataType
@@ -35,48 +36,48 @@ class EventService(
     }
 
     suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
-        val eventsList = eventRepository.findEventByTimeInterval(from, to)
+        val eventsList = eventRepository.findByTimeInterval(from, to)
         val requestIds = eventsList.map { it.requestId }.distinct()
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)
 
         return eventsList.map {
             val ebmsMessageDetail = messageDetailsMap[it.requestId]
             EventInfo(
-                hendelsedato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                hendelsedeskr = it.eventType.description,
-                tillegsinfo = it.eventData,
-                mottakid = ebmsMessageDetail?.mottakId ?: "",
+                eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                description = it.eventType.description,
+                eventData = it.eventData,
+                readableId = ebmsMessageDetail?.readableId ?: "",
                 role = ebmsMessageDetail?.fromRole,
                 service = ebmsMessageDetail?.service,
                 action = ebmsMessageDetail?.action,
-                referanse = ebmsMessageDetail?.refParam,
-                avsender = ebmsMessageDetail?.sender
+                referenceId = ebmsMessageDetail?.refParam,
+                senderName = ebmsMessageDetail?.senderName
             )
         }.toList()
     }
 
-    suspend fun fetchMessageLoggInfo(id: String): List<MessageLoggInfo> {
+    suspend fun fetchMessageLogInfo(id: String): List<MessageLogInfo> {
         val eventsList = if (Validation.isValidUuid(id)) {
             log.info("Fetching events by Request ID: $id")
-            eventRepository.findEventsByRequestId(Uuid.parse(id))
+            eventRepository.findByRequestId(Uuid.parse(id))
         } else {
-            log.info("Fetching events by Mottak ID: $id")
-            val messageDetails = ebmsMessageDetailRepository.findByMottakId(id)
+            log.info("Fetching events by Readable ID: $id")
+            val messageDetails = ebmsMessageDetailRepository.findByReadableId(id)
 
             if (messageDetails == null) {
-                log.warn("No EbmsMessageDetail found for Mottak ID: $id")
+                log.warn("No EbmsMessageDetail found for Readable ID: $id")
                 emptyList()
             } else {
-                eventRepository.findEventsByRequestId(messageDetails.requestId)
+                eventRepository.findByRequestId(messageDetails.requestId)
             }
         }
 
         return eventsList.sortedBy { it.createdAt }
             .map {
-                MessageLoggInfo(
-                    hendelsesdato = it.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString(),
-                    hendelsesbeskrivelse = it.eventType.description,
-                    hendelsesid = it.eventType.value.toString()
+                MessageLogInfo(
+                    eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                    eventDescription = it.eventType.description,
+                    eventId = it.eventType.value.toString()
                 )
             }.toList()
     }
@@ -88,7 +89,7 @@ class EventService(
                 val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
 
                 eventData["sender"]?.also {
-                    val updatedMessageDetails = relatedMessageDetails.copy(sender = it)
+                    val updatedMessageDetails = relatedMessageDetails.copy(senderName = it)
                     ebmsMessageDetailRepository.update(updatedMessageDetails)
                     log.info("Sender updated successfully for requestId: ${event.requestId}")
                 }
