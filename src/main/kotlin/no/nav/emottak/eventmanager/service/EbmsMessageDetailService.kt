@@ -37,7 +37,7 @@ class EbmsMessageDetailService(
     }
 
     suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant): List<MessageInfo> {
-        val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to)
+        val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000)
         val relatedMottakIds = ebmsMessageDetailRepository.findRelatedMottakIds(messageDetailsList.map { it.requestId })
         val relatedEvents = eventRepository.findEventsByRequestIds(messageDetailsList.map { it.requestId })
 
@@ -68,7 +68,7 @@ class EbmsMessageDetailService(
             ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id))
         } else {
             log.info("Fetching message details by Mottak ID: $id")
-            ebmsMessageDetailRepository.findByMottakIdPattern(id)
+            ebmsMessageDetailRepository.findByMottakIdPattern(id, 1000)
         }
 
         if (messageDetails == null) {

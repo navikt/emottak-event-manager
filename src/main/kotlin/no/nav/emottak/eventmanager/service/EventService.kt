@@ -35,7 +35,7 @@ class EventService(
     }
 
     suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
-        val eventsList = eventRepository.findEventByTimeInterval(from, to)
+        val eventsList = eventRepository.findEventByTimeInterval(from, to, 1000)
         val requestIds = eventsList.map { it.requestId }.distinct()
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)
 
