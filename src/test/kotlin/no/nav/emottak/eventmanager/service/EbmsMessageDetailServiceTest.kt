@@ -53,7 +53,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
@@ -62,7 +62,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val messageInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
 
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to) }
+        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000) }
         coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
 
         messageInfoList.size shouldBe 1
@@ -110,13 +110,13 @@ class EbmsMessageDetailServiceTest : StringSpec({
             status = EventStatusEnum.INFORMATION
         )
 
-        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId()) } returns testDetails
+        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), any()) } returns testDetails
         coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.generateReadableId())
 
-        coVerify { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId()) }
+        coVerify { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), 1000) }
         coVerify { eventRepository.findByRequestId(testDetails.requestId) }
 
         readableIdInfoList.size shouldBe 1
@@ -138,7 +138,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             )
         )
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails)
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
@@ -163,7 +163,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             )
         )
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails)
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
@@ -182,7 +182,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val testDetails2 = buildTestEbmsMessageDetail().copy(conversationId = commonReferenceId)
         val testDetails3 = buildTestEbmsMessageDetail().copy(conversationId = "differentRef456")
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to) } returns listOf(testDetails1, testDetails2, testDetails3)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails1, testDetails2, testDetails3)
         coEvery {
             ebmsMessageDetailRepository.findRelatedReadableIds(
                 listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)

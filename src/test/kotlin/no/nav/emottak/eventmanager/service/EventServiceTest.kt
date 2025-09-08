@@ -38,7 +38,7 @@ class EventServiceTest : StringSpec({
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
-        coEvery { eventRepository.findByTimeInterval(from, to) } returns listOf(testEvent)
+        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns listOf(testEvent)
         coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
 
         val eventsList = eventService.fetchEvents(from, to)
@@ -47,7 +47,7 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to) }
+        coVerify { eventRepository.findByTimeInterval(from, to, 1000) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 

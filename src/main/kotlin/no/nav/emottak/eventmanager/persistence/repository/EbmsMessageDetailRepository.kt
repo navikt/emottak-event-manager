@@ -114,12 +114,14 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByReadableIdPattern(readableIdPattern: String): EbmsMessageDetail? = withContext(Dispatchers.IO) {
+    suspend fun findByMottakIdPattern(readableIdPattern: String, limit: Int? = null): EbmsMessageDetail? = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
-                .limit(100)
+                .apply {
+                    if (limit != null) this.limit(limit)
+                }
                 .mapNotNull {
                     toEbmsMessageDetail(it)
                 }
@@ -140,11 +142,14 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { savedAt.between(from, to) }
+                .apply {
+                    if (limit != null) this.limit(limit)
+                }
                 .mapNotNull {
                     toEbmsMessageDetail(it)
                 }

@@ -94,10 +94,13 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
                 .where { createdAt.between(from, to) }
+                .apply {
+                    if (limit != null) this.limit(limit)
+                }
                 .mapNotNull {
                     Event(
                         eventType = EventType.fromInt(it[eventTypeId]),
