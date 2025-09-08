@@ -114,7 +114,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByMottakIdPattern(readableIdPattern: String, limit: Int? = null): EbmsMessageDetail? = withContext(Dispatchers.IO) {
+    suspend fun findByReadableIdPattern(readableIdPattern: String, limit: Int? = null): EbmsMessageDetail? = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
