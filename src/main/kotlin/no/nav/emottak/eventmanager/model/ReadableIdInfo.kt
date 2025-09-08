@@ -9,7 +9,7 @@ data class ReadableIdInfo(
     val role: String? = null,
     val service: String? = null,
     val action: String? = null,
-    val referenceId: String? = null,
+    val referenceParameter: String? = null,
     val senderName: String? = null,
     val cpaId: String? = null,
     val status: String? = null

@@ -134,7 +134,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             buildTestEvent().copy(
                 eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
                 requestId = testDetails.requestId,
-                eventData = Json.encodeToString(mapOf("sender" to "Test EPJ AS"))
+                eventData = Json.encodeToString(mapOf(EventDataType.SENDER_NAME.value to "Test EPJ AS"))
             )
         )
 
@@ -159,7 +159,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             buildTestEvent().copy(
                 eventType = EventTypeEnum.REFERENCE_RETRIEVED,
                 requestId = testDetails.requestId,
-                eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE.value to reference))
+                eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE_PARAMETER.value to reference))
             )
         )
 
@@ -170,7 +170,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
 
-        result.first().referenceId shouldBe reference
+        result.first().referenceParameter shouldBe reference
     }
 
     "Should find related messages" {

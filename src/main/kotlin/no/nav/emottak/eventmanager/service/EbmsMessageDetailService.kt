@@ -50,11 +50,11 @@ class EbmsMessageDetailService(
 
             MessageInfo(
                 receivedDate = it.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
-                readableIdList = relatedReadableIds[it.requestId] ?: Constants.NOT_FOUND,
+                readableIdList = relatedReadableIds[it.requestId] ?: "",
                 role = it.fromRole,
                 service = it.service,
                 action = it.action,
-                referenceId = refParam,
+                referenceParameter = refParam,
                 senderName = senderName,
                 cpaId = it.cpaId,
                 count = relatedEvents.count(),
@@ -91,7 +91,7 @@ class EbmsMessageDetailService(
                 role = messageDetails.fromRole,
                 service = messageDetails.service,
                 action = messageDetails.action,
-                referenceId = refParam,
+                referenceParameter = refParam,
                 senderName = senderName,
                 status = messageStatus
             )
@@ -113,7 +113,7 @@ class EbmsMessageDetailService(
             it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
-            eventData["sender"] // TODO: Skal vel være sender_name? Eller senderName?
+            eventData[EventDataType.SENDER_NAME.value]
         }?.let {
             return it
         }
@@ -125,7 +125,7 @@ class EbmsMessageDetailService(
             it.requestId == requestId && it.eventType == EventType.REFERENCE_RETRIEVED
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
-            eventData[EventDataType.REFERENCE.value]
+            eventData[EventDataType.REFERENCE_PARAMETER.value]
         }?.let {
             return it
         }

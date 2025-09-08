@@ -56,7 +56,7 @@ fun Application.configureRouting(
             call.respond(messageDetails)
         }
 
-        get("/events/{$ID}/log-entries") {
+        get("/message-details/{$ID}/events") {
             if (!Validation.validateMessageLogInfoRequest(call)) return@get
 
             val id = call.pathParameters[ID]!!

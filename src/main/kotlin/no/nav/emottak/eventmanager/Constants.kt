@@ -4,7 +4,6 @@ object Constants {
     const val ZONE_ID_OSLO = "Europe/Oslo"
     const val UNKNOWN = "Unknown"
     const val NOT_DEFINED = "Not defined"
-    const val NOT_FOUND = "Not found"
 }
 
 object QueryConstants {

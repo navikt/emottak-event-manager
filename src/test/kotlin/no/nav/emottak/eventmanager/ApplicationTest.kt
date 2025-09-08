@@ -139,7 +139,7 @@ class ApplicationTest : StringSpec({
             events[0].role shouldBe testMessageDetails.fromRole
             events[0].service shouldBe testMessageDetails.service
             events[0].action shouldBe testMessageDetails.action
-            events[0].referenceId shouldBe testMessageDetails.refParam
+            events[0].referenceParameter shouldBe testMessageDetails.refParam
             events[0].senderName shouldBe testMessageDetails.senderName
         }
     }
@@ -162,7 +162,7 @@ class ApplicationTest : StringSpec({
             events[0].role shouldBe null
             events[0].service shouldBe null
             events[0].action shouldBe null
-            events[0].referenceId shouldBe null
+            events[0].referenceParameter shouldBe null
             events[0].senderName shouldBe null
         }
     }
@@ -217,7 +217,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceId shouldBe Constants.UNKNOWN
+            messageInfoList[0].referenceParameter shouldBe Constants.UNKNOWN
             messageInfoList[0].senderName shouldBe Constants.UNKNOWN
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].count shouldBe 1
@@ -263,7 +263,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "events/<id>/log-entries endpoint should return list of related events info by Request ID" {
+    "message-details/<id>/events endpoint should return list of related events info by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -273,7 +273,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/events/${messageDetails.requestId}/log-entries")
+            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -285,7 +285,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "events/<id>/log-entries endpoint should return list of related events info by Readable ID" {
+    "message-details/<id>/events endpoint should return list of related events info by Readable ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
@@ -295,7 +295,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/events/${messageDetails.generateReadableId()}/log-entries")
+            val httpResponse = httpClient.get("/message-details/${messageDetails.generateReadableId()}/events")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -307,7 +307,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "events/<id>/log-entries endpoint should return empty list if no related events found" {
+    "message-details/<id>/events endpoint should return empty list if no related events found" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
             val unrelatedEvent = buildTestEvent()
@@ -315,20 +315,12 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/events/${messageDetails.requestId}/log-entries")
+            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MessageLogInfo> = httpResponse.body()
             messageInfoList.size shouldBe 0
-        }
-    }
-
-    "events/<id>/log-entries endpoint should return NotFound if path-parameter is not present" {
-        withTestApplication { httpClient ->
-            val httpResponse = httpClient.get("/events//log-entries")
-
-            httpResponse.status shouldBe HttpStatusCode.NotFound
         }
     }
 
@@ -494,7 +486,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceId shouldBe Constants.UNKNOWN
+            messageInfoList[0].referenceParameter shouldBe Constants.UNKNOWN
             messageInfoList[0].senderName shouldBe Constants.UNKNOWN
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
@@ -519,7 +511,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceId shouldBe Constants.UNKNOWN
+            messageInfoList[0].referenceParameter shouldBe Constants.UNKNOWN
             messageInfoList[0].senderName shouldBe Constants.UNKNOWN
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"

@@ -50,7 +50,7 @@ class EventService(
                 role = ebmsMessageDetail?.fromRole,
                 service = ebmsMessageDetail?.service,
                 action = ebmsMessageDetail?.action,
-                referenceId = ebmsMessageDetail?.refParam,
+                referenceParameter = ebmsMessageDetail?.refParam,
                 senderName = ebmsMessageDetail?.senderName
             )
         }.toList()
@@ -88,7 +88,7 @@ class EventService(
             if (relatedMessageDetails != null) {
                 val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
 
-                eventData["sender"]?.also {
+                eventData[EventDataType.SENDER_NAME.value]?.also {
                     val updatedMessageDetails = relatedMessageDetails.copy(senderName = it)
                     ebmsMessageDetailRepository.update(updatedMessageDetails)
                     log.info("Sender updated successfully for requestId: ${event.requestId}")
@@ -103,7 +103,7 @@ class EventService(
             if (relatedMessageDetails != null) {
                 val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
 
-                eventData[EventDataType.REFERENCE.value]?.also {
+                eventData[EventDataType.REFERENCE_PARAMETER.value]?.also {
                     val updatedMessageDetails = relatedMessageDetails.copy(refParam = it)
                     ebmsMessageDetailRepository.update(updatedMessageDetails)
                     log.info("Reference parameter updated successfully for requestId: ${event.requestId}")

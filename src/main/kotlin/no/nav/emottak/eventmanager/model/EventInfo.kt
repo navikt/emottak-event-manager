@@ -11,6 +11,6 @@ data class EventInfo(
     val role: String? = null,
     val service: String? = null,
     val action: String? = null,
-    val referenceId: String? = null,
+    val referenceParameter: String? = null,
     val senderName: String? = null
 )
