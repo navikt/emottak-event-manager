@@ -43,6 +43,7 @@ dependencyResolutionManagement {
 
             library("arrow-core", "io.arrow-kt", "arrow-core").versionRef("arrow")
             library("arrow-fx-coroutines", "io.arrow-kt", "arrow-fx-coroutines").versionRef("arrow")
+            library("arrow-functions", "io.arrow-kt", "arrow-functions").versionRef("arrow")
 
             library("arrow-suspendapp", "io.arrow-kt", "suspendapp").versionRef("suspendapp")
             library("arrow-suspendapp-ktor", "io.arrow-kt", "suspendapp-ktor").versionRef("suspendapp")
@@ -60,7 +61,7 @@ dependencyResolutionManagement {
             bundle("exposed", listOf("exposed-core", "exposed-dao", "exposed-jdbc", "exposed-time", "exposed-json"))
             bundle("ktor", listOf("server-content-negotiation", "client-content-negotiation", "serialization-json", "micrometer", "server-core", "server-netty", "server-config-yaml"))
             bundle("hoplite", listOf("hoplite-core", "hoplite-hocon"))
-            bundle("arrow", listOf("arrow-core", "arrow-fx-coroutines"))
+            bundle("arrow", listOf("arrow-core", "arrow-fx-coroutines", "arrow-functions"))
         }
 
         create("testLibs") {
