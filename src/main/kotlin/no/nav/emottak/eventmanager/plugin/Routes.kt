@@ -21,7 +21,7 @@ fun Application.configureRoutes(
         duplicateCheckRoute(ebmsMessageDetailService)
         naisRoutes(prometheusMeterRegistry)
         get("/") {
-            call.respondText("Hello World!")
+            call.respondText("Event Manager running properly")
         }
     }
 }
