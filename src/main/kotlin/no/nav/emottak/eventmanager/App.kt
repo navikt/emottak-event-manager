@@ -9,7 +9,6 @@ import io.ktor.server.application.Application
 import io.ktor.server.netty.Netty
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -27,6 +26,7 @@ import no.nav.emottak.eventmanager.plugin.configureMetrics
 import no.nav.emottak.eventmanager.plugin.configureRoutes
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
+import no.nav.emottak.utils.coroutines.coroutineScope
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.coroutineContext
 
@@ -67,7 +67,8 @@ suspend fun ResourceScope.runServer() {
     log.debug("Configuration: {}", config)
     if (config.eventConsumer.active) {
         log.info("Starting event receiver")
-        CoroutineScope(coroutineContext + Dispatchers.IO).launch {
+        val eventReceiverScope = coroutineScope(coroutineContext + Dispatchers.IO)
+        eventReceiverScope.launch {
             startEventReceiver(
                 listOf(
                     config.eventConsumer.eventTopic,
