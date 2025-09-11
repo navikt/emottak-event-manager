@@ -19,6 +19,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
+import io.micrometer.prometheus.PrometheusConfig
+import io.micrometer.prometheus.PrometheusMeterRegistry
+import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
+import no.nav.emottak.eventmanager.auth.AuthConfig
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
@@ -63,8 +67,10 @@ class ApplicationTest : StringSpec({
 
     val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
         testApplication {
+            val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+
             application(
-                eventManagerModule(eventService, ebmsMessageDetailService)
+                eventManagerModule(eventService, ebmsMessageDetailService, meterRegistry)
             )
 
             val httpClient = createClient {

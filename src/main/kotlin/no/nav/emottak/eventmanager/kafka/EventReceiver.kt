@@ -5,20 +5,23 @@ import io.github.nomisRev.kafka.receiver.KafkaReceiver
 import io.github.nomisRev.kafka.receiver.ReceiverSettings
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
-import no.nav.emottak.eventmanager.config
+import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.configuration.toProperties
-import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.slf4j.LoggerFactory
 import kotlin.time.Duration.Companion.seconds
+
+private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.kafka.EventReceiver")
 
 suspend fun startEventReceiver(
     topics: List<String>,
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService
 ) {
+    val config = config()
     log.info("Starting event receiver on topics $topics")
     val receiverSettings: ReceiverSettings<String?, ByteArray> =
         ReceiverSettings(
