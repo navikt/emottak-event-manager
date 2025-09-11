@@ -1,6 +1,7 @@
 package no.nav.emottak.eventmanager.configuration
 
 import no.nav.emottak.utils.config.Kafka
+import no.nav.emottak.utils.config.Server
 import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
 import org.apache.kafka.common.config.SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG
 import org.apache.kafka.common.config.SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG
@@ -14,7 +15,8 @@ data class Config(
     val environment: Environment,
     val database: Database,
     val kafka: Kafka,
-    val eventConsumer: EventConsumer
+    val eventConsumer: EventConsumer,
+    val server: Server
 )
 
 data class Environment(

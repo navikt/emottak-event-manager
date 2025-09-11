@@ -1,8 +1,6 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.Validation
-import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.MessageInfo
@@ -11,8 +9,10 @@ import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepos
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
@@ -23,6 +23,8 @@ class EbmsMessageDetailService(
     private val ebmsMessageDetailRepository: EbmsMessageDetailRepository,
     private val eventTypeRepository: EventTypeRepository
 ) {
+    private val log = LoggerFactory.getLogger(EbmsMessageDetailService::class.java)
+
     suspend fun process(value: ByteArray) {
         try {
             log.info("EBMS message details read from Kafka: ${String(value)}")
@@ -141,10 +143,13 @@ class EbmsMessageDetailService(
         return when {
             relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
             -> EventStatusEnum.PROCESSING_COMPLETED.description
+
             relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
             -> EventStatusEnum.ERROR.description
+
             relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
             -> EventStatusEnum.INFORMATION.description
+
             else -> "Status is unknown"
         }
     }
