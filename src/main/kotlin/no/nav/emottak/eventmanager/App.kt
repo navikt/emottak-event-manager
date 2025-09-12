@@ -24,6 +24,8 @@ import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.plugin.configureNaisRouts
+import no.nav.emottak.eventmanager.plugin.configureRouting
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.security.token.support.v3.tokenValidationSupport

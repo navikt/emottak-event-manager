@@ -1,4 +1,4 @@
-package no.nav.emottak.eventmanager
+package no.nav.emottak.eventmanager.plugin
 
 import io.ktor.server.application.Application
 import io.ktor.server.application.log
@@ -11,9 +11,11 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.QueryConstants.ID
 import no.nav.emottak.eventmanager.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.Validation
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
