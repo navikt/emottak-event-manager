@@ -12,7 +12,7 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Branch name
         run: echo running on branch ${GITHUB_REF##*/}
       - name: Setup java
