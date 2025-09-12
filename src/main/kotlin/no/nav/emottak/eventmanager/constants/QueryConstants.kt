@@ -1,9 +1,4 @@
-package no.nav.emottak.eventmanager
-
-object Constants {
-    const val ZONE_ID_OSLO = "Europe/Oslo"
-    const val UNKNOWN = "Unknown"
-}
+package no.nav.emottak.eventmanager.constants
 
 object QueryConstants {
     const val FROM_DATE = "fromDate"

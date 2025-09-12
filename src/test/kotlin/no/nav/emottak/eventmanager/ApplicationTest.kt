@@ -19,12 +19,18 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.testApplication
-import no.nav.emottak.eventmanager.QueryConstants.CONVERSATION_ID
-import no.nav.emottak.eventmanager.QueryConstants.CPA_ID
-import no.nav.emottak.eventmanager.QueryConstants.FROM_DATE
-import no.nav.emottak.eventmanager.QueryConstants.MESSAGE_ID
-import no.nav.emottak.eventmanager.QueryConstants.REQUEST_ID
-import no.nav.emottak.eventmanager.QueryConstants.TO_DATE
+import io.micrometer.prometheus.PrometheusConfig
+import io.micrometer.prometheus.PrometheusMeterRegistry
+import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
+import no.nav.emottak.eventmanager.auth.AuthConfig
+import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
+import no.nav.emottak.eventmanager.constants.Constants.ZONE_ID_OSLO
+import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
+import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MessageLogInfo
@@ -69,8 +75,10 @@ class ApplicationTest : StringSpec({
 
     val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
         testApplication {
+            val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+
             application(
-                eventManagerModule(eventService, ebmsMessageDetailService)
+                eventManagerModule(eventService, ebmsMessageDetailService, meterRegistry)
             )
 
             val httpClient = createClient {
@@ -132,7 +140,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val events: List<EventInfo> = httpResponse.body()
-            events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
             events[0].readableId shouldBe testMessageDetails.generateReadableId()
@@ -155,7 +163,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val events: List<EventInfo> = httpResponse.body()
-            events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
             events[0].readableId shouldBe ""
@@ -213,12 +221,12 @@ class ApplicationTest : StringSpec({
 
             val messageInfoList: List<MessageInfo> = httpResponse.body()
             messageInfoList[0].readableIdList shouldBe messageDetails.generateReadableId()
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceParameter shouldBe Constants.UNKNOWN
-            messageInfoList[0].senderName shouldBe Constants.UNKNOWN
+            messageInfoList[0].referenceParameter shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe UNKNOWN
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].count shouldBe 1
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
@@ -279,7 +287,7 @@ class ApplicationTest : StringSpec({
 
             val messageInfoList: List<MessageLogInfo> = httpResponse.body()
             messageInfoList.size shouldBe 1
-            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
         }
@@ -301,7 +309,7 @@ class ApplicationTest : StringSpec({
 
             val messageInfoList: List<MessageLogInfo> = httpResponse.body()
             messageInfoList.size shouldBe 1
-            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
         }
@@ -482,12 +490,12 @@ class ApplicationTest : StringSpec({
 
             val messageInfoList: List<ReadableIdInfo> = httpResponse.body()
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceParameter shouldBe Constants.UNKNOWN
-            messageInfoList[0].senderName shouldBe Constants.UNKNOWN
+            messageInfoList[0].referenceParameter shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe UNKNOWN
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
@@ -507,12 +515,12 @@ class ApplicationTest : StringSpec({
 
             val messageInfoList: List<ReadableIdInfo> = httpResponse.body()
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceParameter shouldBe Constants.UNKNOWN
-            messageInfoList[0].senderName shouldBe Constants.UNKNOWN
+            messageInfoList[0].referenceParameter shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe UNKNOWN
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }

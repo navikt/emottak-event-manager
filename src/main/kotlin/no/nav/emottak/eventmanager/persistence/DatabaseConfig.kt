@@ -2,10 +2,13 @@ package no.nav.emottak.eventmanager.persistence
 
 import com.bettercloud.vault.response.LogicalResponse
 import com.zaxxer.hikari.HikariConfig
-import no.nav.emottak.eventmanager.config
-import no.nav.emottak.eventmanager.log
+import no.nav.emottak.eventmanager.configuration.Config
+import no.nav.emottak.eventmanager.configuration.config
 import no.nav.vault.jdbc.hikaricp.HikariCPVaultUtil
 import no.nav.vault.jdbc.hikaricp.VaultUtil
+import org.slf4j.LoggerFactory
+
+private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.persistence.DatabaseConfig")
 
 const val EVENT_DB_NAME = "emottak-event-manager-db"
 
@@ -15,7 +18,7 @@ val eventMigrationConfig = lazy { VaultConfig().configure("admin") }
 
 data class VaultConfig(
     val databaseName: String = EVENT_DB_NAME,
-
+    val config: Config = config(),
     val jdbcUrl: String = config.database.vaultJdbcUrl.value.also {
         log.info("jdbcUrl set to: $it")
     },

@@ -3,14 +3,10 @@ package no.nav.emottak.eventmanager
 import arrow.continuations.SuspendApp
 import arrow.continuations.ktor.server
 import arrow.core.raise.result
+import arrow.fx.coroutines.ResourceScope
 import arrow.fx.coroutines.resourceScope
-import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.auth.Authentication
-import io.ktor.server.metrics.micrometer.MicrometerMetrics
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.Dispatchers
@@ -24,67 +20,77 @@ import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
-import no.nav.emottak.eventmanager.plugin.configureNaisRouts
-import no.nav.emottak.eventmanager.plugin.configureRouting
+import no.nav.emottak.eventmanager.plugin.configureAuthentication
+import no.nav.emottak.eventmanager.plugin.configureContentNegotiation
+import no.nav.emottak.eventmanager.plugin.configureMetrics
+import no.nav.emottak.eventmanager.plugin.configureRoutes
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
-import no.nav.security.token.support.v3.tokenValidationSupport
+import no.nav.emottak.utils.coroutines.coroutineScope
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import kotlin.coroutines.coroutineContext
 
-val log: Logger = LoggerFactory.getLogger("no.nav.emottak.eventmanager.Application")
-val appMicrometerRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
-val config = config()
+private val log: Logger = LoggerFactory.getLogger("no.nav.emottak.eventmanager.App")
 
 fun main(args: Array<String>) = SuspendApp {
     result {
         resourceScope {
-            val database = Database(eventDbConfig.value)
-            database.migrate(eventMigrationConfig.value)
-
-            val eventRepository = EventRepository(database)
-            val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
-            val eventTypeRepository = EventTypeRepository(database)
-
-            val eventService = EventService(eventRepository, ebmsMessageDetailRepository)
-            val ebmsMessageDetailService = EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
-
-            server(
-                factory = Netty,
-                port = 8080,
-                module = eventManagerModule(eventService, ebmsMessageDetailService)
-            )
-
-            log.debug("Configuration: {}", config)
-            if (config.eventConsumer.active) {
-                log.info("Starting event receiver")
-                launch(Dispatchers.IO) {
-                    startEventReceiver(
-                        listOf(
-                            config.eventConsumer.eventTopic,
-                            config.eventConsumer.messageDetailsTopic
-                        ),
-                        eventService,
-                        ebmsMessageDetailService
-                    )
-                }
-            }
-
+            runServer()
             awaitCancellation()
         }
     }
 }
 
-fun eventManagerModule(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService): Application.() -> Unit {
+suspend fun ResourceScope.runServer() {
+    val config = config()
+    val prometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
+
+    val database = Database(eventDbConfig.value)
+    database.migrate(eventMigrationConfig.value)
+
+    val eventRepository = EventRepository(database)
+    val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
+    val eventTypeRepository = EventTypeRepository(database)
+
+    val eventService = EventService(eventRepository, ebmsMessageDetailRepository)
+    val ebmsMessageDetailService =
+        EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
+
+    val serverConfig = config.server
+    server(
+        factory = Netty,
+        port = serverConfig.port.value,
+        preWait = serverConfig.preWait,
+        module = eventManagerModule(eventService, ebmsMessageDetailService, prometheusMeterRegistry)
+    )
+
+    log.debug("Configuration: {}", config)
+    if (config.eventConsumer.active) {
+        log.info("Starting event receiver")
+        val eventReceiverScope = coroutineScope(coroutineContext + Dispatchers.IO)
+        eventReceiverScope.launch {
+            startEventReceiver(
+                listOf(
+                    config.eventConsumer.eventTopic,
+                    config.eventConsumer.messageDetailsTopic
+                ),
+                eventService,
+                ebmsMessageDetailService
+            )
+        }
+    }
+}
+
+fun eventManagerModule(
+    eventService: EventService,
+    ebmsMessageDetailService: EbmsMessageDetailService,
+    prometheusMeterRegistry: PrometheusMeterRegistry
+): Application.() -> Unit {
     return {
-        install(ContentNegotiation) { json() }
-        install(MicrometerMetrics) {
-            registry = appMicrometerRegistry
-        }
-        install(Authentication) {
-            tokenValidationSupport(AZURE_AD_AUTH, AuthConfig.getTokenSupportConfig())
-        }
-        configureRouting(eventService, ebmsMessageDetailService)
-        configureNaisRouts(appMicrometerRegistry)
+        configureMetrics(prometheusMeterRegistry)
+        configureContentNegotiation()
+        configureAuthentication()
+        configureRoutes(eventService, ebmsMessageDetailService, prometheusMeterRegistry)
     }
 }

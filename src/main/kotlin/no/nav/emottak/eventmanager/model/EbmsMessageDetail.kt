@@ -1,6 +1,6 @@
 package no.nav.emottak.eventmanager.model
 
-import no.nav.emottak.eventmanager.Constants
+import no.nav.emottak.eventmanager.constants.Constants
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

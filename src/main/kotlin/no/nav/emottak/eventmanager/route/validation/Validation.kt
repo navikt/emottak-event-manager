@@ -1,4 +1,4 @@
-package no.nav.emottak.eventmanager
+package no.nav.emottak.eventmanager.route.validation
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
@@ -6,19 +6,23 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.RoutingCall
 import io.ktor.util.logging.error
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.QueryConstants.CONVERSATION_ID
-import no.nav.emottak.eventmanager.QueryConstants.CPA_ID
-import no.nav.emottak.eventmanager.QueryConstants.FROM_DATE
-import no.nav.emottak.eventmanager.QueryConstants.ID
-import no.nav.emottak.eventmanager.QueryConstants.MESSAGE_ID
-import no.nav.emottak.eventmanager.QueryConstants.REQUEST_ID
-import no.nav.emottak.eventmanager.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.constants.Constants
+import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
+import no.nav.emottak.eventmanager.constants.QueryConstants.ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
+
+private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.validation.Validation")
 
 object Validation {
 
@@ -78,8 +82,8 @@ object Validation {
     }
 
     private suspend fun validateIsNotNullOrEmpty(call: RoutingCall, parameters: Parameters, field: String): Boolean {
-        val requestIdParam = parameters[field]
-        if (requestIdParam.isNullOrEmpty()) {
+        val requestParam = parameters[field]
+        if (requestParam.isNullOrEmpty()) {
             val errorMessage = "Request parameter is missing: $field"
             log.error(IllegalArgumentException(errorMessage))
             call.respond(HttpStatusCode.BadRequest, errorMessage)
