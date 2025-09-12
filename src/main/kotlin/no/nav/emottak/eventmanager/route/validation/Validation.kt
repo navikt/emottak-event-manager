@@ -1,4 +1,4 @@
-package no.nav.emottak.eventmanager
+package no.nav.emottak.eventmanager.route.validation
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
@@ -6,11 +6,14 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.util.logging.error
 import kotlinx.serialization.json.Json
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
+
+private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.validation.Validation")
 
 object Validation {
 

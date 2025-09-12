@@ -9,7 +9,7 @@ group = "no.nav.emottak"
 version = "0.0.1"
 
 application {
-    mainClass = "no.nav.emottak.eventmanager.ApplicationKt"
+    mainClass = "no.nav.emottak.eventmanager.AppKt"
 }
 
 tasks {

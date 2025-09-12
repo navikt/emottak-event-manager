@@ -1,4 +1,4 @@
-package no.nav.emottak.eventmanager
+package no.nav.emottak.eventmanager.auth
 
 import no.nav.emottak.utils.environment.getEnvVar
 import no.nav.security.token.support.v3.IssuerConfig

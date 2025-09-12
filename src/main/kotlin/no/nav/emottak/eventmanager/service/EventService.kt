@@ -1,15 +1,15 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.Validation
-import no.nav.emottak.eventmanager.log
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageLoggInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
+import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
@@ -19,6 +19,9 @@ class EventService(
     private val eventRepository: EventRepository,
     private val ebmsMessageDetailRepository: EbmsMessageDetailRepository
 ) {
+
+    private val log = LoggerFactory.getLogger(EventService::class.java)
+
     suspend fun process(value: ByteArray) {
         try {
             log.info("Event read from Kafka: ${String(value)}")
@@ -35,7 +38,7 @@ class EventService(
     }
 
     suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
-        val eventsList = eventRepository.findEventByTimeInterval(from, to)
+        val eventsList = eventRepository.findEventByTimeInterval(from, to, 1000)
         val requestIds = eventsList.map { it.requestId }.distinct()
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)
 
