@@ -35,19 +35,28 @@ object Validation {
             return false
         }
 
+        var fromDate: Instant? = null
         try {
-            parseDate(fromDateParam)
+            fromDate = parseDate(fromDateParam)
         } catch (e: Exception) {
             errorMessage = "Invalid date format for fromDate: $fromDateParam"
             log.error(errorMessage, e)
             call.respond(HttpStatusCode.BadRequest, errorMessage)
             return false
         }
+        var toDate: Instant? = null
         try {
-            parseDate(toDateParam)
+            toDate = parseDate(toDateParam)
         } catch (e: Exception) {
             errorMessage = "Invalid date format for toDate: $toDateParam"
             log.error(errorMessage, e)
+            call.respond(HttpStatusCode.BadRequest, errorMessage)
+            return false
+        }
+
+        if (fromDate.isAfter(toDate)) {
+            errorMessage = "fromDate $fromDateParam is after toDate $toDateParam"
+            log.error(errorMessage)
             call.respond(HttpStatusCode.BadRequest, errorMessage)
             return false
         }
