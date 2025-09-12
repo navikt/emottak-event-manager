@@ -3,7 +3,6 @@ package no.nav.emottak.eventmanager
 object Constants {
     const val ZONE_ID_OSLO = "Europe/Oslo"
     const val UNKNOWN = "Unknown"
-    const val NOT_DEFINED = "Not defined"
 }
 
 object QueryConstants {

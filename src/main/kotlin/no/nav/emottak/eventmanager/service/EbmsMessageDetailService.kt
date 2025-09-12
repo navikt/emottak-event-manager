@@ -86,7 +86,7 @@ class EbmsMessageDetailService(
         return listOf(
             ReadableIdInfo(
                 receivedDate = messageDetails.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
-                readableId = messageDetails.readableId ?: Constants.NOT_DEFINED,
+                readableId = messageDetails.readableId ?: "",
                 cpaId = messageDetails.cpaId,
                 role = messageDetails.fromRole,
                 service = messageDetails.service,
