@@ -5,6 +5,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -21,7 +22,6 @@ class EventServiceTest : StringSpec({
     val eventService = EventService(eventRepository, ebmsMessageDetailRepository)
 
     "Should call database repository on processing en event" {
-
         val testTransportEvent = buildTestTransportEvent()
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
@@ -38,61 +38,61 @@ class EventServiceTest : StringSpec({
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
-        coEvery { eventRepository.findEventByTimeInterval(from, to, any()) } returns listOf(testEvent)
+        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns listOf(testEvent)
         coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
 
         val eventsList = eventService.fetchEvents(from, to)
         eventsList.size shouldBe 1
-        eventsList[0].hendelsedato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
-        eventsList[0].hendelsedeskr shouldBe testEvent.eventType.description
-        eventsList[0].tillegsinfo shouldBe testEvent.eventData
+        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].description shouldBe testEvent.eventType.description
+        eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findEventByTimeInterval(from, to, 1000) }
+        coVerify { eventRepository.findByTimeInterval(from, to, 1000) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
     "Should call EventRepository on fetching events related to a specific message by Request ID" {
         val testEvent = buildTestEvent()
 
-        coEvery { eventRepository.findEventsByRequestId(testEvent.requestId) } returns listOf(testEvent)
+        coEvery { eventRepository.findByRequestId(testEvent.requestId) } returns listOf(testEvent)
 
-        val eventsList = eventService.fetchMessageLoggInfo(testEvent.requestId.toString())
+        val eventsList = eventService.fetchMessageLogInfo(testEvent.requestId.toString())
 
         eventsList.size shouldBe 1
-        eventsList[0].hendelsesdato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
-        eventsList[0].hendelsesbeskrivelse shouldBe testEvent.eventType.description
-        eventsList[0].hendelsesid shouldBe testEvent.eventType.value.toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDescription shouldBe testEvent.eventType.description
+        eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
 
-        coVerify { eventRepository.findEventsByRequestId(testEvent.requestId) }
+        coVerify { eventRepository.findByRequestId(testEvent.requestId) }
     }
 
-    "Should call database on fetching events related to a specific message by Mottak ID" {
+    "Should call database on fetching events related to a specific message by Readable ID" {
         val testMessageDetail = buildTestEbmsMessageDetail()
         val testEvent = buildTestEvent().copy(requestId = testMessageDetail.requestId)
 
-        coEvery { eventRepository.findEventsByRequestId(testEvent.requestId) } returns listOf(testEvent)
-        coEvery { ebmsMessageDetailRepository.findByMottakId(testMessageDetail.calculateMottakId()) } returns testMessageDetail
+        coEvery { eventRepository.findByRequestId(testEvent.requestId) } returns listOf(testEvent)
+        coEvery { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) } returns testMessageDetail
 
-        val eventsList = eventService.fetchMessageLoggInfo(testMessageDetail.calculateMottakId())
+        val eventsList = eventService.fetchMessageLogInfo(testMessageDetail.generateReadableId())
 
         eventsList.size shouldBe 1
-        eventsList[0].hendelsesdato shouldBe testEvent.createdAt.atZone(ZoneId.of("Europe/Oslo")).toString()
-        eventsList[0].hendelsesbeskrivelse shouldBe testEvent.eventType.description
-        eventsList[0].hendelsesid shouldBe testEvent.eventType.value.toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDescription shouldBe testEvent.eventType.description
+        eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
 
-        coVerify { eventRepository.findEventsByRequestId(testEvent.requestId) }
-        coVerify { ebmsMessageDetailRepository.findByMottakId(testMessageDetail.calculateMottakId()) }
+        coVerify { eventRepository.findByRequestId(testEvent.requestId) }
+        coVerify { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
     }
 
-    "fetchMessageLoggInfo should return empty list if message is not found by Mottak ID" {
+    "fetchMessageLogInfo should return empty list if message is not found by Readable ID" {
         val testMessageDetail = buildTestEbmsMessageDetail()
 
-        coEvery { ebmsMessageDetailRepository.findByMottakId(testMessageDetail.calculateMottakId()) } returns null
+        coEvery { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) } returns null
 
-        val eventsList = eventService.fetchMessageLoggInfo(testMessageDetail.calculateMottakId())
+        val eventsList = eventService.fetchMessageLogInfo(testMessageDetail.generateReadableId())
 
         eventsList.size shouldBe 0
 
-        coVerify { ebmsMessageDetailRepository.findByMottakId(testMessageDetail.calculateMottakId()) }
+        coVerify { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
     }
 })

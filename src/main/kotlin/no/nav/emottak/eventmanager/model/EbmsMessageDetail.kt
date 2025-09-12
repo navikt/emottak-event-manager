@@ -1,5 +1,6 @@
 package no.nav.emottak.eventmanager.model
 
+import no.nav.emottak.eventmanager.constants.Constants
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -23,9 +24,9 @@ data class EbmsMessageDetail(
     val savedAt: Instant,
 
     // Extra fields
-    val sender: String? = null,
+    val senderName: String? = null,
     val refParam: String? = null,
-    val mottakId: String? = null
+    val readableId: String? = null
 ) {
     companion object {
         fun fromTransportModel(transportEbmsMessageDetail: TransportEbmsMessageDetail): EbmsMessageDetail {
@@ -47,22 +48,22 @@ data class EbmsMessageDetail(
         }
     }
 
-    fun calculateMottakId(): String {
+    fun generateReadableId(): String {
         val direction = if (this.refToMessageId == null) "IN" else "OUT"
 
         val formatter = DateTimeFormatter.ofPattern("yyMMddHHmm")
         val savedAtString: String = this.savedAt
-            .atZone(ZoneId.of("Europe/Oslo"))
+            .atZone(ZoneId.of(Constants.ZONE_ID_OSLO))
             .format(formatter)
 
-        val sender = if (this.refToMessageId != null) {
-            "NAVM"
+        val senderName = if (this.refToMessageId != null) {
+            "NAVM" // NAV Mottak
         } else {
-            this.sender?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "????"
+            this.senderName?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "UNKN"
         }
 
         val id = this.requestId.toString().takeLast(6)
 
-        return "$direction.$savedAtString.$sender.$id"
+        return "$direction.$savedAtString.$senderName.$id"
     }
 }
