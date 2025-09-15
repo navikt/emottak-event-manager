@@ -27,10 +27,11 @@ import no.nav.emottak.eventmanager.plugin.configureRoutes
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.coroutines.coroutineScope
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import kotlin.coroutines.coroutineContext
 
-private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.App")
+private val log: Logger = LoggerFactory.getLogger("no.nav.emottak.eventmanager.App")
 
 fun main(args: Array<String>) = SuspendApp {
     result {

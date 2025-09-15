@@ -40,7 +40,7 @@ class EventRepository(private val database: Database) {
         newEventId.toKotlinUuid()
     }
 
-    suspend fun findEventById(eventId: Uuid): Event? = withContext(Dispatchers.IO) {
+    suspend fun findById(eventId: Uuid): Event? = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
                 .where { EventTable.eventId eq eventId.toJavaUuid() }
@@ -58,7 +58,7 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findEventsByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
                 .where { EventTable.requestId eq requestId.toJavaUuid() }
@@ -76,7 +76,7 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findEventsByRequestIds(requestIds: List<Uuid>): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByRequestIds(requestIds: List<Uuid>): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
                 .where { requestIdColumn.inList(requestIds.map { it.toJavaUuid() }) }
@@ -94,7 +94,7 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findEventByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
                 .where { createdAt.between(from, to) }

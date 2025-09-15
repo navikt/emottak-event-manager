@@ -17,7 +17,7 @@ private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.Dup
 
 fun Route.duplicateCheckRoute(ebmsMessageDetailService: EbmsMessageDetailService) {
     authenticate(AZURE_AD_AUTH) {
-        post("/duplicateCheck") {
+        post("/message-details/duplicate-check") {
             val duplicateCheckRequestJson = call.receiveText()
             if (!Validation.validateDuplicateCheckRequest(call, duplicateCheckRequestJson)) return@post
 
@@ -31,7 +31,7 @@ fun Route.duplicateCheckRoute(ebmsMessageDetailService: EbmsMessageDetailService
                 cpaId = duplicateCheckRequest.cpaId
             )
             if (isDuplicate) {
-                log.info("Message is duplicated: ${duplicateCheckRequest.requestId}")
+                log.info("Message is duplicated: {}", duplicateCheckRequest.requestId)
             }
 
             val duplicateCheckResponse = DuplicateCheckResponse(

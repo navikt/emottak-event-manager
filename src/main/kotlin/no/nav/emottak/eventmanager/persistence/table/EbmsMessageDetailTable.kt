@@ -7,7 +7,7 @@ import java.util.UUID
 
 object EbmsMessageDetailTable : Table("ebms_message_details") {
     val requestId: Column<UUID> = uuid("request_id")
-    val mottakId: Column<String?> = varchar("mottak_id", 256).nullable()
+    val readableId: Column<String?> = varchar("readable_id", 256).nullable()
     val cpaId: Column<String> = varchar("cpa_id", 256)
     val conversationId: Column<String> = varchar("conversation_id", 256)
     val messageId: Column<String> = varchar("message_id", 256)
@@ -19,7 +19,7 @@ object EbmsMessageDetailTable : Table("ebms_message_details") {
     val service: Column<String> = varchar("service", 256)
     val action: Column<String> = varchar("action", 256)
     val refParam: Column<String?> = varchar("ref_param", 256).nullable()
-    val sender: Column<String?> = varchar("sender", 256).nullable()
+    val senderName: Column<String?> = varchar("sender_name", 256).nullable()
     val sentAt: Column<java.time.Instant?> = timestamp("sent_at").nullable()
     val savedAt: Column<java.time.Instant> = timestamp("saved_at")
 
