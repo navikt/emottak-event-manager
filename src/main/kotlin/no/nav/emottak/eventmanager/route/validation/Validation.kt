@@ -28,7 +28,7 @@ object Validation {
 
     suspend fun validateDateRangeRequest(call: RoutingCall): Boolean {
         val parameters = call.request.queryParameters
-        log.info("Validating date range request parameters: $parameters")
+        log.info("Validating date range request parameters: ${parameters.entries()}")
         if (!validateIsValidDate(call, parameters, FROM_DATE)) return false
         if (!validateIsValidDate(call, parameters, TO_DATE)) return false
         val fromDate = parseDate(parameters[FROM_DATE]!!)
