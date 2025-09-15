@@ -33,7 +33,13 @@ object Validation {
         if (!validateIsValidDate(call, parameters, TO_DATE)) return false
         val fromDate = parseDate(parameters[FROM_DATE]!!)
         val toDate = parseDate(parameters[TO_DATE]!!)
-        return !fromDate.isAfter(toDate)
+        if (fromDate.isAfter(toDate)) {
+            val errorMessage = "Fromdate: $fromDate is after Todate: $toDate"
+            log.error(IllegalArgumentException(errorMessage))
+            call.respond(HttpStatusCode.BadRequest, errorMessage)
+            return false
+        }
+        return true
     }
 
     suspend fun validateMessageLogInfoRequest(call: RoutingCall): Boolean {

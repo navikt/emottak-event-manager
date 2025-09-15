@@ -199,6 +199,7 @@ class ApplicationTest : StringSpec({
                 row("/events?$FROM_DATE=2025-04-02T14:00"),
                 row("/events?$FROM_DATE=2025-4-01T14:00&$TO_DATE=2025-04-01T15:00"),
                 row("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-1T15:00"),
+                row("/events?$FROM_DATE=2025-04-01T15:00&$TO_DATE=2025-04-01T14:00"),
                 row("/events")
             ) { url ->
                 val httpResponse = httpClient.get(url)
