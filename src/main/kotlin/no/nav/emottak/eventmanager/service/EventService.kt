@@ -41,10 +41,12 @@ class EventService(
     suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
         val eventsList = eventRepository.findByTimeInterval(from, to, 1000)
         val requestIds = eventsList.map { it.requestId }.distinct()
+        log.debug("Number of different Request IDs: ${requestIds.size}")
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)
-
+        var numberOfRequestIdsNotFound = 0
         return eventsList.map {
             val ebmsMessageDetail = messageDetailsMap[it.requestId]
+            if (ebmsMessageDetail == null) numberOfRequestIdsNotFound++
             EventInfo(
                 eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
                 description = it.eventType.description,
@@ -56,7 +58,9 @@ class EventService(
                 referenceParameter = ebmsMessageDetail?.refParam,
                 senderName = ebmsMessageDetail?.senderName
             )
-        }.toList()
+        }.toList().also {
+            if (numberOfRequestIdsNotFound > 0) log.warn("Number of requestIds not found: $numberOfRequestIdsNotFound")
+        }
     }
 
     suspend fun fetchMessageLogInfo(id: String): List<MessageLogInfo> {
