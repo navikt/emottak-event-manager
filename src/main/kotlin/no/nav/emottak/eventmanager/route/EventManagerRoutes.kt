@@ -47,8 +47,8 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
 
         val fromDate = Validation.parseDate(call.request.queryParameters[FROM_DATE]!!)
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
-        val readableId = call.parameters[READABLE_ID] ?: ""
-        val cpaId = call.parameters[CPA_ID] ?: ""
+        val readableId = call.request.queryParameters[READABLE_ID] ?: ""
+        val cpaId = call.request.queryParameters[CPA_ID] ?: ""
 
         log.debug("Retrieving message details from database")
         val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId)
