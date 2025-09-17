@@ -8,4 +8,5 @@ object QueryConstants {
     const val MESSAGE_ID = "messageId"
     const val CONVERSATION_ID = "conversationId"
     const val CPA_ID = "cpaId"
+    const val READABLE_ID = "readableId"
 }
