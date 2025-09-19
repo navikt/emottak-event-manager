@@ -323,7 +323,12 @@ class ApplicationTest : StringSpec({
 
             val readableId = messageDetails.generateReadableId()
             val url = "/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$READABLE_ID=$readableId&$CPA_ID=${messageDetails.cpaId}"
-            val httpResponse = httpClient.get(url)
+            val httpResponse = httpClient.get(url) {
+                header(
+                    "Authorization",
+                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                )
+            }
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
