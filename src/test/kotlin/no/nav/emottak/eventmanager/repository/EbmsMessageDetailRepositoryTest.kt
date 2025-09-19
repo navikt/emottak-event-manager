@@ -113,24 +113,91 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval" {
-        val messageDetailsInInterval = buildTestEbmsMessageDetail().copy(
-            savedAt = Instant.parse("2025-04-30T12:54:45.386Z")
-        )
-
-        val messageDetailsOutOfInterval = buildTestEbmsMessageDetail().copy(
-            savedAt = Instant.parse("2025-04-30T15:54:45.386Z")
-        )
-
-        repository.insert(messageDetailsInInterval)
-        repository.insert(messageDetailsOutOfInterval)
-
+        val (md1, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(repository)
         val retrievedDetails = repository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z")
         )
+        retrievedDetails.size shouldBe 4
+        retrievedDetails[0].requestId shouldBe md1.requestId
+        retrievedDetails[1].requestId shouldBe md2.requestId
+        retrievedDetails[2].requestId shouldBe md3.requestId
+        retrievedDetails[3].requestId shouldBe md4.requestId
+    }
 
+    "Should retrieve records by time interval and filtered by readableId" {
+        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:00:00Z"),
+            Instant.parse("2025-04-30T13:00:00Z"),
+            readableId = messageDetailsInInterval1.generateReadableId()
+        )
         retrievedDetails.size shouldBe 1
-        retrievedDetails[0].requestId shouldBe messageDetailsInInterval.requestId
+        retrievedDetails[0].requestId shouldBe messageDetailsInInterval1.requestId
+    }
+
+    "Should retrieve records by time interval and filtered by cpaId" {
+        val (_, messageDetailsInInterval2, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:00:00Z"),
+            Instant.parse("2025-04-30T13:00:00Z"),
+            cpaId = "another-cpa-id"
+        )
+        retrievedDetails.size shouldBe 2
+        retrievedDetails[0].requestId shouldBe messageDetailsInInterval2.requestId
+        retrievedDetails[1].requestId shouldBe messageDetailsOutOfInterval2.requestId
+    }
+
+    "Should retrieve records by time interval and filtered by readableId and cpaId" {
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:00:00Z"),
+            Instant.parse("2025-04-30T13:00:00Z"),
+            readableId = messageDetailsOutOfInterval2.generateReadableId(),
+            cpaId = "another-cpa-id"
+        )
+        retrievedDetails.size shouldBe 1
+        retrievedDetails[0].requestId shouldBe messageDetailsOutOfInterval2.requestId
+    }
+
+    "Should retrieve empty list if no message details within given time interval" {
+        buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T13:00:00Z"),
+            Instant.parse("2025-04-30T14:00:00Z")
+        )
+        retrievedDetails.size shouldBe 0
+    }
+
+    "Should retrieve empty list if no message details with the given readableId in the given time interval" {
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:00:00Z"),
+            Instant.parse("2025-04-30T12:57:00Z"),
+            readableId = messageDetailsOutOfInterval2.generateReadableId()
+        )
+        retrievedDetails.size shouldBe 0
+    }
+
+    "Should retrieve empty list if no message details with the given cpaId in the given time interval" {
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:55:00Z"),
+            Instant.parse("2025-04-30T12:57:00Z"),
+            cpaId = messageDetailsOutOfInterval2.cpaId
+        )
+        retrievedDetails.size shouldBe 0
+    }
+
+    "Should retrieve empty list if no message details with the given readableId and cpaId in the given time interval" {
+        val (_, _, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val retrievedDetails = repository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:00:00Z"),
+            Instant.parse("2025-04-30T13:00:00Z"),
+            readableId = messageDetailsOutOfInterval2.generateReadableId(),
+            cpaId = messageDetailsOutOfInterval1.cpaId
+        )
+        retrievedDetails.size shouldBe 0
     }
 
     "Should retrieve related request IDs by request IDs" {
@@ -254,4 +321,34 @@ fun buildTestTransportMessageDetail(): TransportEbmsMessageDetail {
         action = "test-action",
         savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
     )
+}
+
+suspend fun buildAndInsertTestEbmsMessageDetailFindData(repository: EbmsMessageDetailRepository): List<EbmsMessageDetail> {
+    val messageDetailsInInterval1 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-A",
+        savedAt = Instant.parse("2025-04-30T12:52:45.386Z")
+    )
+    val messageDetailsInInterval2 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-B",
+        cpaId = "another-cpa-id",
+        savedAt = Instant.parse("2025-04-30T12:54:46.386Z")
+    )
+    val messageDetailsOutOfInterval1 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-C",
+        savedAt = Instant.parse("2025-04-30T12:56:47.386Z"),
+        refToMessageId = "message-id-reference-C"
+    )
+    val messageDetailsOutOfInterval2 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-D",
+        cpaId = "another-cpa-id",
+        savedAt = Instant.parse("2025-04-30T12:58:48.386Z"),
+        refToMessageId = "message-id-reference-D"
+    )
+
+    repository.insert(messageDetailsInInterval1)
+    repository.insert(messageDetailsInInterval2)
+    repository.insert(messageDetailsOutOfInterval1)
+    repository.insert(messageDetailsOutOfInterval2)
+
+    return listOf(messageDetailsInInterval1, messageDetailsInInterval2, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2)
 }
