@@ -26,6 +26,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
@@ -142,12 +143,20 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(
+        from: Instant,
+        to: Instant,
+        limit: Int? = null,
+        readableId: String = "",
+        cpaId: String = ""
+    ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { savedAt.between(from, to) }
                 .apply {
+                    if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
+                    if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
                     if (limit != null) this.limit(limit)
                 }
                 .mapNotNull {

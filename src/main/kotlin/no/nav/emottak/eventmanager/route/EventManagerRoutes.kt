@@ -3,8 +3,10 @@ package no.nav.emottak.eventmanager.route
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
+import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
@@ -45,9 +47,11 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
 
         val fromDate = Validation.parseDate(call.request.queryParameters[FROM_DATE]!!)
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
+        val readableId = call.request.queryParameters[READABLE_ID] ?: ""
+        val cpaId = call.request.queryParameters[CPA_ID] ?: ""
 
         log.debug("Retrieving message details from database")
-        val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate)
+        val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId)
         log.debug("Message details retrieved: ${messageDetails.size}")
         log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 

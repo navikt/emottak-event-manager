@@ -29,6 +29,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.EventInfo
@@ -40,6 +41,7 @@ import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
@@ -210,17 +212,16 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail()
+            val (messageDetails, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
-
-            ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-08T14:00&$TO_DATE=2025-05-08T15:00")
+            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MessageInfo> = httpResponse.body()
+            messageInfoList.size shouldBe 4
             messageInfoList[0].readableIdList shouldBe messageDetails.generateReadableId()
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
@@ -236,14 +237,42 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail()
-            ebmsMessageDetailRepository.insert(messageDetails)
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<MessageInfo> = httpResponse.body()
             events.size shouldBe 0
+        }
+    }
+
+    "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
+        withTestApplication { httpClient ->
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            eventRepository.insert(testEvent)
+
+            val readableId = messageDetails.generateReadableId()
+            val url = "/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$READABLE_ID=$readableId&$CPA_ID=${messageDetails.cpaId}"
+            val httpResponse = httpClient.get(url)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageInfoList: List<MessageInfo> = httpResponse.body()
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].readableIdList shouldBe readableId
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            messageInfoList[0].role shouldBe messageDetails.fromRole
+            messageInfoList[0].service shouldBe messageDetails.service
+            messageInfoList[0].action shouldBe messageDetails.action
+            messageInfoList[0].referenceParameter shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe UNKNOWN
+            messageInfoList[0].cpaId shouldBe messageDetails.cpaId
+            messageInfoList[0].count shouldBe 1
+            messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
     }
 
