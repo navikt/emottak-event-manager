@@ -38,8 +38,14 @@ class EventService(
         }
     }
 
-    suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
-        val eventsList = eventRepository.findByTimeInterval(from, to, 1000)
+    suspend fun fetchEvents(
+        from: Instant,
+        to: Instant,
+        role: String = "",
+        service: String = "",
+        action: String = ""
+    ): List<EventInfo> {
+        val eventsList = eventRepository.findByTimeInterval(from, to, 1000, role, service, action)
         val requestIds = eventsList.map { it.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)

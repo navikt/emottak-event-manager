@@ -148,7 +148,10 @@ class EbmsMessageDetailRepository(private val database: Database) {
         to: Instant,
         limit: Int? = null,
         readableId: String = "",
-        cpaId: String = ""
+        cpaId: String = "",
+        role: String = "",
+        service: String = "",
+        action: String = ""
     ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
@@ -157,6 +160,9 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .apply {
                     if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
                     if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
+                    if (role != "") this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                    if (service != "") this.andWhere { EbmsMessageDetailTable.service eq service }
+                    if (action != "") this.andWhere { EbmsMessageDetailTable.action eq action }
                     if (limit != null) this.limit(limit)
                 }
                 .mapNotNull {
