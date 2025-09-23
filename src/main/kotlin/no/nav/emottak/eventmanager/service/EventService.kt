@@ -45,7 +45,12 @@ class EventService(
         service: String = "",
         action: String = ""
     ): List<EventInfo> {
-        val eventsList = eventRepository.findByTimeInterval(from, to, 1000, role, service, action)
+        val eventsList = if (role.isNotEmpty() || service.isNotEmpty() || action.isNotEmpty()) {
+            eventRepository.findByTimeIntervalJoinMessageDetail(from, to, 1000, role, service, action)
+        } else {
+            eventRepository.findByTimeInterval(from, to, 1000)
+        }
+
         val requestIds = eventsList.map { it.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)

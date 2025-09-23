@@ -98,7 +98,28 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(
+    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<Event> = withContext(Dispatchers.IO) {
+        transaction {
+            EventTable.select(EventTable.columns)
+                .where { createdAt.between(from, to) }
+                .apply {
+                    if (limit != null) this.limit(limit)
+                }
+                .mapNotNull {
+                    Event(
+                        eventType = EventType.fromInt(it[eventTypeId]),
+                        requestId = it[requestIdColumn].toKotlinUuid(),
+                        contentId = it[contentId],
+                        messageId = it[messageId],
+                        eventData = Json.encodeToString(it[eventData]),
+                        createdAt = it[createdAt]
+                    )
+                }
+                .toList()
+        }
+    }
+
+    suspend fun findByTimeIntervalJoinMessageDetail(
         from: Instant,
         to: Instant,
         limit: Int? = null,

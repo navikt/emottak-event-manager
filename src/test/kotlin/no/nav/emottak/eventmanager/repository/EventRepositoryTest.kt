@@ -119,7 +119,7 @@ class EventRepositoryTest : StringSpec({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findByTimeInterval(
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
             Instant.parse("2025-04-01T12:00:00Z"),
             Instant.parse("2025-04-01T13:00:00Z"),
             role = roleFilter
@@ -142,7 +142,7 @@ class EventRepositoryTest : StringSpec({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findByTimeInterval(
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
             Instant.parse("2025-04-01T12:00:00Z"),
             Instant.parse("2025-04-01T13:00:00Z"),
             service = serviceFilter
@@ -165,7 +165,7 @@ class EventRepositoryTest : StringSpec({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findByTimeInterval(
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
             Instant.parse("2025-04-01T12:00:00Z"),
             Instant.parse("2025-04-01T13:00:00Z"),
             action = actionFilter
