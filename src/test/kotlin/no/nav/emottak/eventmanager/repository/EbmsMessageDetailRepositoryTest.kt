@@ -200,6 +200,60 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.size shouldBe 0
     }
 
+    "Should retrieve records by time interval and filtered by Role" {
+        val roleFilter = "Utleverer"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(fromRole = roleFilter)
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+
+        val retrievedDetails = repository.findByTimeInterval(
+            from = Instant.parse("2025-05-08T12:00:00Z"),
+            to = Instant.parse("2025-05-08T13:00:00Z"),
+            role = roleFilter
+        )
+
+        retrievedDetails.size shouldBe 1
+        retrievedDetails[0].requestId shouldBe messageDetails2.requestId
+    }
+
+    "Should retrieve records by time interval and filtered by Service" {
+        val serviceFilter = "HarBorgerEgenandelFritak"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(service = serviceFilter)
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+
+        val retrievedDetails = repository.findByTimeInterval(
+            from = Instant.parse("2025-05-08T12:00:00Z"),
+            to = Instant.parse("2025-05-08T13:00:00Z"),
+            service = serviceFilter
+        )
+
+        retrievedDetails.size shouldBe 1
+        retrievedDetails[0].requestId shouldBe messageDetails2.requestId
+    }
+
+    "Should retrieve records by time interval and filtered by Action" {
+        val actionFilter = "EgenandelForesporsel"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(action = actionFilter)
+
+        repository.insert(messageDetails1)
+        repository.insert(messageDetails2)
+
+        val retrievedDetails = repository.findByTimeInterval(
+            from = Instant.parse("2025-05-08T12:00:00Z"),
+            to = Instant.parse("2025-05-08T13:00:00Z"),
+            action = actionFilter
+        )
+
+        retrievedDetails.size shouldBe 1
+        retrievedDetails[0].requestId shouldBe messageDetails2.requestId
+    }
+
     "Should retrieve related request IDs by request IDs" {
         val messageDetails1 = buildTestEbmsMessageDetail().copy(
             conversationId = "conversationId-1"

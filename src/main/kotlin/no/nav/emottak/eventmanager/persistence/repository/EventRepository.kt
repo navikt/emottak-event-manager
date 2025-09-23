@@ -13,6 +13,7 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
+import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
@@ -106,7 +107,9 @@ class EventRepository(private val database: Database) {
         action: String = ""
     ): List<Event> = withContext(Dispatchers.IO) {
         transaction {
-            EventTable.select(EventTable.columns)
+            EventTable
+                .join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
+                .select(EventTable.columns)
                 .where { createdAt.between(from, to) }
                 .apply {
                     if (role != "") this.andWhere { EbmsMessageDetailTable.fromRole eq role }
