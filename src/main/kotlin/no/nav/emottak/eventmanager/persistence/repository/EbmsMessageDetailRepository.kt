@@ -3,6 +3,8 @@ package no.nav.emottak.eventmanager.persistence.repository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.action
@@ -23,6 +25,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPa
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
@@ -146,23 +149,33 @@ class EbmsMessageDetailRepository(private val database: Database) {
     suspend fun findByTimeInterval(
         from: Instant,
         to: Instant,
-        limit: Int? = null,
         readableId: String = "",
-        cpaId: String = ""
-    ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+        cpaId: String = "",
+        pageable: Pageable? = null
+    ): Page<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
-            EbmsMessageDetailTable
-                .select(EbmsMessageDetailTable.columns)
-                .where { savedAt.between(from, to) }
+            val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
                 .apply {
                     if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
                     if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
-                    if (limit != null) this.limit(limit)
-                }
-                .mapNotNull {
-                    toEbmsMessageDetail(it)
-                }
-                .toList()
+                }.count()
+            val list =
+                EbmsMessageDetailTable
+                    .select(EbmsMessageDetailTable.columns)
+                    .where { savedAt.between(from, to) }
+                    .orderBy(savedAt, SortOrder.ASC)
+                    .apply {
+                        if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
+                        if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
+                        if (pageable != null) this.limit(pageable.pageSize, pageable.offset)
+                    }
+                    .mapNotNull {
+                        toEbmsMessageDetail(it)
+                    }
+                    .toList()
+            var returnPageable = pageable
+            if (returnPageable == null) returnPageable = Pageable(1, list.size)
+            Page(returnPageable.pageNumber, returnPageable.pageSize, totalCount, list)
         }
     }
 

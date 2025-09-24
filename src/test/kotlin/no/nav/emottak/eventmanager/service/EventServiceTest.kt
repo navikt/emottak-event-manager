@@ -7,6 +7,8 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.Event
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
@@ -38,16 +40,24 @@ class EventServiceTest : StringSpec({
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
-        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns listOf(testEvent)
+        val list = listOf(testEvent)
+        val pageable = Pageable(1, list.size)
+        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            list.size.toLong(),
+            list
+        )
         coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
 
-        val eventsList = eventService.fetchEvents(from, to)
+        val eventsPage = eventService.fetchEvents(from, to)
+        val eventsList = eventsPage.content
         eventsList.size shouldBe 1
         eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to, 1000) }
+        coVerify { eventRepository.findByTimeInterval(from, to) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 

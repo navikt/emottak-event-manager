@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.Event
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EventTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable.contentId
@@ -12,6 +14,7 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
@@ -94,24 +97,30 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant, limit: Int? = null): List<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, pageable: Pageable? = null): Page<Event> = withContext(Dispatchers.IO) {
         transaction {
-            EventTable.select(EventTable.columns)
-                .where { createdAt.between(from, to) }
-                .apply {
-                    if (limit != null) this.limit(limit)
-                }
-                .mapNotNull {
-                    Event(
-                        eventType = EventType.fromInt(it[eventTypeId]),
-                        requestId = it[requestIdColumn].toKotlinUuid(),
-                        contentId = it[contentId],
-                        messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt]
-                    )
-                }
-                .toList()
+            val totalCount = EventTable.select(createdAt).where { createdAt.between(from, to) }.count()
+            val list =
+                EventTable.select(EventTable.columns)
+                    .where { createdAt.between(from, to) }
+                    .orderBy(createdAt, SortOrder.ASC)
+                    .apply {
+                        if (pageable != null) this.limit(pageable.pageSize, pageable.offset)
+                    }
+                    .mapNotNull {
+                        Event(
+                            eventType = EventType.fromInt(it[eventTypeId]),
+                            requestId = it[requestIdColumn].toKotlinUuid(),
+                            contentId = it[contentId],
+                            messageId = it[messageId],
+                            eventData = Json.encodeToString(it[eventData]),
+                            createdAt = it[createdAt]
+                        )
+                    }
+                    .toList()
+            var returnPageable = pageable
+            if (returnPageable == null) returnPageable = Pageable(1, list.size)
+            Page(returnPageable.pageNumber, returnPageable.pageSize, totalCount, list)
         }
     }
 }
