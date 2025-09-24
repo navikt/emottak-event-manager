@@ -14,6 +14,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -23,6 +24,8 @@ import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
 
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.validation.Validation")
+
+private const val MAX_PAGE_SIZE: Int = 1000
 
 object Validation {
 
@@ -126,5 +129,25 @@ object Validation {
         } catch (e: IllegalArgumentException) {
             false
         }
+    }
+
+    suspend fun getPageable(call: RoutingCall, pageNumberParameter: String?, pageSizeParameter: String?, defaultSize: Int): Pageable? {
+        log.info("Building Pageable from given page number $pageNumberParameter, given page size $pageSizeParameter and default size: $defaultSize")
+        var pageSize = defaultSize
+        if (!pageSizeParameter.isNullOrBlank()) {
+            pageSize = pageSizeParameter.toInt()
+        }
+        if (pageSize !in 1..MAX_PAGE_SIZE) {
+            val errorMessage = "Invalid page size specification: $pageSize, must be between 1 and $MAX_PAGE_SIZE"
+            log.error(errorMessage)
+            call.respond(HttpStatusCode.BadRequest, errorMessage)
+            return null
+        }
+        var pageNumber = 1
+        if (!pageNumberParameter.isNullOrBlank()) {
+            pageNumber = pageNumberParameter.toInt()
+        }
+        log.info("Returning Pageable with page number $pageNumber, page size $pageSize")
+        return Pageable(pageNumber, pageSize)
     }
 }

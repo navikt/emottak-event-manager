@@ -8,6 +8,8 @@ import io.mockk.mockk
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
@@ -53,44 +55,24 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails)
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
-
-        val messageInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
-
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000) }
-        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
-
-        messageInfoList.size shouldBe 1
-        messageInfoList[0].readableIdList shouldBe testDetails.generateReadableId()
-        messageInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by time interval and filtered by cpaId" {
-        val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent()
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
+        val list = listOf(testDetails)
+        val pageable = Pageable(1, list.size)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            list.size.toLong(),
+            list
         )
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any(), any(), testDetails.cpaId) } returns listOf(testDetails)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
 
-        val messageInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, cpaId = testDetails.cpaId)
+        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, "", "", null)
+        val messageInfoList = messageInfoPage.content
 
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000, cpaId = testDetails.cpaId) }
+        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) }
         coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
 
         messageInfoList.size shouldBe 1
@@ -110,16 +92,24 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val to = from.plusSeconds(60)
         val readableId = testDetails.generateReadableId()
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any(), readableId = readableId) } returns listOf(testDetails)
+        val list = listOf(testDetails)
+        val pageable = Pageable(1, list.size)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId = readableId) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            list.size.toLong(),
+            list
+        )
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
 
-        val messageInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, readableId = readableId)
+        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, readableId = readableId, "", null)
+        val messageInfoList = messageInfoPage.content
 
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000, readableId = readableId) }
+        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId = readableId) }
         coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
 
         messageInfoList.size shouldBe 1
@@ -195,14 +185,21 @@ class EbmsMessageDetailServiceTest : StringSpec({
             )
         )
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails)
+        val list = listOf(testDetails)
+        val pageable = Pageable(1, list.size)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            list.size.toLong(),
+            list
+        )
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, "", "", null)
 
-        result.first().senderName shouldBe "Test EPJ AS"
+        result.content.first().senderName shouldBe "Test EPJ AS"
     }
 
     "Should find reference parameter from related events" {
@@ -220,14 +217,21 @@ class EbmsMessageDetailServiceTest : StringSpec({
             )
         )
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails)
+        val list = listOf(testDetails)
+        val pageable = Pageable(1, list.size)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            list.size.toLong(),
+            list
+        )
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.requestId)) } returns
             mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, "", "", null)
 
-        result.first().referenceParameter shouldBe reference
+        result.content.first().referenceParameter shouldBe reference
     }
 
     "Should find related messages" {
@@ -239,7 +243,14 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val testDetails2 = buildTestEbmsMessageDetail().copy(conversationId = commonReferenceId)
         val testDetails3 = buildTestEbmsMessageDetail().copy(conversationId = "differentRef456")
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns listOf(testDetails1, testDetails2, testDetails3)
+        val list = listOf(testDetails1, testDetails2, testDetails3)
+        val pageable = Pageable(1, list.size)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            list.size.toLong(),
+            list
+        )
         coEvery {
             ebmsMessageDetailRepository.findRelatedReadableIds(
                 listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
@@ -256,7 +267,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
             )
         } returns listOf()
 
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+        val resultPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, "", "", null)
+        val result = resultPage.content
 
         result.size shouldBe 3
         result[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"

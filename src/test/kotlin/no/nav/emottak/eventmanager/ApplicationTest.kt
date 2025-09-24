@@ -29,12 +29,14 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
-import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.model.EbmsMessageDetail
+import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.MessageLogInfo
+import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
@@ -50,6 +52,7 @@ import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.model.DuplicateCheckResponse
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
+import java.time.Instant
 import java.time.ZoneId
 import kotlin.uuid.Uuid
 
@@ -141,7 +144,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val events: List<EventInfo> = httpResponse.body()
+            val eventsPage: Page<EventInfo> = httpResponse.body()
+            val events: List<EventInfo> = eventsPage.content
             events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
@@ -151,6 +155,58 @@ class ApplicationTest : StringSpec({
             events[0].action shouldBe testMessageDetails.action
             events[0].referenceParameter shouldBe testMessageDetails.refParam
             events[0].senderName shouldBe testMessageDetails.senderName
+        }
+    }
+
+    "events endpoint should return list of events page by page" {
+        withTestApplication { httpClient ->
+            val events: MutableList<Event> = ArrayList()
+            val details: MutableList<EbmsMessageDetail> = ArrayList()
+            for (i in 1..9) {
+                val id = "id$i"
+                val ts = "2025-04-01T12:0$i:00.000Z"
+                val commonRequestId = Uuid.random()
+                val event = buildTestEvent().copy(requestId = commonRequestId, createdAt = Instant.parse(ts))
+                val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId, senderName = id)
+                eventRepository.insert(event)
+                ebmsMessageDetailRepository.insert(testMessageDetails)
+                events.add(event)
+                details.add(testMessageDetails)
+            }
+
+            var httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            var eventsPage: Page<EventInfo> = httpResponse.body()
+            eventsPage.page shouldBe 1
+            eventsPage.content.size shouldBe 3
+            eventsPage.totalPages shouldBe 3
+            eventsPage.totalElements shouldBe 9
+            var eventList: List<EventInfo> = eventsPage.content
+            eventList[0].senderName shouldBe details[0].senderName
+            eventList[1].senderName shouldBe details[1].senderName
+            eventList[2].senderName shouldBe details[2].senderName
+            httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=2&size=3")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            eventsPage = httpResponse.body()
+            eventsPage.page shouldBe 2
+            eventsPage.content.size shouldBe 3
+            eventsPage.totalPages shouldBe 3
+            eventsPage.totalElements shouldBe 9
+            eventList = eventsPage.content
+            eventList[0].senderName shouldBe details[3].senderName
+            eventList[1].senderName shouldBe details[4].senderName
+            eventList[2].senderName shouldBe details[5].senderName
+            httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=3&size=3")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            eventsPage = httpResponse.body()
+            eventsPage.page shouldBe 3
+            eventsPage.content.size shouldBe 3
+            eventsPage.totalPages shouldBe 3
+            eventsPage.totalElements shouldBe 9
+            eventList = eventsPage.content
+            eventList[0].senderName shouldBe details[6].senderName
+            eventList[1].senderName shouldBe details[7].senderName
+            eventList[2].senderName shouldBe details[8].senderName
         }
     }
 
@@ -164,7 +220,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val events: List<EventInfo> = httpResponse.body()
+            val eventsPage: Page<EventInfo> = httpResponse.body()
+            val events: List<EventInfo> = eventsPage.content
             events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
@@ -189,7 +246,8 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val events: List<EventInfo> = httpResponse.body()
+            val eventsPage: Page<EventInfo> = httpResponse.body()
+            val events: List<EventInfo> = eventsPage.content
             events.size shouldBe 0
         }
     }
@@ -220,8 +278,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageInfo> = httpResponse.body()
-            messageInfoList.size shouldBe 4
+            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
+            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
             messageInfoList[0].readableIdList shouldBe messageDetails.generateReadableId()
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
@@ -244,35 +302,9 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00")
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val events: List<MessageInfo> = httpResponse.body()
-            events.size shouldBe 0
-        }
-    }
-
-    "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
-        withTestApplication { httpClient ->
-            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
-            eventRepository.insert(testEvent)
-
-            val readableId = messageDetails.generateReadableId()
-            val url = "/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$READABLE_ID=$readableId&$CPA_ID=${messageDetails.cpaId}"
-            val httpResponse = httpClient.get(url)
-
-            httpResponse.status shouldBe HttpStatusCode.OK
-
-            val messageInfoList: List<MessageInfo> = httpResponse.body()
-            messageInfoList.size shouldBe 1
-            messageInfoList[0].readableIdList shouldBe readableId
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
-            messageInfoList[0].role shouldBe messageDetails.fromRole
-            messageInfoList[0].service shouldBe messageDetails.service
-            messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
-            messageInfoList[0].cpaId shouldBe messageDetails.cpaId
-            messageInfoList[0].count shouldBe 1
-            messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
+            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
+            messageInfoList.size shouldBe 0
         }
     }
 

@@ -6,6 +6,7 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.Event
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -97,10 +98,54 @@ class EventRepositoryTest : StringSpec({
         val retrievedEvents = eventRepository.findByTimeInterval(
             Instant.parse("2025-04-01T14:00:00Z"),
             Instant.parse("2025-04-01T15:00:00Z")
-        )
+        ).content
 
         retrievedEvents.size shouldBe 1
         retrievedEvents shouldContain eventInTimeInterval
+    }
+
+    "Should find events by time interval, page by page" {
+
+        val events: MutableList<Event> = ArrayList()
+        for (i in 1..9) {
+            val id = "no$i"
+            val ts = "2025-04-01T14:0$i:00.000Z"
+            val event = buildTestEvent().copy(contentId = id, createdAt = Instant.parse(ts))
+            eventRepository.insert(event)
+            events.add(event)
+        }
+
+        val page1 = Pageable(1, 4)
+        val from = Instant.parse("2025-04-01T14:00:00Z")
+        val to = Instant.parse("2025-04-01T15:00:00Z")
+        var retrievedEvents = eventRepository.findByTimeInterval(from, to, page1)
+        retrievedEvents.page shouldBe 1
+        retrievedEvents.content.size shouldBe 4
+        retrievedEvents.totalPages shouldBe 3
+        retrievedEvents.totalElements shouldBe 9
+        retrievedEvents.content shouldContain events[0]
+        retrievedEvents.content shouldContain events[1]
+        retrievedEvents.content shouldContain events[2]
+        retrievedEvents.content shouldContain events[3]
+
+        val page2 = page1.next()
+        retrievedEvents = eventRepository.findByTimeInterval(from, to, page2)
+        retrievedEvents.page shouldBe 2
+        retrievedEvents.content.size shouldBe 4
+        retrievedEvents.totalPages shouldBe 3
+        retrievedEvents.totalElements shouldBe 9
+        retrievedEvents.content shouldContain events[4]
+        retrievedEvents.content shouldContain events[5]
+        retrievedEvents.content shouldContain events[6]
+        retrievedEvents.content shouldContain events[7]
+
+        val page3 = page2.next()
+        retrievedEvents = eventRepository.findByTimeInterval(from, to, page3)
+        retrievedEvents.page shouldBe 3
+        retrievedEvents.content.size shouldBe 1
+        retrievedEvents.totalPages shouldBe 3
+        retrievedEvents.totalElements shouldBe 9
+        retrievedEvents.content shouldContain events[8]
     }
 }) {
     companion object {

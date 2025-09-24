@@ -5,6 +5,8 @@ import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageLogInfo
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.route.validation.Validation
@@ -38,13 +40,14 @@ class EventService(
         }
     }
 
-    suspend fun fetchEvents(from: Instant, to: Instant): List<EventInfo> {
-        val eventsList = eventRepository.findByTimeInterval(from, to, 1000)
+    suspend fun fetchEvents(from: Instant, to: Instant, pageable: Pageable? = null): Page<EventInfo> {
+        val eventsPage = eventRepository.findByTimeInterval(from, to, pageable)
+        val eventsList = eventsPage.content
         val requestIds = eventsList.map { it.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)
         var numberOfRequestIdsNotFound = 0
-        return eventsList.map {
+        val resultList = eventsList.map {
             val ebmsMessageDetail = messageDetailsMap[it.requestId]
             if (ebmsMessageDetail == null) numberOfRequestIdsNotFound++
             EventInfo(
@@ -61,6 +64,7 @@ class EventService(
         }.toList().also {
             if (numberOfRequestIdsNotFound > 0) log.warn("Number of requestIds not found: $numberOfRequestIdsNotFound")
         }
+        return Page(eventsPage.page, eventsPage.size, eventsPage.totalElements, resultList)
     }
 
     suspend fun fetchMessageLogInfo(id: String): List<MessageLogInfo> {

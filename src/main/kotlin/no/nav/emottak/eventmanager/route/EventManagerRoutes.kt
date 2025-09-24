@@ -6,6 +6,8 @@ import io.ktor.server.routing.get
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_NUMBER
+import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_SIZE
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.route.validation.Validation
@@ -22,12 +24,21 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
         val fromDate = Validation.parseDate(call.request.queryParameters[FROM_DATE]!!)
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
 
-        log.debug("Retrieving events from database")
-        val events = eventService.fetchEvents(fromDate, toDate)
-        log.debug("Events retrieved: ${events.size}")
+        val pageable = Validation.getPageable(
+            call,
+            call.request.queryParameters[PAGE_NUMBER],
+            call.request.queryParameters[PAGE_SIZE],
+            50
+        )
+        if (pageable == null) return@get
+
+        log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize}")
+        val eventsPage = eventService.fetchEvents(fromDate, toDate, pageable)
+        val events = eventsPage.content
+        log.debug("Events retrieved: ${events.size} of total ${eventsPage.totalElements}")
         log.debug("The last event: {}", events.lastOrNull())
 
-        call.respond(events)
+        call.respond(eventsPage)
     }
 
     get("/message-details/{$ID}/events") {
@@ -50,12 +61,21 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
         val readableId = call.request.queryParameters[READABLE_ID] ?: ""
         val cpaId = call.request.queryParameters[CPA_ID] ?: ""
 
-        log.debug("Retrieving message details from database")
-        val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId)
-        log.debug("Message details retrieved: ${messageDetails.size}")
+        val pageable = Validation.getPageable(
+            call,
+            call.request.queryParameters[PAGE_NUMBER],
+            call.request.queryParameters[PAGE_SIZE],
+            50
+        )
+        if (pageable == null) return@get
+
+        log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize}")
+        val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, pageable)
+        val messageDetails = messageDetailsPage.content
+        log.debug("Message details retrieved: ${messageDetails.size} of total ${messageDetailsPage.totalElements}")
         log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 
-        call.respond(messageDetails)
+        call.respond(messageDetailsPage)
     }
 
     get("/message-details/{$ID}") {
