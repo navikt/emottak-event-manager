@@ -147,16 +147,18 @@ class EbmsMessageDetailRepository(private val database: Database) {
         from: Instant,
         to: Instant,
         limit: Int? = null,
-        readableId: String = "",
-        cpaId: String = ""
+        readableIdPattern: String = "",
+        cpaIdPattern: String = "",
+        messageIdPattern: String = ""
     ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { savedAt.between(from, to) }
                 .apply {
-                    if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
-                    if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
+                    if (readableIdPattern != "") this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+                    if (cpaIdPattern != "") this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+                    if (messageIdPattern != "") this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
                     if (limit != null) this.limit(limit)
                 }
                 .mapNotNull {

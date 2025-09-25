@@ -8,6 +8,7 @@ import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.route.validation.Validation
@@ -56,9 +57,10 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
             val readableId = call.request.queryParameters[READABLE_ID] ?: ""
             val cpaId = call.request.queryParameters[CPA_ID] ?: ""
+            val messageId = call.request.queryParameters[MESSAGE_ID] ?: ""
 
             log.debug("Retrieving message details from database")
-            val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId)
+            val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId)
             log.debug("Message details retrieved: ${messageDetails.size}")
             log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 
