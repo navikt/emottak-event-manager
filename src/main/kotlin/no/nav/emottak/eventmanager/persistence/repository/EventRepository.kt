@@ -133,9 +133,9 @@ class EventRepository(private val database: Database) {
                 .select(EventTable.columns)
                 .where { createdAt.between(from, to) }
                 .apply {
-                    if (role != "") this.andWhere { EbmsMessageDetailTable.fromRole eq role }
-                    if (service != "") this.andWhere { EbmsMessageDetailTable.service eq service }
-                    if (action != "") this.andWhere { EbmsMessageDetailTable.action eq action }
+                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
                     if (limit != null) this.limit(limit)
                 }
                 .mapNotNull {
