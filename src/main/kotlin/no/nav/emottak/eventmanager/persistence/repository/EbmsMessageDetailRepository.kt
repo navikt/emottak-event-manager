@@ -147,8 +147,9 @@ class EbmsMessageDetailRepository(private val database: Database) {
         from: Instant,
         to: Instant,
         limit: Int? = null,
-        readableId: String = "",
-        cpaId: String = "",
+        readableIdPattern: String = "",
+        cpaIdPattern: String = "",
+        messageIdPattern: String = "",
         role: String = "",
         service: String = "",
         action: String = ""
@@ -158,8 +159,9 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .select(EbmsMessageDetailTable.columns)
                 .where { savedAt.between(from, to) }
                 .apply {
-                    if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
-                    if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
+                    if (readableIdPattern != "") this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+                    if (cpaIdPattern != "") this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+                    if (messageIdPattern != "") this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
                     if (role != "") this.andWhere { EbmsMessageDetailTable.fromRole eq role }
                     if (service != "") this.andWhere { EbmsMessageDetailTable.service eq service }
                     if (action != "") this.andWhere { EbmsMessageDetailTable.action eq action }

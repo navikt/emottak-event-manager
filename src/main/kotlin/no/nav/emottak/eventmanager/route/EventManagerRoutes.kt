@@ -7,6 +7,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
@@ -55,12 +56,13 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
         val readableId = call.request.queryParameters[READABLE_ID] ?: ""
         val cpaId = call.request.queryParameters[CPA_ID] ?: ""
+        val messageId = call.request.queryParameters[MESSAGE_ID] ?: ""
         val role = call.request.queryParameters[ROLE] ?: ""
         val service = call.request.queryParameters[SERVICE] ?: ""
         val action = call.request.queryParameters[ACTION] ?: ""
 
         log.debug("Retrieving message details from database")
-        val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, role, service, action)
+        val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action)
         log.debug("Message details retrieved: ${messageDetails.size}")
         log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 
