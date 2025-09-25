@@ -44,9 +44,12 @@ class EbmsMessageDetailService(
         to: Instant,
         readableId: String = "",
         cpaId: String = "",
-        messageId: String = ""
+        messageId: String = "",
+        role: String = "",
+        service: String = "",
+        action: String = ""
     ): List<MessageInfo> {
-        val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000, readableId, cpaId, messageId)
+        val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000, readableId, cpaId, messageId, role, service, action)
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.requestId })
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 

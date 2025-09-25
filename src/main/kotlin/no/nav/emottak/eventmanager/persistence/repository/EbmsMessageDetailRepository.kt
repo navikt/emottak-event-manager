@@ -149,16 +149,22 @@ class EbmsMessageDetailRepository(private val database: Database) {
         limit: Int? = null,
         readableIdPattern: String = "",
         cpaIdPattern: String = "",
-        messageIdPattern: String = ""
+        messageIdPattern: String = "",
+        role: String = "",
+        service: String = "",
+        action: String = ""
     ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             EbmsMessageDetailTable
                 .select(EbmsMessageDetailTable.columns)
                 .where { savedAt.between(from, to) }
                 .apply {
-                    if (readableIdPattern != "") this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
-                    if (cpaIdPattern != "") this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
-                    if (messageIdPattern != "") this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+                    if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+                    if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+                    if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
                     if (limit != null) this.limit(limit)
                 }
                 .mapNotNull {

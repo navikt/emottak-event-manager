@@ -38,7 +38,7 @@ class EventServiceTest : StringSpec({
         val from = Instant.now()
         val to = from.plusSeconds(60)
 
-        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns listOf(testEvent)
+        coEvery { eventRepository.findByTimeInterval(from, to, limit = any()) } returns listOf(testEvent)
         coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
 
         val eventsList = eventService.fetchEvents(from, to)
@@ -47,7 +47,67 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to, 1000) }
+        coVerify { eventRepository.findByTimeInterval(from, to, limit = 1000) }
+        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+    }
+
+    "Should call database repository on fetching events by time interval and filtered by Role" {
+        val roleFilter = "Utleverer"
+        val testEvent = buildTestEvent()
+        val testRequestIds = listOf(testEvent.requestId)
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, limit = any(), role = roleFilter) } returns listOf(testEvent)
+        coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
+
+        val eventsList = eventService.fetchEvents(from, to, role = roleFilter)
+        eventsList.size shouldBe 1
+        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].description shouldBe testEvent.eventType.description
+        eventsList[0].eventData shouldBe testEvent.eventData
+
+        coVerify { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, limit = 1000, role = roleFilter) }
+        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+    }
+
+    "Should call database repository on fetching events by time interval and filtered by Service" {
+        val serviceFilter = "HarBorgerEgenandelFritak"
+        val testEvent = buildTestEvent()
+        val testRequestIds = listOf(testEvent.requestId)
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, limit = any(), service = serviceFilter) } returns listOf(testEvent)
+        coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
+
+        val eventsList = eventService.fetchEvents(from, to, service = serviceFilter)
+        eventsList.size shouldBe 1
+        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].description shouldBe testEvent.eventType.description
+        eventsList[0].eventData shouldBe testEvent.eventData
+
+        coVerify { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, limit = 1000, service = serviceFilter) }
+        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+    }
+
+    "Should call database repository on fetching events by time interval and filtered by Action" {
+        val actionFilter = "EgenandelForesporsel"
+        val testEvent = buildTestEvent()
+        val testRequestIds = listOf(testEvent.requestId)
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, limit = any(), action = actionFilter) } returns listOf(testEvent)
+        coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
+
+        val eventsList = eventService.fetchEvents(from, to, action = actionFilter)
+        eventsList.size shouldBe 1
+        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].description shouldBe testEvent.eventType.description
+        eventsList[0].eventData shouldBe testEvent.eventData
+
+        coVerify { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, limit = 1000, action = actionFilter) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 

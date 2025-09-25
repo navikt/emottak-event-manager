@@ -5,6 +5,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.Database
+import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable.contentId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.createdAt
@@ -12,6 +13,9 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
+import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
@@ -99,6 +103,39 @@ class EventRepository(private val database: Database) {
             EventTable.select(EventTable.columns)
                 .where { createdAt.between(from, to) }
                 .apply {
+                    if (limit != null) this.limit(limit)
+                }
+                .mapNotNull {
+                    Event(
+                        eventType = EventType.fromInt(it[eventTypeId]),
+                        requestId = it[requestIdColumn].toKotlinUuid(),
+                        contentId = it[contentId],
+                        messageId = it[messageId],
+                        eventData = Json.encodeToString(it[eventData]),
+                        createdAt = it[createdAt]
+                    )
+                }
+                .toList()
+        }
+    }
+
+    suspend fun findByTimeIntervalJoinMessageDetail(
+        from: Instant,
+        to: Instant,
+        limit: Int? = null,
+        role: String = "",
+        service: String = "",
+        action: String = ""
+    ): List<Event> = withContext(Dispatchers.IO) {
+        transaction {
+            EventTable
+                .join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
+                .select(EventTable.columns)
+                .where { createdAt.between(from, to) }
+                .apply {
+                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
                     if (limit != null) this.limit(limit)
                 }
                 .mapNotNull {
