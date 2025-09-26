@@ -9,4 +9,7 @@ object QueryConstants {
     const val CONVERSATION_ID = "conversationId"
     const val CPA_ID = "cpaId"
     const val READABLE_ID = "readableId"
+    const val ROLE = "role"
+    const val SERVICE = "service"
+    const val ACTION = "action"
 }

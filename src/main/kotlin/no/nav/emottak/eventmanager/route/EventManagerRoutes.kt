@@ -5,11 +5,14 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
 import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
+import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
+import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
@@ -25,9 +28,12 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
 
             val fromDate = Validation.parseDate(call.request.queryParameters[FROM_DATE]!!)
             val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
+            val role = call.request.queryParameters[ROLE] ?: ""
+            val service = call.request.queryParameters[SERVICE] ?: ""
+            val action = call.request.queryParameters[ACTION] ?: ""
 
             log.debug("Retrieving events from database")
-            val events = eventService.fetchEvents(fromDate, toDate)
+            val events = eventService.fetchEvents(fromDate, toDate, role, service, action)
             log.debug("Events retrieved: ${events.size}")
             log.debug("The last event: {}", events.lastOrNull())
 
@@ -58,9 +64,12 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             val readableId = call.request.queryParameters[READABLE_ID] ?: ""
             val cpaId = call.request.queryParameters[CPA_ID] ?: ""
             val messageId = call.request.queryParameters[MESSAGE_ID] ?: ""
+            val role = call.request.queryParameters[ROLE] ?: ""
+            val service = call.request.queryParameters[SERVICE] ?: ""
+            val action = call.request.queryParameters[ACTION] ?: ""
 
             log.debug("Retrieving message details from database")
-            val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId)
+            val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action)
             log.debug("Message details retrieved: ${messageDetails.size}")
             log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 
