@@ -1,1 +1,1 @@
-CALL rename_sender_batches(20000);
+CALL rename_sender_batches(100000);
