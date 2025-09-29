@@ -11,13 +11,6 @@ spec:
       enabled: true
   webproxy: true
   image: {{image}}
-  startup:
-    path: "/internal/health/liveness"
-    port: 8080
-    initialDelay: 600
-    timeout: 60
-    failureThreshold: 10
-    periodSeconds: 60
   liveness:
     path: "/internal/health/liveness"
     port: 8080
