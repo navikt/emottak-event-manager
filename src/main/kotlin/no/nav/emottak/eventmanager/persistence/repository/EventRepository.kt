@@ -16,8 +16,6 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -107,9 +105,11 @@ class EventRepository(private val database: Database) {
             val list =
                 EventTable.select(EventTable.columns)
                     .where { createdAt.between(from, to) }
-                    .orderBy(createdAt, SortOrder.ASC)
                     .apply {
-                        if (pageable != null) this.limit(pageable.pageSize, pageable.offset)
+                        if (pageable != null) {
+                            this.limit(pageable.pageSize, pageable.offset)
+                            this.orderBy(createdAt, pageable.getSortOrder())
+                        }
                     }
                     .mapNotNull {
                         Event(
@@ -124,7 +124,7 @@ class EventRepository(private val database: Database) {
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, totalCount, list)
+            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 
@@ -137,7 +137,14 @@ class EventRepository(private val database: Database) {
         pageable: Pageable? = null
     ): Page<Event> = withContext(Dispatchers.IO) {
         transaction {
-            val totalCount = EventTable.select(createdAt).where { createdAt.between(from, to) }.count()
+            val totalCount = EventTable.join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
+                .select(createdAt).where { createdAt.between(from, to) }
+                .apply {
+                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+                }
+                .count()
             val list =
                 EventTable
                     .join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
@@ -147,7 +154,10 @@ class EventRepository(private val database: Database) {
                         if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
                         if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
                         if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
-                        if (pageable != null) this.limit(pageable.pageSize, pageable.offset)
+                        if (pageable != null) {
+                            this.limit(pageable.pageSize, pageable.offset)
+                            this.orderBy(createdAt, pageable.getSortOrder())
+                        }
                     }
                     .mapNotNull {
                         Event(
@@ -162,7 +172,7 @@ class EventRepository(private val database: Database) {
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, totalCount, list)
+            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 }

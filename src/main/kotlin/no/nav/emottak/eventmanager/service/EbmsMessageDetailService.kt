@@ -76,7 +76,7 @@ class EbmsMessageDetailService(
                 status = messageStatus
             )
         }
-        return Page(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.totalElements, resultList)
+        return Page(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.sort, messageDetailsPage.totalElements, resultList)
     }
 
     suspend fun fetchEbmsMessageDetails(id: String): List<ReadableIdInfo> {

@@ -14,7 +14,6 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -31,6 +30,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
@@ -175,7 +175,8 @@ class ApplicationTest : StringSpec({
                 details.add(testMessageDetails)
             }
 
-            var httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3")
+            // default should be descending, try both with explicit sorting and without
+            var httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc")
             httpResponse.status shouldBe HttpStatusCode.OK
             var eventsPage: Page<EventInfo> = httpResponse.body()
             eventsPage.page shouldBe 1
@@ -183,9 +184,9 @@ class ApplicationTest : StringSpec({
             eventsPage.totalPages shouldBe 3
             eventsPage.totalElements shouldBe 9
             var eventList: List<EventInfo> = eventsPage.content
-            eventList[0].senderName shouldBe details[0].senderName
-            eventList[1].senderName shouldBe details[1].senderName
-            eventList[2].senderName shouldBe details[2].senderName
+            eventList[0].senderName shouldBe details[8].senderName
+            eventList[1].senderName shouldBe details[7].senderName
+            eventList[2].senderName shouldBe details[6].senderName
             httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=2&size=3")
             httpResponse.status shouldBe HttpStatusCode.OK
             eventsPage = httpResponse.body()
@@ -194,9 +195,9 @@ class ApplicationTest : StringSpec({
             eventsPage.totalPages shouldBe 3
             eventsPage.totalElements shouldBe 9
             eventList = eventsPage.content
-            eventList[0].senderName shouldBe details[3].senderName
+            eventList[0].senderName shouldBe details[5].senderName
             eventList[1].senderName shouldBe details[4].senderName
-            eventList[2].senderName shouldBe details[5].senderName
+            eventList[2].senderName shouldBe details[3].senderName
             httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=3&size=3")
             httpResponse.status shouldBe HttpStatusCode.OK
             eventsPage = httpResponse.body()
@@ -205,9 +206,9 @@ class ApplicationTest : StringSpec({
             eventsPage.totalPages shouldBe 3
             eventsPage.totalElements shouldBe 9
             eventList = eventsPage.content
-            eventList[0].senderName shouldBe details[6].senderName
-            eventList[1].senderName shouldBe details[7].senderName
-            eventList[2].senderName shouldBe details[8].senderName
+            eventList[0].senderName shouldBe details[2].senderName
+            eventList[1].senderName shouldBe details[1].senderName
+            eventList[2].senderName shouldBe details[0].senderName
         }
     }
 
@@ -275,12 +276,10 @@ class ApplicationTest : StringSpec({
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00")
+            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc")
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageDetailsPagetext: String = httpResponse.bodyAsText()
-            println("-----------------------------" + messageDetailsPagetext + "-----------------------------")
             val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
             val messageInfoList: List<MessageInfo> = messageDetailsPage.content
             messageInfoList[0].readableIdList shouldBe messageDetails.generateReadableId()

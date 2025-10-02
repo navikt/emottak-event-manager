@@ -75,7 +75,7 @@ class EventService(
         }.toList().also {
             if (numberOfRequestIdsNotFound > 0) log.warn("Number of requestIds not found: $numberOfRequestIdsNotFound")
         }
-        return Page(eventsPage.page, eventsPage.size, eventsPage.totalElements, resultList)
+        return Page(eventsPage.page, eventsPage.size, eventsPage.sort, eventsPage.totalElements, resultList)
     }
 
     suspend fun fetchMessageLogInfo(id: String): List<MessageLogInfo> {

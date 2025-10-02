@@ -13,6 +13,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_SIZE
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
+import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
@@ -35,11 +36,12 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             call,
             call.request.queryParameters[PAGE_NUMBER],
             call.request.queryParameters[PAGE_SIZE],
+            call.request.queryParameters[SORT],
             50
         )
         if (pageable == null) return@get
 
-        log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize}")
+        log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
         val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, pageable)
         val events = eventsPage.content
         log.debug("Events retrieved: ${events.size} of total ${eventsPage.totalElements}")
@@ -76,11 +78,12 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             call,
             call.request.queryParameters[PAGE_NUMBER],
             call.request.queryParameters[PAGE_SIZE],
+            call.request.queryParameters[SORT],
             50
         )
         if (pageable == null) return@get
 
-        log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize}")
+        log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
         val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetails = messageDetailsPage.content
         log.debug("Message details retrieved: ${messageDetails.size} of total ${messageDetailsPage.totalElements}")

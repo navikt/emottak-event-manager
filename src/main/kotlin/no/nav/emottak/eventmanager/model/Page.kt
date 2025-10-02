@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 data class Page<T> (
     val page: Int,
     val size: Int,
+    val sort: String? = null,
     val totalElements: Long,
     val content: List<T>
 ) {

@@ -60,6 +60,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -97,6 +98,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -133,6 +135,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -226,6 +229,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -258,6 +262,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -284,6 +289,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )

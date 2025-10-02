@@ -131,8 +131,14 @@ object Validation {
         }
     }
 
-    suspend fun getPageable(call: RoutingCall, pageNumberParameter: String?, pageSizeParameter: String?, defaultSize: Int): Pageable? {
-        log.info("Building Pageable from given page number $pageNumberParameter, given page size $pageSizeParameter and default size: $defaultSize")
+    suspend fun getPageable(
+        call: RoutingCall,
+        pageNumberParameter: String?,
+        pageSizeParameter: String?,
+        sortOrderParameter: String?,
+        defaultSize: Int
+    ): Pageable? {
+        log.info("Building Pageable from given page number $pageNumberParameter, given page size $pageSizeParameter, sort order $sortOrderParameter and default size: $defaultSize")
         var pageSize = defaultSize
         if (!pageSizeParameter.isNullOrBlank()) {
             pageSize = pageSizeParameter.toInt()
@@ -147,7 +153,12 @@ object Validation {
         if (!pageNumberParameter.isNullOrBlank()) {
             pageNumber = pageNumberParameter.toInt()
         }
-        log.info("Returning Pageable with page number $pageNumber, page size $pageSize")
-        return Pageable(pageNumber, pageSize)
+        var sortOrder = "DESC"
+        if (!sortOrderParameter.isNullOrBlank()) {
+            sortOrder = sortOrderParameter
+        }
+
+        log.info("Returning Pageable with page number $pageNumber, page size $pageSize, sort order $sortOrder")
+        return Pageable(pageNumber, pageSize, sortOrder)
     }
 }

@@ -252,6 +252,49 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[0].messageId shouldBe details[8].messageId
     }
 
+    "Should retrieve records by time interval, page by page, DESCENDING" {
+        val details: MutableList<EbmsMessageDetail> = ArrayList()
+        for (i in 1..9) {
+            val id = "no$i"
+            val ts = "2025-04-01T14:0$i:00.000Z"
+            val detail = buildTestEbmsMessageDetail().copy(messageId = id, savedAt = Instant.parse(ts))
+            repository.insert(detail)
+            details.add(detail)
+        }
+
+        val page1 = Pageable(1, 4, "DESC")
+        val from = Instant.parse("2025-04-01T14:00:00Z")
+        val to = Instant.parse("2025-04-01T15:00:00Z")
+        var retrievedDetails = repository.findByTimeInterval(from, to, pageable = page1)
+        retrievedDetails.page shouldBe 1
+        retrievedDetails.content.size shouldBe 4
+        retrievedDetails.totalPages shouldBe 3
+        retrievedDetails.totalElements shouldBe 9
+        retrievedDetails.content[0].messageId shouldBe details[8].messageId
+        retrievedDetails.content[1].messageId shouldBe details[7].messageId
+        retrievedDetails.content[2].messageId shouldBe details[6].messageId
+        retrievedDetails.content[3].messageId shouldBe details[5].messageId
+
+        val page2 = page1.next()
+        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page2)
+        retrievedDetails.page shouldBe 2
+        retrievedDetails.content.size shouldBe 4
+        retrievedDetails.totalPages shouldBe 3
+        retrievedDetails.totalElements shouldBe 9
+        retrievedDetails.content[0].messageId shouldBe details[4].messageId
+        retrievedDetails.content[1].messageId shouldBe details[3].messageId
+        retrievedDetails.content[2].messageId shouldBe details[2].messageId
+        retrievedDetails.content[3].messageId shouldBe details[1].messageId
+
+        val page3 = page2.next()
+        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page3)
+        retrievedDetails.page shouldBe 3
+        retrievedDetails.content.size shouldBe 1
+        retrievedDetails.totalPages shouldBe 3
+        retrievedDetails.totalElements shouldBe 9
+        retrievedDetails.content[0].messageId shouldBe details[0].messageId
+    }
+
     "Should retrieve empty list if no message details within given time interval" {
         buildAndInsertTestEbmsMessageDetailFindData(repository)
         val retrievedDetails = repository.findByTimeInterval(

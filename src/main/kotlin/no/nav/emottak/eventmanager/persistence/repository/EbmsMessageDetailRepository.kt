@@ -25,7 +25,6 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPa
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
@@ -171,7 +170,6 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 EbmsMessageDetailTable
                     .select(EbmsMessageDetailTable.columns)
                     .where { savedAt.between(from, to) }
-                    .orderBy(savedAt, SortOrder.ASC)
                     .apply {
                         if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
                         if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
@@ -179,7 +177,10 @@ class EbmsMessageDetailRepository(private val database: Database) {
                         if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
                         if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
                         if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
-                        if (pageable != null) this.limit(pageable.pageSize, pageable.offset)
+                        if (pageable != null) {
+                            this.limit(pageable.pageSize, pageable.offset)
+                            this.orderBy(savedAt, pageable.getSortOrder())
+                        }
                     }
                     .mapNotNull {
                         toEbmsMessageDetail(it)
@@ -187,7 +188,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, totalCount, list)
+            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 

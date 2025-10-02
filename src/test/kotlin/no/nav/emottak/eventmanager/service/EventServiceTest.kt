@@ -45,6 +45,7 @@ class EventServiceTest : StringSpec({
         coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -73,6 +74,7 @@ class EventServiceTest : StringSpec({
         coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role = roleFilter) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -101,6 +103,7 @@ class EventServiceTest : StringSpec({
         coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, service = serviceFilter) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
@@ -129,6 +132,7 @@ class EventServiceTest : StringSpec({
         coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, action = actionFilter) } returns Page(
             pageable.pageNumber,
             pageable.pageSize,
+            "ASC",
             list.size.toLong(),
             list
         )
