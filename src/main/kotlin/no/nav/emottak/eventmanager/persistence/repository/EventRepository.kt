@@ -15,8 +15,8 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert

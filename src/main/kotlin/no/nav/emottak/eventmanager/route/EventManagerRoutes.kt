@@ -7,9 +7,9 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_NUMBER
 import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_SIZE
-import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE

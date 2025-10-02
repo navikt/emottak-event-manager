@@ -222,7 +222,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         val page1 = Pageable(1, 4)
         val from = Instant.parse("2025-04-01T14:00:00Z")
         val to = Instant.parse("2025-04-01T15:00:00Z")
-        var retrievedDetails = repository.findByTimeInterval(from, to, "", "", page1)
+        var retrievedDetails = repository.findByTimeInterval(from, to, pageable = page1)
         retrievedDetails.page shouldBe 1
         retrievedDetails.content.size shouldBe 4
         retrievedDetails.totalPages shouldBe 3
@@ -233,7 +233,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[3].messageId shouldBe details[3].messageId
 
         val page2 = page1.next()
-        retrievedDetails = repository.findByTimeInterval(from, to, "", "", page2)
+        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page2)
         retrievedDetails.page shouldBe 2
         retrievedDetails.content.size shouldBe 4
         retrievedDetails.totalPages shouldBe 3
@@ -244,7 +244,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[3].messageId shouldBe details[7].messageId
 
         val page3 = page2.next()
-        retrievedDetails = repository.findByTimeInterval(from, to, "", "", page3)
+        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page3)
         retrievedDetails.page shouldBe 3
         retrievedDetails.content.size shouldBe 1
         retrievedDetails.totalPages shouldBe 3

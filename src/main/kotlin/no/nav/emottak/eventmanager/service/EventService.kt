@@ -46,7 +46,8 @@ class EventService(
         role: String = "",
         service: String = "",
         action: String = "",
-        pageable: Pageable? = null): Page<EventInfo> {
+        pageable: Pageable? = null
+    ): Page<EventInfo> {
         val eventsPage = if (role.isNotEmpty() || service.isNotEmpty() || action.isNotEmpty()) {
             eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role, service, action, pageable)
         } else {

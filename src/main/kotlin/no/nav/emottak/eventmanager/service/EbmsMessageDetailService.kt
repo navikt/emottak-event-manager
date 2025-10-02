@@ -50,7 +50,7 @@ class EbmsMessageDetailService(
         role: String = "",
         service: String = "",
         action: String = "",
-        pageable: Pageable?
+        pageable: Pageable? = null
     ): Page<MessageInfo> {
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
