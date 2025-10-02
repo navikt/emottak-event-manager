@@ -12,4 +12,7 @@ object QueryConstants {
     const val ROLE = "role"
     const val SERVICE = "service"
     const val ACTION = "action"
+    const val PAGE_NUMBER = "page"
+    const val PAGE_SIZE = "size"
+    const val SORT = "sort"
 }
