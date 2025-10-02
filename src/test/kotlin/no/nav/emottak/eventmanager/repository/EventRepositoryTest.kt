@@ -9,6 +9,7 @@ import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.utils.kafka.model.EventType
 import org.testcontainers.containers.PostgreSQLContainer
@@ -21,6 +22,7 @@ class EventRepositoryTest : StringSpec({
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
     lateinit var db: Database
     lateinit var eventRepository: EventRepository
+    lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
 
     beforeSpec {
         dbContainer = buildDatabaseContainer()
@@ -28,6 +30,7 @@ class EventRepositoryTest : StringSpec({
         db = Database(dbContainer.testConfiguration())
         db.migrate(db.dataSource)
         eventRepository = EventRepository(db)
+        ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
     }
 
     afterSpec {
@@ -146,6 +149,74 @@ class EventRepositoryTest : StringSpec({
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
         retrievedEvents.content shouldContain events[8]
+    }
+    "Should retrieve events by time interval and filtered by Role" {
+        val roleFilter = "Utleverer"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(fromRole = roleFilter)
+
+        val event1 = buildTestEvent().copy(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent().copy(requestId = messageDetails2.requestId)
+
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+            Instant.parse("2025-04-01T12:00:00Z"),
+            Instant.parse("2025-04-01T13:00:00Z"),
+            role = roleFilter
+        ).content
+
+        retrievedEvents.size shouldBe 1
+        retrievedEvents shouldContain event2
+    }
+
+    "Should retrieve events by time interval and filtered by Service" {
+        val serviceFilter = "HarBorgerEgenandelFritak"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(service = serviceFilter)
+
+        val event1 = buildTestEvent().copy(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent().copy(requestId = messageDetails2.requestId)
+
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+            Instant.parse("2025-04-01T12:00:00Z"),
+            Instant.parse("2025-04-01T13:00:00Z"),
+            service = serviceFilter
+        ).content
+
+        retrievedEvents.size shouldBe 1
+        retrievedEvents shouldContain event2
+    }
+
+    "Should retrieve events by time interval and filtered by Action" {
+        val actionFilter = "EgenandelForesporsel"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(action = actionFilter)
+
+        val event1 = buildTestEvent().copy(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent().copy(requestId = messageDetails2.requestId)
+
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+            Instant.parse("2025-04-01T12:00:00Z"),
+            Instant.parse("2025-04-01T13:00:00Z"),
+            action = actionFilter
+        ).content
+
+        retrievedEvents.size shouldBe 1
+        retrievedEvents shouldContain event2
     }
 }) {
     companion object {

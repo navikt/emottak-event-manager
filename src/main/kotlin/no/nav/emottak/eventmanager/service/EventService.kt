@@ -40,8 +40,18 @@ class EventService(
         }
     }
 
-    suspend fun fetchEvents(from: Instant, to: Instant, pageable: Pageable? = null): Page<EventInfo> {
-        val eventsPage = eventRepository.findByTimeInterval(from, to, pageable)
+    suspend fun fetchEvents(
+        from: Instant,
+        to: Instant,
+        role: String = "",
+        service: String = "",
+        action: String = "",
+        pageable: Pageable? = null): Page<EventInfo> {
+        val eventsPage = if (role.isNotEmpty() || service.isNotEmpty() || action.isNotEmpty()) {
+            eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role, service, action, pageable)
+        } else {
+            eventRepository.findByTimeInterval(from, to, pageable)
+        }
         val eventsList = eventsPage.content
         val requestIds = eventsList.map { it.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")

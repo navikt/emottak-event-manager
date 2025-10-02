@@ -6,7 +6,7 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
-import org.jetbrains.exposed.sql.json.json
+import org.jetbrains.exposed.sql.json.jsonb
 import java.util.UUID
 
 object EventTable : Table("events") {
@@ -16,7 +16,7 @@ object EventTable : Table("events") {
     val requestId: Column<UUID> = uuid("request_id")
     val contentId: Column<String?> = varchar("content_id", 256).nullable()
     val messageId: Column<String> = varchar("message_id", 256)
-    val eventData: Column<Map<String, String>> = json(
+    val eventData: Column<Map<String, String>> = jsonb(
         "event_data",
         Json,
         MapSerializer(String.serializer(), String.serializer())

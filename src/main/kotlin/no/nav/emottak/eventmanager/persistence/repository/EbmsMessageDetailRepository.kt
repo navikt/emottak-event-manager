@@ -149,15 +149,23 @@ class EbmsMessageDetailRepository(private val database: Database) {
     suspend fun findByTimeInterval(
         from: Instant,
         to: Instant,
-        readableId: String = "",
-        cpaId: String = "",
+        readableIdPattern: String = "",
+        cpaIdPattern: String = "",
+        messageIdPattern: String = "",
+        role: String = "",
+        service: String = "",
+        action: String = "",
         pageable: Pageable? = null
     ): Page<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
                 .apply {
-                    if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
-                    if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
+                    if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+                    if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+                    if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
                 }.count()
             val list =
                 EbmsMessageDetailTable
@@ -165,8 +173,12 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     .where { savedAt.between(from, to) }
                     .orderBy(savedAt, SortOrder.ASC)
                     .apply {
-                        if (readableId != "") this.andWhere { EbmsMessageDetailTable.readableId eq readableId }
-                        if (cpaId != "") this.andWhere { EbmsMessageDetailTable.cpaId eq cpaId }
+                        if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+                        if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+                        if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+                        if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                        if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                        if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
                         if (pageable != null) this.limit(pageable.pageSize, pageable.offset)
                     }
                     .mapNotNull {

@@ -41,8 +41,18 @@ class EbmsMessageDetailService(
         }
     }
 
-    suspend fun fetchEbmsMessageDetails(from: Instant, to: Instant, readableId: String = "", cpaId: String = "", pageable: Pageable?): Page<MessageInfo> {
-        val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, pageable)
+    suspend fun fetchEbmsMessageDetails(
+        from: Instant,
+        to: Instant,
+        readableId: String = "",
+        cpaId: String = "",
+        messageId: String = "",
+        role: String = "",
+        service: String = "",
+        action: String = "",
+        pageable: Pageable?
+    ): Page<MessageInfo> {
+        val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.requestId })
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })

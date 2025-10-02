@@ -65,4 +65,4 @@ spec:
     - name: ENABLE_EVENT_RECEIVER
       value: "true"
     - name: EMOTTAK_LOGGING_LEVEL
-      value: INFO
+      value: DEBUG
