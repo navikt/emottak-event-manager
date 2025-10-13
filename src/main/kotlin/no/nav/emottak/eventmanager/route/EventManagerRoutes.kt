@@ -10,9 +10,12 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_NUMBER
+import no.nav.emottak.eventmanager.constants.QueryConstants.PAGE_SIZE
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
+import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
@@ -22,6 +25,7 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
 fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
+
     authenticate(AZURE_AD_AUTH) {
         get("/events") {
             if (!Validation.validateDateRangeRequest(call)) return@get
@@ -32,13 +36,22 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             val service = call.request.queryParameters[SERVICE] ?: ""
             val action = call.request.queryParameters[ACTION] ?: ""
 
-            log.debug("Retrieving events from database")
-            val events = eventService.fetchEvents(fromDate, toDate, role, service, action)
-            log.debug("Events retrieved: ${events.size}")
+            val pageable = Validation.getPageable(
+                call,
+                call.request.queryParameters[PAGE_NUMBER],
+                call.request.queryParameters[PAGE_SIZE],
+                call.request.queryParameters[SORT],
+                50
+            )
+            if (pageable == null) return@get
+
+            log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
+            val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, pageable)
+            val events = eventsPage.content
+            log.debug("Events retrieved: ${events.size} of total ${eventsPage.totalElements}")
             log.debug("The last event: {}", events.lastOrNull())
 
-            call.respond(events)
-        }
+            call.respond(eventsPage)
     }
 
     authenticate(AZURE_AD_AUTH) {
@@ -68,14 +81,23 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             val service = call.request.queryParameters[SERVICE] ?: ""
             val action = call.request.queryParameters[ACTION] ?: ""
 
-            log.debug("Retrieving message details from database")
-            val messageDetails = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action)
-            log.debug("Message details retrieved: ${messageDetails.size}")
+            val pageable = Validation.getPageable(
+                call,
+                call.request.queryParameters[PAGE_NUMBER],
+                call.request.queryParameters[PAGE_SIZE],
+                call.request.queryParameters[SORT],
+                50
+            )
+            if (pageable == null) return@get
+
+            log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
+            val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action, pageable)
+            val messageDetails = messageDetailsPage.content
+            log.debug("Message details retrieved: ${messageDetails.size} of total ${messageDetailsPage.totalElements}")
             log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 
-            call.respond(messageDetails)
+            call.respond(messageDetailsPage)
         }
-    }
 
     authenticate(AZURE_AD_AUTH) {
         get("/message-details/{$ID}") {

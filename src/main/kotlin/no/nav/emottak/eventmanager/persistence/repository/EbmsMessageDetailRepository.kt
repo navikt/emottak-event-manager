@@ -3,6 +3,8 @@ package no.nav.emottak.eventmanager.persistence.repository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.action
@@ -146,18 +148,16 @@ class EbmsMessageDetailRepository(private val database: Database) {
     suspend fun findByTimeInterval(
         from: Instant,
         to: Instant,
-        limit: Int? = null,
         readableIdPattern: String = "",
         cpaIdPattern: String = "",
         messageIdPattern: String = "",
         role: String = "",
         service: String = "",
-        action: String = ""
-    ): List<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+        action: String = "",
+        pageable: Pageable? = null
+    ): Page<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
-            EbmsMessageDetailTable
-                .select(EbmsMessageDetailTable.columns)
-                .where { savedAt.between(from, to) }
+            val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
                 .apply {
                     if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
                     if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
@@ -165,12 +165,30 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
                     if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
                     if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
-                    if (limit != null) this.limit(limit)
-                }
-                .mapNotNull {
-                    toEbmsMessageDetail(it)
-                }
-                .toList()
+                }.count()
+            val list =
+                EbmsMessageDetailTable
+                    .select(EbmsMessageDetailTable.columns)
+                    .where { savedAt.between(from, to) }
+                    .apply {
+                        if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+                        if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+                        if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+                        if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+                        if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+                        if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+                        if (pageable != null) {
+                            this.limit(pageable.pageSize, pageable.offset)
+                            this.orderBy(savedAt, pageable.getSortOrder())
+                        }
+                    }
+                    .mapNotNull {
+                        toEbmsMessageDetail(it)
+                    }
+                    .toList()
+            var returnPageable = pageable
+            if (returnPageable == null) returnPageable = Pageable(1, list.size)
+            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 

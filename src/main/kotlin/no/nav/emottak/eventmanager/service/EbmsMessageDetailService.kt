@@ -5,6 +5,8 @@ import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.MessageInfo
+import no.nav.emottak.eventmanager.model.Page
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -47,13 +49,15 @@ class EbmsMessageDetailService(
         messageId: String = "",
         role: String = "",
         service: String = "",
-        action: String = ""
-    ): List<MessageInfo> {
-        val messageDetailsList = ebmsMessageDetailRepository.findByTimeInterval(from, to, 1000, readableId, cpaId, messageId, role, service, action)
+        action: String = "",
+        pageable: Pageable? = null
+    ): Page<MessageInfo> {
+        val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
+        val messageDetailsList = messageDetailsPage.content
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.requestId })
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
-        return messageDetailsList.map {
+        val resultList = messageDetailsList.map {
             val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
             val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
 
@@ -72,6 +76,7 @@ class EbmsMessageDetailService(
                 status = messageStatus
             )
         }
+        return Page(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.sort, messageDetailsPage.totalElements, resultList)
     }
 
     suspend fun fetchEbmsMessageDetails(id: String): List<ReadableIdInfo> {
