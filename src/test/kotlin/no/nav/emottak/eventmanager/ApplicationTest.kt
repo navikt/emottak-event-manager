@@ -29,6 +29,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
@@ -142,12 +143,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(testEvent)
             ebmsMessageDetailRepository.insert(testMessageDetails)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -182,7 +178,7 @@ class ApplicationTest : StringSpec({
             }
 
             // default should be descending, try both with explicit sorting and without
-            var httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc")
+            var httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             var eventsPage: Page<EventInfo> = httpResponse.body()
             eventsPage.page shouldBe 1
@@ -193,7 +189,7 @@ class ApplicationTest : StringSpec({
             eventList[0].senderName shouldBe details[8].senderName
             eventList[1].senderName shouldBe details[7].senderName
             eventList[2].senderName shouldBe details[6].senderName
-            httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=2&size=3")
+            httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=2&size=3", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             eventsPage = httpResponse.body()
             eventsPage.page shouldBe 2
@@ -204,7 +200,7 @@ class ApplicationTest : StringSpec({
             eventList[0].senderName shouldBe details[5].senderName
             eventList[1].senderName shouldBe details[4].senderName
             eventList[2].senderName shouldBe details[3].senderName
-            httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=3&size=3")
+            httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=3&size=3", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             eventsPage = httpResponse.body()
             eventsPage.page shouldBe 3
@@ -224,12 +220,7 @@ class ApplicationTest : StringSpec({
 
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -256,12 +247,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(testEvent)
             ebmsMessageDetailRepository.insert(testMessageDetails)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val eventsPage: Page<EventInfo> = httpResponse.body()
@@ -280,12 +266,7 @@ class ApplicationTest : StringSpec({
                 row("/events?$FROM_DATE=2025-04-01T15:00&$TO_DATE=2025-04-01T14:00"),
                 row("/events")
             ) { url ->
-                val httpResponse = httpClient.get(url) {
-                    header(
-                        "Authorization",
-                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                    )
-                }
+                val httpResponse = httpClient.getWithAuth(url, getToken)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
         }
@@ -315,12 +296,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(testEvent)
             ebmsMessageDetailRepository.insert(testMessageDetails)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(invalidAudience).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken, invalidAudience)
 
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
@@ -328,16 +304,11 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val (messageDetails, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -362,12 +333,7 @@ class ApplicationTest : StringSpec({
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
@@ -384,16 +350,12 @@ class ApplicationTest : StringSpec({
 
             val readableId = messageDetails.generateReadableId()
             val url = "/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$READABLE_ID=$readableId&$CPA_ID=${messageDetails.cpaId}"
-            val httpResponse = httpClient.get(url) {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth(url, getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageInfo> = httpResponse.body()
+            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
+            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
             messageInfoList.size shouldBe 1
             messageInfoList[0].readableIdList shouldBe readableId
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
@@ -415,12 +377,7 @@ class ApplicationTest : StringSpec({
                 row("/message-details?$FROM_DATE=2025-05-08T14:00"),
                 row("/message-details")
             ) { url ->
-                val httpResponse = httpClient.get(url) {
-                    header(
-                        "Authorization",
-                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                    )
-                }
+                val httpResponse = httpClient.getWithAuth(url, getToken)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
         }
@@ -432,12 +389,7 @@ class ApplicationTest : StringSpec({
                 row("/message-details?$FROM_DATE=2025-5-08T14:00&$TO_DATE=2025-05-08T15:00"),
                 row("/message-details?$FROM_DATE=2025-05-08T14:00&$TO_DATE=2025-05-8T15:00")
             ) { url ->
-                val httpResponse = httpClient.get(url) {
-                    header(
-                        "Authorization",
-                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                    )
-                }
+                val httpResponse = httpClient.getWithAuth(url, getToken)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
         }
@@ -458,12 +410,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             ebmsMessageDetailRepository.insert(messageDetails)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(invalidAudience).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken, invalidAudience)
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
@@ -478,12 +425,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -505,12 +447,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.generateReadableId()}/events") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.generateReadableId()}/events", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -888,5 +825,18 @@ class ApplicationTest : StringSpec({
                 withLabel("app-name", "emottak-event-manager")
                 start()
             }
+    }
+}
+
+suspend fun HttpClient.getWithAuth(
+    url: String,
+    getToken: (String) -> SignedJWT,
+    audience: String = AuthConfig.getScope()
+): io.ktor.client.statement.HttpResponse {
+    return this.get(url) {
+        header(
+            "Authorization",
+            "Bearer ${getToken(audience).serialize()}"
+        )
     }
 }

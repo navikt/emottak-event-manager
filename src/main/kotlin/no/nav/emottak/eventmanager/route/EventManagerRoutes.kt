@@ -25,7 +25,6 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
 fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
-
     authenticate(AZURE_AD_AUTH) {
         get("/events") {
             if (!Validation.validateDateRangeRequest(call)) return@get
@@ -52,6 +51,7 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             log.debug("The last event: {}", events.lastOrNull())
 
             call.respond(eventsPage)
+        }
     }
 
     authenticate(AZURE_AD_AUTH) {
@@ -91,13 +91,24 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
             if (pageable == null) return@get
 
             log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
-            val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action, pageable)
+            val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(
+                fromDate,
+                toDate,
+                readableId,
+                cpaId,
+                messageId,
+                role,
+                service,
+                action,
+                pageable
+            )
             val messageDetails = messageDetailsPage.content
             log.debug("Message details retrieved: ${messageDetails.size} of total ${messageDetailsPage.totalElements}")
             log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
 
             call.respond(messageDetailsPage)
         }
+    }
 
     authenticate(AZURE_AD_AUTH) {
         get("/message-details/{$ID}") {
