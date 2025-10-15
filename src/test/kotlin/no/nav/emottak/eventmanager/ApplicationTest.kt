@@ -304,7 +304,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
@@ -329,7 +329,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
-            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
@@ -344,7 +344,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
         withTestApplication { httpClient ->
-            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 

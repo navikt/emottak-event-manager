@@ -127,7 +127,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by readableId" {
-        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val messageDetailsInInterval1 = buildAndInsertTestEbmsMessageDetailFindData(repository).first()
         val retrievedDetails = repository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
@@ -197,7 +197,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by readableId, cpaId and messageId" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val messageDetailsOutOfInterval2 = buildAndInsertTestEbmsMessageDetailFindData(repository).last()
         val retrievedDetails = repository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
@@ -305,7 +305,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve empty list if no message details with the given readableId in the given time interval" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val messageDetailsOutOfInterval2 = buildAndInsertTestEbmsMessageDetailFindData(repository).last()
         val retrievedDetails = repository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T12:57:00Z"),
@@ -315,7 +315,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve empty list if no message details with the given cpaId in the given time interval" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
+        val messageDetailsOutOfInterval2 = buildAndInsertTestEbmsMessageDetailFindData(repository).last()
         val retrievedDetails = repository.findByTimeInterval(
             Instant.parse("2025-04-30T12:55:00Z"),
             Instant.parse("2025-04-30T12:57:00Z"),
