@@ -467,12 +467,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -503,12 +498,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(invalidAudience).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken, invalidAudience)
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
@@ -663,12 +653,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -693,12 +678,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.generateReadableId()}") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.generateReadableId()}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -730,12 +710,7 @@ class ApplicationTest : StringSpec({
                 row("/message-details/${messageDetails.generateReadableId().takeLast(6)}"),
                 row("/message-details/${messageDetails.generateReadableId().substring(6, 12)}")
             ) { url ->
-                val httpResponse = httpClient.get(url) {
-                    header(
-                        "Authorization",
-                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                    )
-                }
+                val httpResponse = httpClient.getWithAuth(url, getToken)
 
                 httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -750,12 +725,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             ebmsMessageDetailRepository.insert(messageDetails)
 
-            val httpResponse = httpClient.get("/message-details/${Uuid.random()}") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<MessageInfo> = httpResponse.body()
@@ -765,12 +735,7 @@ class ApplicationTest : StringSpec({
 
     "message-details/<id> endpoint should return NotFound if path-parameter is not present" {
         withTestApplication { httpClient ->
-            val httpResponse = httpClient.get("/message-details/") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.NotFound
         }
@@ -792,12 +757,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             ebmsMessageDetailRepository.insert(messageDetails)
 
-            val httpResponse = httpClient.get("/message-details/${Uuid.random()}") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(invalidAudience).serialize()}"
-                )
-            }
+            val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken, invalidAudience)
 
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
