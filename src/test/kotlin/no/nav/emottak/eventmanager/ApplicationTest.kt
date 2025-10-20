@@ -635,6 +635,10 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.NotFound
         }
     }
+
+    "filter-values endpoint should return list of distinct roles, services and actions" {
+        // TODO: Test retur av roller/services/actions, test av null, og test av case-forskjeller
+    }
 }) {
     companion object {
         fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {

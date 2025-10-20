@@ -2,6 +2,7 @@ package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.constants.Constants
+import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.MessageInfo
@@ -122,6 +123,17 @@ class EbmsMessageDetailService(
         return ebmsMessageDetailRepository
             .findByMessageIdConversationIdAndCpaId(messageId, conversationId, cpaId)
             .isNotEmpty()
+    }
+
+    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions? {
+        var filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
+        val refreshRate = java.time.LocalDateTime.now().minusDays(1) // TODO: Hente fra config?
+        if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
+            log.debug("Requesting refresh of distict_roles_services_actions materalized view")
+            ebmsMessageDetailRepository.refreshDistinctRolesServicesActions()
+            filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
+        }
+        return filterValues
     }
 
     private fun findSenderName(requestId: Uuid, events: List<Event>): String {

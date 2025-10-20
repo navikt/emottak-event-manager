@@ -4,8 +4,10 @@ import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.Database
@@ -466,6 +468,46 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.size shouldBe 1
         retrievedDetails[0].requestId shouldBe messageDetails1.requestId
     }
+
+    // Lager én test for henting av filter-verdier pga materialized view husker data fra tidligere tester
+    "Should retrieve filter-values" {
+        buildAndInsertTestEbmsMessageDetailFilterData(repository)
+
+        var result = repository.getDistinctRolesServicesActions()
+        result shouldBe null // null ved førstegangs kall til view (av en eller annen grunn)
+
+        repository.refreshDistinctRolesServicesActions()
+        result = repository.getDistinctRolesServicesActions()
+
+        result shouldNotBe null
+        result!!.roles.size shouldBe 2
+        result!!.services.size shouldBe 2
+        result!!.actions.size shouldBe 2
+        result!!.roles shouldContain "different-role"
+        result!!.services shouldContain "different-service"
+        result!!.actions shouldContain "different-action"
+
+        repository.insert(buildTestEbmsMessageDetail().copy(fromRole = "another-role"))
+        repository.refreshDistinctRolesServicesActions()
+        result = repository.getDistinctRolesServicesActions()
+
+        result shouldNotBe null
+        result!!.roles.size shouldBe 3
+        result!!.services.size shouldBe 2
+        result!!.actions.size shouldBe 2
+        result!!.roles shouldContain "another-role"
+
+        repository.insert(buildTestEbmsMessageDetail().copy(service = "another-service", action = "another-action"))
+        repository.refreshDistinctRolesServicesActions()
+        result = repository.getDistinctRolesServicesActions()
+
+        result shouldNotBe null
+        result!!.roles.size shouldBe 3
+        result!!.services.size shouldBe 3
+        result!!.actions.size shouldBe 3
+        result!!.services shouldContain "another-service"
+        result!!.actions shouldContain "another-action"
+    }
 }) {
     companion object {
         fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
@@ -542,4 +584,22 @@ suspend fun buildAndInsertTestEbmsMessageDetailFindData(repository: EbmsMessageD
     repository.insert(messageDetailsOutOfInterval2)
 
     return listOf(messageDetailsInInterval1, messageDetailsInInterval2, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2)
+}
+
+suspend fun buildAndInsertTestEbmsMessageDetailFilterData(repository: EbmsMessageDetailRepository) {
+    val messageDetails1 = buildTestEbmsMessageDetail()
+    val messageDetails2 = buildTestEbmsMessageDetail().copy(
+        fromRole = "different-role"
+    )
+    val messageDetails3 = buildTestEbmsMessageDetail().copy(
+        service = "different-service"
+    )
+    val messageDetails4 = buildTestEbmsMessageDetail().copy(
+        action = "different-action"
+    )
+
+    repository.insert(messageDetails1)
+    repository.insert(messageDetails2)
+    repository.insert(messageDetails3)
+    repository.insert(messageDetails4)
 }

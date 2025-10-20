@@ -318,6 +318,10 @@ class EbmsMessageDetailServiceTest : StringSpec({
         result[2].readableIdList shouldBe testDetails3.generateReadableId()
     }
 
+    "Should retrieve filter-values" {
+        // TODO: Test av at null trigger kall til refresh
+    }
+
     "isDuplicate should return true when message is a duplicate" {
         val testMessageDetails = buildTestEbmsMessageDetail()
         val testMessageDetailsDuplicate = testMessageDetails.copy(

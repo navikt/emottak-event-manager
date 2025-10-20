@@ -1,5 +1,6 @@
 package no.nav.emottak.eventmanager.route
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.get
@@ -23,6 +24,18 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
 fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
+    get("/filter-values") {
+        val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
+        if (filterValues == null) {
+            val errorMessage = "Failed to retrieve distinct filter-values for Role, Service and Action!"
+            log.error(errorMessage)
+            call.respond(HttpStatusCode.InternalServerError, errorMessage)
+            return@get
+        }
+        log.debug("Got filter-values (last refreshed at: {})", filterValues.refreshedAt)
+        call.respond(filterValues)
+    }
+
     get("/events") {
         if (!Validation.validateDateRangeRequest(call)) return@get
 
