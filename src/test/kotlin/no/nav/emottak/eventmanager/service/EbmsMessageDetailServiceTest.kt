@@ -6,6 +6,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.model.Page
@@ -319,7 +320,23 @@ class EbmsMessageDetailServiceTest : StringSpec({
     }
 
     "Should retrieve filter-values" {
-        // TODO: Test av at null trigger kall til refresh
+        val filters = DistinctRolesServicesActions(
+            roles = listOf("roleA", "roleB"),
+            services = listOf("servicesA", "servicesB"),
+            actions = listOf("actionA", "actionB"),
+            refreshedAt = Instant.now()
+        )
+        coEvery { ebmsMessageDetailRepository.getDistinctRolesServicesActions() } returns filters
+        val reply = ebmsMessageDetailService.getDistinctRolesServicesActions()
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.getDistinctRolesServicesActions() }
+        reply shouldBe filters
+    }
+
+    "Should call refreshDistinctRolesServicesActions() if getDistinctRolesServicesActions() returns null" {
+        coEvery { ebmsMessageDetailRepository.getDistinctRolesServicesActions() } returns null
+        coEvery { ebmsMessageDetailRepository.refreshDistinctRolesServicesActions() } returns Unit
+        ebmsMessageDetailService.getDistinctRolesServicesActions()
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.refreshDistinctRolesServicesActions() }
     }
 
     "isDuplicate should return true when message is a duplicate" {

@@ -16,16 +16,20 @@ import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
+import org.jetbrains.annotations.TestOnly
 import org.slf4j.LoggerFactory
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 class EbmsMessageDetailService(
     private val eventRepository: EventRepository,
     private val ebmsMessageDetailRepository: EbmsMessageDetailRepository,
-    private val eventTypeRepository: EventTypeRepository
+    private val eventTypeRepository: EventTypeRepository,
+    private var clock: Clock = Clock.system(ZoneId.of(Constants.ZONE_ID_OSLO))
 ) {
     private val log = LoggerFactory.getLogger(EbmsMessageDetailService::class.java)
 
@@ -126,12 +130,12 @@ class EbmsMessageDetailService(
     }
 
     suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions? {
-        var filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
-        val refreshRate = java.time.LocalDateTime.now().minusDays(1) // TODO: Hente fra config?
+        val filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
+        val refreshRate = Instant.now(clock).minus(24, ChronoUnit.HOURS) // TODO: Hente fra config?
         if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
-            log.debug("Requesting refresh of distict_roles_services_actions materalized view")
+            log.info("Requesting refresh of distict_roles_services_actions materalized view")
             ebmsMessageDetailRepository.refreshDistinctRolesServicesActions()
-            filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
+            return ebmsMessageDetailRepository.getDistinctRolesServicesActions()
         }
         return filterValues
     }
@@ -178,5 +182,10 @@ class EbmsMessageDetailService(
 
             else -> Constants.UNKNOWN
         }
+    }
+
+    @TestOnly
+    fun setClockForTests(testClock: Clock) {
+        clock = testClock
     }
 }
