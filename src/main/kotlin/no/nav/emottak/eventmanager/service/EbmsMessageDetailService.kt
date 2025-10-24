@@ -1,6 +1,7 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
@@ -131,7 +132,7 @@ class EbmsMessageDetailService(
 
     suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions? {
         val filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
-        val refreshRate = Instant.now(clock).minus(24, ChronoUnit.HOURS) // TODO: Hente fra config?
+        val refreshRate = Instant.now(clock).minus(config().database.materalizedViewRefreshRateInHours.value, ChronoUnit.HOURS)
         if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
             log.info("Requesting refresh of distict_roles_services_actions materalized view")
             ebmsMessageDetailRepository.refreshDistinctRolesServicesActions()
