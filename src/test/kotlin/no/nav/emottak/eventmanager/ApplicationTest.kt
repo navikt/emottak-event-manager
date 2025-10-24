@@ -42,6 +42,7 @@ import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
@@ -71,6 +72,7 @@ class ApplicationTest : StringSpec({
     lateinit var eventRepository: EventRepository
     lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
     lateinit var eventTypeRepository: EventTypeRepository
+    lateinit var distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
@@ -112,9 +114,15 @@ class ApplicationTest : StringSpec({
         eventRepository = EventRepository(db)
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
         eventTypeRepository = EventTypeRepository(db)
+        distinctRolesServicesActionsRepository = DistinctRolesServicesActionsRepository(db)
 
         eventService = EventService(eventRepository, ebmsMessageDetailRepository)
-        ebmsMessageDetailService = EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
+        ebmsMessageDetailService = EbmsMessageDetailService(
+            eventRepository,
+            ebmsMessageDetailRepository,
+            eventTypeRepository,
+            distinctRolesServicesActionsRepository
+        )
     }
 
     afterSpec {

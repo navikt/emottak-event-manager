@@ -10,6 +10,7 @@ import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
+import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
@@ -30,6 +31,7 @@ class EbmsMessageDetailService(
     private val eventRepository: EventRepository,
     private val ebmsMessageDetailRepository: EbmsMessageDetailRepository,
     private val eventTypeRepository: EventTypeRepository,
+    private val distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository,
     private var clock: Clock = Clock.system(ZoneId.of(Constants.ZONE_ID_OSLO))
 ) {
     private val log = LoggerFactory.getLogger(EbmsMessageDetailService::class.java)
@@ -131,12 +133,12 @@ class EbmsMessageDetailService(
     }
 
     suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions? {
-        val filterValues = ebmsMessageDetailRepository.getDistinctRolesServicesActions()
+        val filterValues = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
         val refreshRate = Instant.now(clock).minus(config().database.materalizedViewRefreshRateInHours.value, ChronoUnit.HOURS)
         if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
             log.info("Requesting refresh of distict_roles_services_actions materalized view")
-            ebmsMessageDetailRepository.refreshDistinctRolesServicesActions()
-            return ebmsMessageDetailRepository.getDistinctRolesServicesActions()
+            distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
+            return distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
         }
         return filterValues
     }
