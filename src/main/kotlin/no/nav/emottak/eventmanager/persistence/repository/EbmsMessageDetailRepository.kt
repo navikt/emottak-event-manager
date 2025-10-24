@@ -26,6 +26,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.serv
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
@@ -36,6 +37,7 @@ import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import java.time.Instant
@@ -50,21 +52,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction(database.db) {
             EbmsMessageDetailTable.insert {
                 it[requestId] = ebmsMessageDetail.requestId.toJavaUuid()
-                it[readableId] = ebmsMessageDetail.generateReadableId()
-                it[cpaId] = ebmsMessageDetail.cpaId
-                it[conversationId] = ebmsMessageDetail.conversationId
-                it[messageId] = ebmsMessageDetail.messageId
-                it[refToMessageId] = ebmsMessageDetail.refToMessageId
-                it[fromPartyId] = ebmsMessageDetail.fromPartyId
-                it[fromRole] = ebmsMessageDetail.fromRole
-                it[toPartyId] = ebmsMessageDetail.toPartyId
-                it[toRole] = ebmsMessageDetail.toRole
-                it[service] = ebmsMessageDetail.service
-                it[action] = ebmsMessageDetail.action
-                it[refParam] = ebmsMessageDetail.refParam
-                it[senderName] = ebmsMessageDetail.senderName
-                it[sentAt] = ebmsMessageDetail.sentAt?.truncatedTo(ChronoUnit.MICROS)
-                it[savedAt] = ebmsMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
+                it.populateFrom(ebmsMessageDetail)
             }
         }
         ebmsMessageDetail.requestId
@@ -76,21 +64,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .update({
                     requestId eq ebmsMessageDetail.requestId.toJavaUuid()
                 }) {
-                    it[readableId] = ebmsMessageDetail.generateReadableId()
-                    it[cpaId] = ebmsMessageDetail.cpaId
-                    it[conversationId] = ebmsMessageDetail.conversationId
-                    it[messageId] = ebmsMessageDetail.messageId
-                    it[refToMessageId] = ebmsMessageDetail.refToMessageId
-                    it[fromPartyId] = ebmsMessageDetail.fromPartyId
-                    it[fromRole] = ebmsMessageDetail.fromRole
-                    it[toPartyId] = ebmsMessageDetail.toPartyId
-                    it[toRole] = ebmsMessageDetail.toRole
-                    it[service] = ebmsMessageDetail.service
-                    it[action] = ebmsMessageDetail.action
-                    it[refParam] = ebmsMessageDetail.refParam
-                    it[senderName] = ebmsMessageDetail.senderName
-                    it[sentAt] = ebmsMessageDetail.sentAt?.truncatedTo(ChronoUnit.MICROS)
-                    it[savedAt] = ebmsMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
+                    it.populateFrom(ebmsMessageDetail)
                 }
             updatedRows > 0
         }
@@ -162,24 +136,16 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction {
             val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
                 .apply {
-                    if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
-                    if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
-                    if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
-                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
-                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
-                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+                    this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
+                    this.applyRoleServiceActionFilters(role, service, action)
                 }.count()
             val list =
                 EbmsMessageDetailTable
                     .select(EbmsMessageDetailTable.columns)
                     .where { savedAt.between(from, to) }
                     .apply {
-                        if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
-                        if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
-                        if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
-                        if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
-                        if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
-                        if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+                        this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
+                        this.applyRoleServiceActionFilters(role, service, action)
                         if (pageable != null) {
                             this.limit(pageable.pageSize, pageable.offset)
                             this.orderBy(savedAt, pageable.getSortOrder())
@@ -326,4 +292,34 @@ class EbmsMessageDetailRepository(private val database: Database) {
     private fun nullableStringToList(value: String?, delimeters: String = ",") = value
         ?.split(delimeters)
         ?.filter { it.isNotBlank() }
+}
+
+private fun UpdateBuilder<*>.populateFrom(ebmsMessageDetail: EbmsMessageDetail) {
+    this[readableId] = ebmsMessageDetail.generateReadableId()
+    this[cpaId] = ebmsMessageDetail.cpaId
+    this[conversationId] = ebmsMessageDetail.conversationId
+    this[messageId] = ebmsMessageDetail.messageId
+    this[refToMessageId] = ebmsMessageDetail.refToMessageId
+    this[fromPartyId] = ebmsMessageDetail.fromPartyId
+    this[fromRole] = ebmsMessageDetail.fromRole
+    this[toPartyId] = ebmsMessageDetail.toPartyId
+    this[toRole] = ebmsMessageDetail.toRole
+    this[service] = ebmsMessageDetail.service
+    this[action] = ebmsMessageDetail.action
+    this[refParam] = ebmsMessageDetail.refParam
+    this[senderName] = ebmsMessageDetail.senderName
+    this[sentAt] = ebmsMessageDetail.sentAt?.truncatedTo(ChronoUnit.MICROS)
+    this[savedAt] = ebmsMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
+}
+
+private fun Query.applyReadableIdCpaIdMessageIdFilters(readableIdPattern: String = "", cpaIdPattern: String = "", messageIdPattern: String = "") {
+    if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
+    if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
+    if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+}
+
+internal fun Query.applyRoleServiceActionFilters(role: String = "", service: String = "", action: String = "") {
+    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
+    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
+    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
 }
