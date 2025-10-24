@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.collections.shouldContain
+import io.kotest.matchers.collections.shouldContainInOrder
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -474,7 +475,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         buildAndInsertTestEbmsMessageDetailFilterData(repository)
 
         var result = repository.getDistinctRolesServicesActions()
-        result shouldBe null // null ved førstegangs kall til view (av en eller annen grunn)
+        result shouldBe null // null ved førstegangs kall til view pga tom test-database ved migration
 
         repository.refreshDistinctRolesServicesActions()
         result = repository.getDistinctRolesServicesActions()
@@ -507,6 +508,10 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         result!!.actions.size shouldBe 3
         result!!.services shouldContain "another-service"
         result!!.actions shouldContain "another-action"
+
+        result!!.roles shouldContainInOrder listOf("another-role", "different-role", "test-from-role")
+        result!!.services shouldContainInOrder listOf("another-service", "different-service", "test-service")
+        result!!.actions shouldContainInOrder listOf("another-action", "different-action", "test-action")
     }
 }) {
     companion object {

@@ -287,9 +287,9 @@ class EbmsMessageDetailRepository(private val database: Database) {
                         null
                     } else {
                         DistinctRolesServicesActions(
-                            roles = roles,
-                            services = services,
-                            actions = actions,
+                            roles = roles.sorted(),
+                            services = services.sorted(),
+                            actions = actions.sorted(),
                             refreshedAt = row[DistinctRolesServicesActionsTable.refreshedAt]
                         )
                     }
