@@ -1,7 +1,9 @@
 package no.nav.emottak.eventmanager.route
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Routing
+import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
@@ -23,23 +25,26 @@ import org.slf4j.LoggerFactory
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
 fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
+    get("/filter-values") {
+        val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
+        if (filterValues == null) {
+            val errorMessage = "Failed to retrieve distinct filter-values for Role, Service and Action!"
+            log.error(errorMessage)
+            call.respond(HttpStatusCode.InternalServerError, errorMessage)
+            return@get
+        }
+        log.debug("Got filter-values (last refreshed at: {})", filterValues.refreshedAt)
+        call.respond(filterValues)
+    }
+
     get("/events") {
         if (!Validation.validateDateRangeRequest(call)) return@get
 
         val fromDate = Validation.parseDate(call.request.queryParameters[FROM_DATE]!!)
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
-        val role = call.request.queryParameters[ROLE] ?: ""
-        val service = call.request.queryParameters[SERVICE] ?: ""
-        val action = call.request.queryParameters[ACTION] ?: ""
 
-        val pageable = Validation.getPageable(
-            call,
-            call.request.queryParameters[PAGE_NUMBER],
-            call.request.queryParameters[PAGE_SIZE],
-            call.request.queryParameters[SORT],
-            50
-        )
-        if (pageable == null) return@get
+        val (role, service, action) = getRoleServiceActionParameters(call)
+        val pageable = getPagableParameters(call) ?: return@get
 
         log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
         val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, pageable)
@@ -70,18 +75,9 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
         val readableId = call.request.queryParameters[READABLE_ID] ?: ""
         val cpaId = call.request.queryParameters[CPA_ID] ?: ""
         val messageId = call.request.queryParameters[MESSAGE_ID] ?: ""
-        val role = call.request.queryParameters[ROLE] ?: ""
-        val service = call.request.queryParameters[SERVICE] ?: ""
-        val action = call.request.queryParameters[ACTION] ?: ""
 
-        val pageable = Validation.getPageable(
-            call,
-            call.request.queryParameters[PAGE_NUMBER],
-            call.request.queryParameters[PAGE_SIZE],
-            call.request.queryParameters[SORT],
-            50
-        )
-        if (pageable == null) return@get
+        val (role, service, action) = getRoleServiceActionParameters(call)
+        val pageable = getPagableParameters(call) ?: return@get
 
         log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
         val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action, pageable)
@@ -104,3 +100,19 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
         call.respond(readableIdInfoList)
     }
 }
+
+private fun getRoleServiceActionParameters(call: RoutingCall): Triple<String, String, String> {
+    val role = call.request.queryParameters[ROLE] ?: ""
+    val service = call.request.queryParameters[SERVICE] ?: ""
+    val action = call.request.queryParameters[ACTION] ?: ""
+    return Triple(role, service, action)
+}
+
+private suspend fun getPagableParameters(call: RoutingCall, defaultSize: Int = 50) =
+    Validation.getPageable(
+        call,
+        call.request.queryParameters[PAGE_NUMBER],
+        call.request.queryParameters[PAGE_SIZE],
+        call.request.queryParameters[SORT],
+        defaultSize
+    )

@@ -1,59 +1,19 @@
 package no.nav.emottak.eventmanager.repository
 
-import com.zaxxer.hikari.HikariConfig
-import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
-import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import kotlin.uuid.Uuid
-import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
-class EbmsMessageDetailRepositoryTest : StringSpec({
-
-    lateinit var dbContainer: PostgreSQLContainer<Nothing>
-    lateinit var db: Database
-    lateinit var repository: EbmsMessageDetailRepository
-
-    beforeSpec {
-        dbContainer = buildDatabaseContainer()
-        dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
-        repository = EbmsMessageDetailRepository(db)
-    }
-
-    afterSpec {
-        dbContainer.stop()
-    }
-
-    afterTest {
-        db.dataSource.connection.use { conn ->
-            conn.createStatement().execute("DELETE FROM events")
-            conn.createStatement().execute("DELETE FROM ebms_message_details")
-        }
-    }
-
-    "Should insert and retrieve message details by requestId" {
-        val messageDetails = buildTestEbmsMessageDetail()
-
-        repository.insert(messageDetails)
-        val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
-
-        retrievedDetails?.requestId shouldBe messageDetails.requestId
-    }
+class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
 
     "Should update message details by requestId" {
         val messageDetails = buildTestEbmsMessageDetail()
-        repository.insert(messageDetails)
+        ebmsMessageDetailRepository.insert(messageDetails)
 
         val updatedMessageDetail = messageDetails.copy(
             cpaId = "updated-cpa-id",
@@ -67,9 +27,9 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             sentAt = Instant.parse("2025-05-26T14:54:45.386Z"),
             savedAt = Instant.parse("2025-05-26T15:54:50.386Z")
         )
-        repository.update(updatedMessageDetail)
+        ebmsMessageDetailRepository.update(updatedMessageDetail)
 
-        val retrievedDetails = repository.findByRequestId(messageDetails.requestId)
+        val retrievedDetails = ebmsMessageDetailRepository.findByRequestId(messageDetails.requestId)
 
         retrievedDetails?.requestId shouldBe messageDetails.requestId
 
@@ -89,8 +49,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     "Should retrieve message details by Readable ID" {
         val messageDetails = buildTestEbmsMessageDetail()
 
-        repository.insert(messageDetails)
-        val retrievedDetails = repository.findByReadableId(messageDetails.generateReadableId())
+        ebmsMessageDetailRepository.insert(messageDetails)
+        val retrievedDetails = ebmsMessageDetailRepository.findByReadableId(messageDetails.generateReadableId())
 
         retrievedDetails?.requestId shouldBe messageDetails.requestId
     }
@@ -98,7 +58,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     "Should retrieve message details by Readable ID pattern" {
         val messageDetails = buildTestEbmsMessageDetail()
 
-        repository.insert(messageDetails)
+        ebmsMessageDetailRepository.insert(messageDetails)
 
         forAll(
             row(messageDetails.generateReadableId().substring(0, 6)),
@@ -107,15 +67,15 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             row(messageDetails.generateReadableId().takeLast(6)),
             row(messageDetails.generateReadableId().substring(6, 12))
         ) { readableIdPattern ->
-            val retrievedDetails = repository.findByReadableIdPattern(readableIdPattern)
+            val retrievedDetails = ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern)
 
             retrievedDetails?.requestId shouldBe messageDetails.requestId
         }
     }
 
     "Should retrieve records by time interval" {
-        val (md1, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (md1, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z")
         ).content
@@ -127,8 +87,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by readableId" {
-        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             readableIdPattern = messageDetailsInInterval1.generateReadableId()
@@ -138,8 +98,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by part of readableId string-value" {
-        val (_, _, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, _, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             readableIdPattern = "OUT."
@@ -150,8 +110,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by cpaId" {
-        val (_, messageDetailsInInterval2, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, messageDetailsInInterval2, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             cpaIdPattern = "another-cpa-id"
@@ -162,8 +122,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by part of cpaId string-value" {
-        val (_, md2, _, md4) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, md2, _, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             cpaIdPattern = "another"
@@ -174,8 +134,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by messageId" {
-        val (_, md2, _, _) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, md2, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             messageIdPattern = "another-message-id1"
@@ -185,8 +145,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by part of messageId string-value" {
-        val (_, md2, _, md4) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, md2, _, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             messageIdPattern = "another-message"
@@ -197,8 +157,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve records by time interval and filtered by readableId, cpaId and messageId" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             readableIdPattern = messageDetailsOutOfInterval2.generateReadableId(),
@@ -215,14 +175,14 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             val id = "no$i"
             val ts = "2025-04-01T14:0$i:00.000Z"
             val detail = buildTestEbmsMessageDetail().copy(messageId = id, savedAt = Instant.parse(ts))
-            repository.insert(detail)
+            ebmsMessageDetailRepository.insert(detail)
             details.add(detail)
         }
 
         val page1 = Pageable(1, 4)
         val from = Instant.parse("2025-04-01T14:00:00Z")
         val to = Instant.parse("2025-04-01T15:00:00Z")
-        var retrievedDetails = repository.findByTimeInterval(from, to, pageable = page1)
+        var retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(from, to, pageable = page1)
         retrievedDetails.page shouldBe 1
         retrievedDetails.content.size shouldBe 4
         retrievedDetails.totalPages shouldBe 3
@@ -233,7 +193,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[3].messageId shouldBe details[3].messageId
 
         val page2 = page1.next()
-        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page2)
+        retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(from, to, pageable = page2)
         retrievedDetails.page shouldBe 2
         retrievedDetails.content.size shouldBe 4
         retrievedDetails.totalPages shouldBe 3
@@ -244,7 +204,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[3].messageId shouldBe details[7].messageId
 
         val page3 = page2.next()
-        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page3)
+        retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(from, to, pageable = page3)
         retrievedDetails.page shouldBe 3
         retrievedDetails.content.size shouldBe 1
         retrievedDetails.totalPages shouldBe 3
@@ -258,14 +218,14 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             val id = "no$i"
             val ts = "2025-04-01T14:0$i:00.000Z"
             val detail = buildTestEbmsMessageDetail().copy(messageId = id, savedAt = Instant.parse(ts))
-            repository.insert(detail)
+            ebmsMessageDetailRepository.insert(detail)
             details.add(detail)
         }
 
         val page1 = Pageable(1, 4, "DESC")
         val from = Instant.parse("2025-04-01T14:00:00Z")
         val to = Instant.parse("2025-04-01T15:00:00Z")
-        var retrievedDetails = repository.findByTimeInterval(from, to, pageable = page1)
+        var retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(from, to, pageable = page1)
         retrievedDetails.page shouldBe 1
         retrievedDetails.content.size shouldBe 4
         retrievedDetails.totalPages shouldBe 3
@@ -276,7 +236,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[3].messageId shouldBe details[5].messageId
 
         val page2 = page1.next()
-        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page2)
+        retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(from, to, pageable = page2)
         retrievedDetails.page shouldBe 2
         retrievedDetails.content.size shouldBe 4
         retrievedDetails.totalPages shouldBe 3
@@ -287,7 +247,7 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.content[3].messageId shouldBe details[1].messageId
 
         val page3 = page2.next()
-        retrievedDetails = repository.findByTimeInterval(from, to, pageable = page3)
+        retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(from, to, pageable = page3)
         retrievedDetails.page shouldBe 3
         retrievedDetails.content.size shouldBe 1
         retrievedDetails.totalPages shouldBe 3
@@ -296,8 +256,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve empty list if no message details within given time interval" {
-        buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T13:00:00Z"),
             Instant.parse("2025-04-30T14:00:00Z")
         )
@@ -305,8 +265,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve empty list if no message details with the given readableId in the given time interval" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T12:57:00Z"),
             readableIdPattern = messageDetailsOutOfInterval2.generateReadableId()
@@ -315,8 +275,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve empty list if no message details with the given cpaId in the given time interval" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:55:00Z"),
             Instant.parse("2025-04-30T12:57:00Z"),
             cpaIdPattern = messageDetailsOutOfInterval2.cpaId
@@ -325,8 +285,8 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
     }
 
     "Should retrieve empty list if no message details with the given readableId and cpaId in the given time interval" {
-        val (_, _, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, _, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             readableIdPattern = messageDetailsOutOfInterval2.generateReadableId(),
@@ -340,10 +300,10 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(fromRole = roleFilter)
 
-        repository.insert(messageDetails1)
-        repository.insert(messageDetails2)
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
 
-        val retrievedDetails = repository.findByTimeInterval(
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             from = Instant.parse("2025-05-08T12:00:00Z"),
             to = Instant.parse("2025-05-08T13:00:00Z"),
             role = roleFilter
@@ -358,10 +318,10 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(service = serviceFilter)
 
-        repository.insert(messageDetails1)
-        repository.insert(messageDetails2)
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
 
-        val retrievedDetails = repository.findByTimeInterval(
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             from = Instant.parse("2025-05-08T12:00:00Z"),
             to = Instant.parse("2025-05-08T13:00:00Z"),
             service = serviceFilter
@@ -376,10 +336,10 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(action = actionFilter)
 
-        repository.insert(messageDetails1)
-        repository.insert(messageDetails2)
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
 
-        val retrievedDetails = repository.findByTimeInterval(
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             from = Instant.parse("2025-05-08T12:00:00Z"),
             to = Instant.parse("2025-05-08T13:00:00Z"),
             action = actionFilter
@@ -400,12 +360,12 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             conversationId = "conversationId-2"
         )
 
-        repository.insert(messageDetails1)
-        repository.insert(messageDetails2)
-        repository.insert(messageDetails3)
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.insert(messageDetails3)
 
         val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
-        val relatedRequestIds = repository.findRelatedRequestIds(requestIds)
+        val relatedRequestIds = ebmsMessageDetailRepository.findRelatedRequestIds(requestIds)
 
         relatedRequestIds.size shouldBe 3
         relatedRequestIds shouldContainKey messageDetails1.requestId
@@ -427,12 +387,12 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             conversationId = "conversationId-2"
         )
 
-        repository.insert(messageDetails1)
-        repository.insert(messageDetails2)
-        repository.insert(messageDetails3)
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.insert(messageDetails3)
 
         val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
-        val relatedReadableIds = repository.findRelatedReadableIds(requestIds)
+        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(requestIds)
 
         relatedReadableIds.size shouldBe 3
         relatedReadableIds[messageDetails1.requestId] shouldBe "${messageDetails1.generateReadableId()},${messageDetails2.generateReadableId()}"
@@ -452,12 +412,12 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
             cpaId = "different-cpa-id"
         )
 
-        repository.insert(messageDetails1)
-        repository.insert(messageDetails2)
-        repository.insert(messageDetails3)
-        repository.insert(messageDetails4)
+        ebmsMessageDetailRepository.insert(messageDetails1)
+        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.insert(messageDetails3)
+        ebmsMessageDetailRepository.insert(messageDetails4)
 
-        val retrievedDetails = repository.findByMessageIdConversationIdAndCpaId(
+        val retrievedDetails = ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
             messageId = messageDetails1.messageId,
             conversationId = messageDetails1.conversationId,
             cpaId = messageDetails1.cpaId
@@ -466,80 +426,4 @@ class EbmsMessageDetailRepositoryTest : StringSpec({
         retrievedDetails.size shouldBe 1
         retrievedDetails[0].requestId shouldBe messageDetails1.requestId
     }
-}) {
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
-
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
-            PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
-    }
-}
-
-fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
-    return EbmsMessageDetail.fromTransportModel(buildTestTransportMessageDetail())
-}
-
-fun buildTestTransportMessageDetail(): TransportEbmsMessageDetail {
-    return TransportEbmsMessageDetail(
-        requestId = Uuid.random(),
-        cpaId = "test-cpa-id",
-        conversationId = "test-conversation-id",
-        messageId = "test-message-id",
-        fromPartyId = "test-from-party-id",
-        fromRole = "test-from-role",
-        toPartyId = "test-to-party-id",
-        toRole = "test-to-role",
-        service = "test-service",
-        action = "test-action",
-        savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
-    )
-}
-
-suspend fun buildAndInsertTestEbmsMessageDetailFindData(repository: EbmsMessageDetailRepository): List<EbmsMessageDetail> {
-    val messageDetailsInInterval1 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-A",
-        savedAt = Instant.parse("2025-04-30T12:52:45.386Z")
-    )
-    val messageDetailsInInterval2 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-B",
-        cpaId = "another-cpa-id",
-        messageId = "another-message-id1",
-        savedAt = Instant.parse("2025-04-30T12:54:46.386Z")
-    )
-    val messageDetailsOutOfInterval1 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-C",
-        savedAt = Instant.parse("2025-04-30T12:56:47.386Z"),
-        refToMessageId = "message-id-reference-C"
-    )
-    val messageDetailsOutOfInterval2 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-D",
-        cpaId = "another-cpa-id",
-        messageId = "another-message-id2",
-        savedAt = Instant.parse("2025-04-30T12:58:48.386Z"),
-        refToMessageId = "message-id-reference-D"
-    )
-
-    repository.insert(messageDetailsInInterval1)
-    repository.insert(messageDetailsInInterval2)
-    repository.insert(messageDetailsOutOfInterval1)
-    repository.insert(messageDetailsOutOfInterval2)
-
-    return listOf(messageDetailsInInterval1, messageDetailsInInterval2, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2)
-}
+})

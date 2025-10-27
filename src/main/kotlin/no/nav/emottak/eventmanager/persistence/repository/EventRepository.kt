@@ -16,7 +16,6 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
@@ -140,9 +139,7 @@ class EventRepository(private val database: Database) {
             val totalCount = EventTable.join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
                 .select(createdAt).where { createdAt.between(from, to) }
                 .apply {
-                    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
-                    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
-                    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+                    this.applyRoleServiceActionFilters(role, service, action)
                 }
                 .count()
             val list =
@@ -151,9 +148,7 @@ class EventRepository(private val database: Database) {
                     .select(EventTable.columns)
                     .where { createdAt.between(from, to) }
                     .apply {
-                        if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
-                        if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
-                        if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+                        this.applyRoleServiceActionFilters(role, service, action)
                         if (pageable != null) {
                             this.limit(pageable.pageSize, pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())

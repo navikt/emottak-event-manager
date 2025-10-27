@@ -32,6 +32,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
@@ -41,9 +42,11 @@ import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFilterData
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
@@ -53,8 +56,10 @@ import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.model.DuplicateCheckResponse
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
+import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 
 class ApplicationTest : StringSpec({
@@ -67,6 +72,7 @@ class ApplicationTest : StringSpec({
     lateinit var eventRepository: EventRepository
     lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
     lateinit var eventTypeRepository: EventTypeRepository
+    lateinit var distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
@@ -108,9 +114,15 @@ class ApplicationTest : StringSpec({
         eventRepository = EventRepository(db)
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
         eventTypeRepository = EventTypeRepository(db)
+        distinctRolesServicesActionsRepository = DistinctRolesServicesActionsRepository(db)
 
         eventService = EventService(eventRepository, ebmsMessageDetailRepository)
-        ebmsMessageDetailService = EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
+        ebmsMessageDetailService = EbmsMessageDetailService(
+            eventRepository,
+            ebmsMessageDetailRepository,
+            eventTypeRepository,
+            distinctRolesServicesActionsRepository
+        )
     }
 
     afterSpec {
@@ -272,7 +284,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val (messageDetails, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
@@ -633,6 +645,51 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.get("/message-details/")
 
             httpResponse.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    "filter-values endpoint should return list of distinct roles, services and actions" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+
+            val httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            val filters: DistinctRolesServicesActions = httpResponse.body()
+            filters.roles.size shouldBe 2
+            filters.services.size shouldBe 2
+            filters.actions.size shouldBe 2
+        }
+    }
+
+    "filter-values endpoint should retrieve refreshed filters and handle filter-values as-is (case-sensitive)" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+
+            var httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            var filters: DistinctRolesServicesActions = httpResponse.body()
+            filters.roles.size shouldBe 2
+            filters.services.size shouldBe 2
+            filters.actions.size shouldBe 2
+
+            ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "different-ROLE", action = "new1"))
+
+            httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            filters = httpResponse.body()
+            filters.roles.size shouldBe 2 // Still 2 since its less than 24h since we refreshed last time
+            filters.actions.size shouldBe 2
+
+            ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(action = "new2"))
+            val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), ZoneId.of(ZONE_ID_OSLO))
+            ebmsMessageDetailService.setClockForTests(tomorrow)
+
+            httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.OK
+            filters = httpResponse.body()
+            filters.roles.size shouldBe 3 // Now it should be 3
+            filters.services.size shouldBe 2
+            filters.actions.size shouldBe 4 // new1 and new2 are also added
         }
     }
 }) {

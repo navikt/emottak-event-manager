@@ -6,10 +6,12 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
@@ -28,7 +30,13 @@ class EbmsMessageDetailServiceTest : StringSpec({
     val eventRepository = mockk<EventRepository>()
     val ebmsMessageDetailRepository = mockk<EbmsMessageDetailRepository>()
     val eventTypeRepository = mockk<EventTypeRepository>(relaxed = true)
-    val ebmsMessageDetailService = EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository)
+    val distinctRolesServicesActionsRepository = mockk<DistinctRolesServicesActionsRepository>()
+    val ebmsMessageDetailService = EbmsMessageDetailService(
+        eventRepository,
+        ebmsMessageDetailRepository,
+        eventTypeRepository,
+        distinctRolesServicesActionsRepository
+    )
 
     "Should call database repository on processing EBMS message details" {
 
@@ -316,6 +324,26 @@ class EbmsMessageDetailServiceTest : StringSpec({
         result[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
         result[1].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
         result[2].readableIdList shouldBe testDetails3.generateReadableId()
+    }
+
+    "Should retrieve filter-values" {
+        val filters = DistinctRolesServicesActions(
+            roles = listOf("roleA", "roleB"),
+            services = listOf("servicesA", "servicesB"),
+            actions = listOf("actionA", "actionB"),
+            refreshedAt = Instant.now()
+        )
+        coEvery { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() } returns filters
+        val reply = ebmsMessageDetailService.getDistinctRolesServicesActions()
+        coVerify(exactly = 1) { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() }
+        reply shouldBe filters
+    }
+
+    "Should call refreshDistinctRolesServicesActions() if getDistinctRolesServicesActions() returns null" {
+        coEvery { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() } returns null
+        coEvery { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() } returns Unit
+        ebmsMessageDetailService.getDistinctRolesServicesActions()
+        coVerify(exactly = 1) { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() }
     }
 
     "isDuplicate should return true when message is a duplicate" {

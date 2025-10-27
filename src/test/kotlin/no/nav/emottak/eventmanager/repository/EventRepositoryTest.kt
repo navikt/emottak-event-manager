@@ -1,48 +1,14 @@
 package no.nav.emottak.eventmanager.repository
 
-import com.zaxxer.hikari.HikariConfig
-import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
-import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
-import no.nav.emottak.eventmanager.persistence.repository.EventRepository
-import no.nav.emottak.utils.kafka.model.EventType
-import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import kotlin.uuid.Uuid
-import no.nav.emottak.utils.kafka.model.Event as TransportEvent
 
-class EventRepositoryTest : StringSpec({
-
-    lateinit var dbContainer: PostgreSQLContainer<Nothing>
-    lateinit var db: Database
-    lateinit var eventRepository: EventRepository
-    lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
-
-    beforeSpec {
-        dbContainer = buildDatabaseContainer()
-        dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
-        eventRepository = EventRepository(db)
-        ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
-    }
-
-    afterSpec {
-        dbContainer.stop()
-    }
-
-    afterTest {
-        db.dataSource.connection.use { conn ->
-            conn.createStatement().execute("DELETE FROM events")
-            conn.createStatement().execute("DELETE FROM ebms_message_details")
-        }
-    }
+class EventRepositoryTest : RepositoryTestBase({
 
     "Should retrieve an event by eventId" {
         val testEvent = buildTestEvent()
@@ -263,41 +229,4 @@ class EventRepositoryTest : StringSpec({
         retrievedEvents.size shouldBe 1
         retrievedEvents shouldContain event2
     }
-}) {
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
-
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
-            PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
-    }
-}
-
-fun buildTestEvent(): Event {
-    return Event.fromTransportModel(buildTestTransportEvent())
-}
-
-fun buildTestTransportEvent(): TransportEvent = TransportEvent(
-    eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-    requestId = Uuid.random(),
-    contentId = "test-content-id",
-    messageId = "test-message-id",
-    eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
-    createdAt = Instant.parse("2025-04-01T12:54:45.386Z")
-)
+})
