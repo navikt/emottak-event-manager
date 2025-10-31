@@ -1,7 +1,6 @@
 package no.nav.emottak.eventmanager
 
 import com.nimbusds.jwt.SignedJWT
-import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
@@ -41,15 +40,16 @@ import no.nav.emottak.eventmanager.model.MessageLogInfo
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFilterData
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
+import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
+import no.nav.emottak.eventmanager.repository.testConfiguration
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
@@ -106,8 +106,11 @@ class ApplicationTest : StringSpec({
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
+
+        val migrationDb = Database(dbContainer.testConfiguration())
+        migrationDb.migrate(migrationDb.dataSource)
+        migrationDb.dataSource.close()
+        db = Database(dbContainer.testConfiguration(user = "user"))
 
         mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
 
@@ -126,6 +129,7 @@ class ApplicationTest : StringSpec({
     }
 
     afterSpec {
+        db.dataSource.close()
         dbContainer.stop()
     }
 
@@ -692,28 +696,4 @@ class ApplicationTest : StringSpec({
             filters.actions.size shouldBe 4 // new1 and new2 are also added
         }
     }
-}) {
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
-
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
-            PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
-    }
-}
+})

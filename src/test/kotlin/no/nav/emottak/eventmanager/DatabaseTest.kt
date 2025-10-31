@@ -1,10 +1,11 @@
 package no.nav.emottak.eventmanager
 
-import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainAll
+import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
+import no.nav.emottak.eventmanager.repository.testConfiguration
 import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.DriverManager
 
@@ -16,12 +17,37 @@ class DatabaseTest : StringSpec({
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
+        val migrationDb = Database(dbContainer.testConfiguration())
+        migrationDb.migrate(migrationDb.dataSource)
+        migrationDb.dataSource.close()
+        db = Database(dbContainer.testConfiguration(user = "user"))
     }
 
     afterSpec {
+        db.dataSource.close()
         dbContainer.stop()
+    }
+
+    "Should run as emottak-event-manager-db-user" {
+        db.dataSource.connection.use { conn ->
+            var rs = conn.createStatement().executeQuery("SELECT current_user")
+            rs.next() shouldBe true
+            rs.getString("current_user") shouldBe "emottak-event-manager-db-user"
+        }
+    }
+
+    "Table created by migration should be owned by admin" {
+        val sql = """
+            SELECT pg_get_userbyid(relowner) AS owner_name 
+            FROM pg_class 
+            WHERE relkind = 'r' 
+            AND relname = 'events'
+        """
+        db.dataSource.connection.use { conn ->
+            var rs = conn.createStatement().executeQuery(sql)
+            rs.next() shouldBe true
+            rs.getString("owner_name") shouldBe "emottak-event-manager-db-admin"
+        }
     }
 
     "Database should contain event_status enum" {
@@ -59,28 +85,4 @@ class DatabaseTest : StringSpec({
 
         enumValues shouldContainAll expectedValues
     }
-}) {
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
-
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
-            PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
-    }
-}
+})
