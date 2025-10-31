@@ -10,5 +10,8 @@ FROM (SELECT "from_role", "service", "action" FROM "ebms_message_details") sub;
 CREATE UNIQUE INDEX IF NOT EXISTS distict_roles_services_actions_uid_idx
     ON distict_roles_services_actions (refreshed_at);
 
+-- REFRESH can only be run by owner, so change it to the application's user
+ALTER MATERIALIZED VIEW distict_roles_services_actions OWNER TO "emottak-event-manager-db-user";
+
 -- Refresh the view with CONCURRENTLY:
--- REFRESH MATERIALIZED VIEW CONCURRENTLY distict_roles_server_actions;
+-- REFRESH MATERIALIZED VIEW CONCURRENTLY distict_roles_services_actions;
