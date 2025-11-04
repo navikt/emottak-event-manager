@@ -27,7 +27,8 @@ data class Database(
     val vaultJdbcUrl: VaultJdbcUrl,
     val dbCredentialsMountPath: DbCredentialsMountPath,
     val maxConnectionPoolSizeForUser: MaxConnectionPoolSizeForUser,
-    val maxConnectionPoolSizeForAdmin: MaxConnectionPoolSizeForAdmin
+    val maxConnectionPoolSizeForAdmin: MaxConnectionPoolSizeForAdmin,
+    val materalizedViewRefreshRateInHours: MateralizedViewRefreshRateInHours
 )
 
 data class EventConsumer(
@@ -51,6 +52,9 @@ value class MaxConnectionPoolSizeForUser(val value: Int)
 
 @JvmInline
 value class MaxConnectionPoolSizeForAdmin(val value: Int)
+
+@JvmInline
+value class MateralizedViewRefreshRateInHours(val value: Long)
 
 fun Kafka.toProperties() = Properties()
     .apply {
