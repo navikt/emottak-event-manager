@@ -87,8 +87,8 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
     }
 
     "Should retrieve records by time interval and filtered by readableId" {
-        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             readableIdPattern = messageDetailsInInterval1.generateReadableId()
@@ -157,8 +157,8 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
     }
 
     "Should retrieve records by time interval and filtered by readableId, cpaId and messageId" {
-        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(repository)
-        val retrievedDetails = repository.findByTimeInterval(
+        val (_, _, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
             readableIdPattern = messageDetailsOutOfInterval2.generateReadableId(),
