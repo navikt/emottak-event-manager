@@ -321,7 +321,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val (messageDetails, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
@@ -784,7 +784,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
 
-            val httpResponse = httpClient.get("/filter-values")
+            val httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             val filters: DistinctRolesServicesActions = httpResponse.body()
             filters.roles.size shouldBe 2
@@ -797,7 +797,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
 
-            var httpResponse = httpClient.get("/filter-values")
+            var httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             var filters: DistinctRolesServicesActions = httpResponse.body()
             filters.roles.size shouldBe 2
@@ -806,7 +806,7 @@ class ApplicationTest : StringSpec({
 
             ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "different-ROLE", action = "new1"))
 
-            httpResponse = httpClient.get("/filter-values")
+            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
             filters.roles.size shouldBe 2 // Still 2 since its less than 24h since we refreshed last time
@@ -816,7 +816,7 @@ class ApplicationTest : StringSpec({
             val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), ZoneId.of(ZONE_ID_OSLO))
             ebmsMessageDetailService.setClockForTests(tomorrow)
 
-            httpResponse = httpClient.get("/filter-values")
+            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
             filters.roles.size shouldBe 3 // Now it should be 3
@@ -827,7 +827,16 @@ class ApplicationTest : StringSpec({
             filters.roles shouldContain "different-ROLE"
         }
     }
-}
+
+    "filter-values endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+
+            val httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+})
 
 suspend fun HttpClient.getWithAuth(
     url: String,
