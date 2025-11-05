@@ -4,6 +4,7 @@ import com.nimbusds.jwt.SignedJWT
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
@@ -694,6 +695,9 @@ class ApplicationTest : StringSpec({
             filters.roles.size shouldBe 3 // Now it should be 3
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 4 // new1 and new2 are also added
+
+            filters.roles shouldContain "different-role"
+            filters.roles shouldContain "different-ROLE"
         }
     }
 })

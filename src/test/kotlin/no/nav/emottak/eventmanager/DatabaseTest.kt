@@ -36,7 +36,7 @@ class DatabaseTest : StringSpec({
         }
     }
 
-    "Table created by migration should be owned by admin" {
+    "Table created by migration should be owned by emottak-event-manager-db-admin" {
         val sql = """
             SELECT pg_get_userbyid(relowner) AS owner_name 
             FROM pg_class 
@@ -47,20 +47,6 @@ class DatabaseTest : StringSpec({
             var rs = conn.createStatement().executeQuery(sql)
             rs.next() shouldBe true
             rs.getString("owner_name") shouldBe "emottak-event-manager-db-admin"
-        }
-    }
-
-    "Materialized view created by migration should be owned by user" {
-        val sql = """
-            SELECT pg_get_userbyid(relowner) AS owner_name 
-            FROM pg_class 
-            WHERE relkind = 'm' 
-            AND relname = 'distict_roles_services_actions'
-        """
-        db.dataSource.connection.use { conn ->
-            var rs = conn.createStatement().executeQuery(sql)
-            rs.next() shouldBe true
-            rs.getString("owner_name") shouldBe "emottak-event-manager-db-user"
         }
     }
 

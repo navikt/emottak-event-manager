@@ -53,6 +53,7 @@ abstract class RepositoryTestBase(
         db.dataSource.connection.use { conn ->
             conn.createStatement().execute("DELETE FROM events")
             conn.createStatement().execute("DELETE FROM ebms_message_details")
+            conn.createStatement().execute("DELETE FROM distict_roles_services_actions")
         }
     }
 
