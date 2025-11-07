@@ -340,8 +340,14 @@ class EbmsMessageDetailServiceTest : StringSpec({
     }
 
     "Should call refreshDistinctRolesServicesActions() if getDistinctRolesServicesActions() returns null" {
+        val filters = DistinctRolesServicesActions(
+            roles = listOf("roleA", "roleB"),
+            services = listOf("servicesA", "servicesB"),
+            actions = listOf("actionA", "actionB"),
+            refreshedAt = Instant.now()
+        )
         coEvery { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() } returns null
-        coEvery { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() } returns Unit
+        coEvery { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() } returns filters
         ebmsMessageDetailService.getDistinctRolesServicesActions()
         coVerify(exactly = 1) { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() }
     }

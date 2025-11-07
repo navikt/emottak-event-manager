@@ -1,8 +1,7 @@
 package no.nav.emottak.eventmanager.route
 
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
-import io.ktor.server.routing.Routing
+import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
@@ -24,15 +23,9 @@ import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
-fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
+fun Route.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
     get("/filter-values") {
         val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
-        if (filterValues == null) {
-            val errorMessage = "Failed to retrieve distinct filter-values for Role, Service and Action!"
-            log.error(errorMessage)
-            call.respond(HttpStatusCode.InternalServerError, errorMessage)
-            return@get
-        }
         log.debug("Got filter-values (last refreshed at: {})", filterValues.refreshedAt)
         call.respond(filterValues)
     }
@@ -80,7 +73,17 @@ fun Routing.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServ
         val pageable = getPagableParameters(call) ?: return@get
 
         log.debug("Retrieving message details from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
-        val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(fromDate, toDate, readableId, cpaId, messageId, role, service, action, pageable)
+        val messageDetailsPage = ebmsMessageDetailService.fetchEbmsMessageDetails(
+            fromDate,
+            toDate,
+            readableId,
+            cpaId,
+            messageId,
+            role,
+            service,
+            action,
+            pageable
+        )
         val messageDetails = messageDetailsPage.content
         log.debug("Message details retrieved: ${messageDetails.size} of total ${messageDetailsPage.totalElements}")
         log.debug("The last message details retrieved: {}", messageDetails.lastOrNull())
