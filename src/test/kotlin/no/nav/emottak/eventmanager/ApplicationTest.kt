@@ -1,10 +1,10 @@
 package no.nav.emottak.eventmanager
 
 import com.nimbusds.jwt.SignedJWT
-import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
@@ -42,15 +42,16 @@ import no.nav.emottak.eventmanager.model.MessageLogInfo
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFilterData
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
+import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
+import no.nav.emottak.eventmanager.repository.testConfiguration
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
@@ -108,8 +109,11 @@ class ApplicationTest : StringSpec({
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
+
+        val migrationDb = Database(dbContainer.testConfiguration())
+        migrationDb.migrate(migrationDb.dataSource)
+        migrationDb.dataSource.close()
+        db = Database(dbContainer.testConfiguration(user = "user"))
 
         mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
 
@@ -128,6 +132,7 @@ class ApplicationTest : StringSpec({
     }
 
     afterSpec {
+        db.dataSource.close()
         dbContainer.stop()
     }
 
@@ -316,7 +321,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
-            val (messageDetails, md2, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
@@ -779,7 +784,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
 
-            val httpResponse = httpClient.get("/filter-values")
+            val httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             val filters: DistinctRolesServicesActions = httpResponse.body()
             filters.roles.size shouldBe 2
@@ -792,7 +797,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
 
-            var httpResponse = httpClient.get("/filter-values")
+            var httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             var filters: DistinctRolesServicesActions = httpResponse.body()
             filters.roles.size shouldBe 2
@@ -801,7 +806,7 @@ class ApplicationTest : StringSpec({
 
             ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "different-ROLE", action = "new1"))
 
-            httpResponse = httpClient.get("/filter-values")
+            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
             filters.roles.size shouldBe 2 // Still 2 since its less than 24h since we refreshed last time
@@ -811,39 +816,27 @@ class ApplicationTest : StringSpec({
             val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), ZoneId.of(ZONE_ID_OSLO))
             ebmsMessageDetailService.setClockForTests(tomorrow)
 
-            httpResponse = httpClient.get("/filter-values")
+            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
             filters.roles.size shouldBe 3 // Now it should be 3
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 4 // new1 and new2 are also added
-        }
-    }
-}) {
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
 
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
-            PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
+            filters.roles shouldContain "different-role"
+            filters.roles shouldContain "different-ROLE"
+        }
     }
-}
+
+    "filter-values endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+
+            val httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+})
 
 suspend fun HttpClient.getWithAuth(
     url: String,

@@ -32,8 +32,12 @@ abstract class RepositoryTestBase(
     override suspend fun beforeSpec(spec: Spec) {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
+
+        val migrationDb = Database(dbContainer.testConfiguration())
+        migrationDb.migrate(migrationDb.dataSource)
+        migrationDb.dataSource.close()
+        db = Database(dbContainer.testConfiguration(user = "user"))
+
         eventRepository = EventRepository(db)
         eventTypeRepository = EventTypeRepository(db)
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
@@ -41,6 +45,7 @@ abstract class RepositoryTestBase(
     }
 
     override suspend fun afterSpec(spec: Spec) {
+        db.dataSource.close()
         dbContainer.stop()
     }
 
@@ -48,36 +53,41 @@ abstract class RepositoryTestBase(
         db.dataSource.connection.use { conn ->
             conn.createStatement().execute("DELETE FROM events")
             conn.createStatement().execute("DELETE FROM ebms_message_details")
+            conn.createStatement().execute("DELETE FROM distict_roles_services_actions")
         }
     }
 
     init {
         this.init()
     }
+}
 
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
+fun PostgreSQLContainer<Nothing>.testConfiguration(user: String = "admin"): HikariConfig {
+    val (username, password) = when (user) {
+        "admin" -> this@testConfiguration.username to this@testConfiguration.password
+        "user" -> "$EVENT_DB_NAME-user" to "app_pass"
+        else -> error("Unsupported user: $user")
+    }
+    return HikariConfig().apply {
+        jdbcUrl = this@testConfiguration.jdbcUrl
+        this.username = username
+        this.password = password
+        maximumPoolSize = 5
+        minimumIdle = 1
+        idleTimeout = 500001
+        connectionTimeout = 10000
+        maxLifetime = 600001
+        initializationFailTimeout = 5000
+    }
+}
 
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> {
-            return PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
-        }
+fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> {
+    return PostgreSQLContainer<Nothing>("postgres:15").apply {
+        withInitScript("init_roles.sql")
+        withUsername("$EVENT_DB_NAME-admin")
+        withReuse(true)
+        withLabel("app-name", "emottak-event-manager")
+        start()
     }
 }
 
