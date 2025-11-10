@@ -1,10 +1,10 @@
 package no.nav.emottak.eventmanager
 
 import com.nimbusds.jwt.SignedJWT
-import com.zaxxer.hikari.HikariConfig
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.data.forAll
 import io.kotest.data.row
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
@@ -29,6 +29,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
+import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
@@ -41,15 +42,16 @@ import no.nav.emottak.eventmanager.model.MessageLogInfo
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
 import no.nav.emottak.eventmanager.persistence.Database
-import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFilterData
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
+import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
+import no.nav.emottak.eventmanager.repository.testConfiguration
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
@@ -84,6 +86,7 @@ class ApplicationTest : StringSpec({
             subject = "testUser"
         )
     }
+    val invalidAudience = "api://dev-fss.team-emottak.some-other-service/.default"
 
     val withTestApplication = fun (testBlock: suspend (HttpClient) -> Unit) {
         testApplication {
@@ -106,8 +109,11 @@ class ApplicationTest : StringSpec({
     beforeSpec {
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
-        db = Database(dbContainer.testConfiguration())
-        db.migrate(db.dataSource)
+
+        val migrationDb = Database(dbContainer.testConfiguration())
+        migrationDb.migrate(migrationDb.dataSource)
+        migrationDb.dataSource.close()
+        db = Database(dbContainer.testConfiguration(user = "user"))
 
         mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
 
@@ -126,6 +132,7 @@ class ApplicationTest : StringSpec({
     }
 
     afterSpec {
+        db.dataSource.close()
         dbContainer.stop()
     }
 
@@ -153,7 +160,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(testEvent)
             ebmsMessageDetailRepository.insert(testMessageDetails)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00")
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -188,7 +195,7 @@ class ApplicationTest : StringSpec({
             }
 
             // default should be descending, try both with explicit sorting and without
-            var httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc")
+            var httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             var eventsPage: Page<EventInfo> = httpResponse.body()
             eventsPage.page shouldBe 1
@@ -199,7 +206,7 @@ class ApplicationTest : StringSpec({
             eventList[0].senderName shouldBe details[8].senderName
             eventList[1].senderName shouldBe details[7].senderName
             eventList[2].senderName shouldBe details[6].senderName
-            httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=2&size=3")
+            httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=2&size=3", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             eventsPage = httpResponse.body()
             eventsPage.page shouldBe 2
@@ -210,7 +217,7 @@ class ApplicationTest : StringSpec({
             eventList[0].senderName shouldBe details[5].senderName
             eventList[1].senderName shouldBe details[4].senderName
             eventList[2].senderName shouldBe details[3].senderName
-            httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=3&size=3")
+            httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=3&size=3", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             eventsPage = httpResponse.body()
             eventsPage.page shouldBe 3
@@ -230,7 +237,7 @@ class ApplicationTest : StringSpec({
 
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00")
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -257,7 +264,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(testEvent)
             ebmsMessageDetailRepository.insert(testMessageDetails)
 
-            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00")
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val eventsPage: Page<EventInfo> = httpResponse.body()
@@ -276,9 +283,39 @@ class ApplicationTest : StringSpec({
                 row("/events?$FROM_DATE=2025-04-01T15:00&$TO_DATE=2025-04-01T14:00"),
                 row("/events")
             ) { url ->
-                val httpResponse = httpClient.get(url)
+                val httpResponse = httpClient.getWithAuth(url, getToken)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
+        }
+    }
+
+    "events endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val commonRequestId = Uuid.random()
+            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
+
+            eventRepository.insert(testEvent)
+            ebmsMessageDetailRepository.insert(testMessageDetails)
+
+            val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00")
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "events endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val commonRequestId = Uuid.random()
+            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
+
+            eventRepository.insert(testEvent)
+            ebmsMessageDetailRepository.insert(testMessageDetails)
+
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken, invalidAudience)
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
@@ -288,7 +325,7 @@ class ApplicationTest : StringSpec({
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc")
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -309,16 +346,44 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
-            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
             val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00")
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
             val messageInfoList: List<MessageInfo> = messageDetailsPage.content
             messageInfoList.size shouldBe 0
+        }
+    }
+
+    "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
+            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            eventRepository.insert(testEvent)
+
+            val readableId = messageDetails.generateReadableId()
+            val url = "/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$READABLE_ID=$readableId&$CPA_ID=${messageDetails.cpaId}"
+            val httpResponse = httpClient.getWithAuth(url, getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
+            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].readableIdList shouldBe readableId
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            messageInfoList[0].role shouldBe messageDetails.fromRole
+            messageInfoList[0].service shouldBe messageDetails.service
+            messageInfoList[0].action shouldBe messageDetails.action
+            messageInfoList[0].referenceParameter shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe UNKNOWN
+            messageInfoList[0].cpaId shouldBe messageDetails.cpaId
+            messageInfoList[0].count shouldBe 1
+            messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
     }
 
@@ -329,7 +394,7 @@ class ApplicationTest : StringSpec({
                 row("/message-details?$FROM_DATE=2025-05-08T14:00"),
                 row("/message-details")
             ) { url ->
-                val httpResponse = httpClient.get(url)
+                val httpResponse = httpClient.getWithAuth(url, getToken)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
         }
@@ -341,9 +406,29 @@ class ApplicationTest : StringSpec({
                 row("/message-details?$FROM_DATE=2025-5-08T14:00&$TO_DATE=2025-05-08T15:00"),
                 row("/message-details?$FROM_DATE=2025-05-08T14:00&$TO_DATE=2025-05-8T15:00")
             ) { url ->
-                val httpResponse = httpClient.get(url)
+                val httpResponse = httpClient.getWithAuth(url, getToken)
                 httpResponse.status shouldBe HttpStatusCode.BadRequest
             }
+        }
+    }
+
+    "message-details endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00")
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "message-details endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken, invalidAudience)
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
@@ -357,7 +442,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events")
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -379,7 +464,7 @@ class ApplicationTest : StringSpec({
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.generateReadableId()}/events")
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.generateReadableId()}/events", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -399,12 +484,39 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events")
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<MessageLogInfo> = httpResponse.body()
             messageInfoList.size shouldBe 0
+        }
+    }
+
+    "message-details/<id>/events endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val unrelatedEvent = buildTestEvent()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(unrelatedEvent)
+
+            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events")
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "message-details/<id>/events endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            val unrelatedEvent = buildTestEvent()
+
+            ebmsMessageDetailRepository.insert(messageDetails)
+            eventRepository.insert(unrelatedEvent)
+
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken, invalidAudience)
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
@@ -464,10 +576,8 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "duplicate-check endpoint should return Unauthorized if access token is missing" {
+    "duplicate-check endpoint should return Unauthorized if access token is invalid" {
         withTestApplication { httpClient ->
-            val invalidAudience = "api://dev-fss.team-emottak.some-other-service/.default"
-
             val duplicateCheckRequest = DuplicateCheckRequest(
                 requestId = Uuid.random().toString(),
                 messageId = "test-message-id",
@@ -488,7 +598,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "duplicate-check endpoint should return Unauthorized if access token is invalid" {
+    "duplicate-check endpoint should return Unauthorized if access token is missing" {
         withTestApplication { httpClient ->
             val duplicateCheckRequest = DuplicateCheckRequest(
                 requestId = Uuid.random().toString(),
@@ -560,7 +670,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}")
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -585,7 +695,7 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
 
-            val httpResponse = httpClient.get("/message-details/${messageDetails.generateReadableId()}")
+            val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.generateReadableId()}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -617,7 +727,7 @@ class ApplicationTest : StringSpec({
                 row("/message-details/${messageDetails.generateReadableId().takeLast(6)}"),
                 row("/message-details/${messageDetails.generateReadableId().substring(6, 12)}")
             ) { url ->
-                val httpResponse = httpClient.get(url)
+                val httpResponse = httpClient.getWithAuth(url, getToken)
 
                 httpResponse.status shouldBe HttpStatusCode.OK
 
@@ -632,7 +742,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             ebmsMessageDetailRepository.insert(messageDetails)
 
-            val httpResponse = httpClient.get("/message-details/${Uuid.random()}")
+            val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
             val events: List<MessageInfo> = httpResponse.body()
@@ -642,9 +752,31 @@ class ApplicationTest : StringSpec({
 
     "message-details/<id> endpoint should return NotFound if path-parameter is not present" {
         withTestApplication { httpClient ->
-            val httpResponse = httpClient.get("/message-details/")
+            val httpResponse = httpClient.getWithAuth("/message-details/", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    "message-details/<id> endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.get("/message-details/${Uuid.random()}")
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "message-details/<id> endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildTestEbmsMessageDetail()
+            ebmsMessageDetailRepository.insert(messageDetails)
+
+            val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken, invalidAudience)
+
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
@@ -652,7 +784,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
 
-            val httpResponse = httpClient.get("/filter-values")
+            val httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             val filters: DistinctRolesServicesActions = httpResponse.body()
             filters.roles.size shouldBe 2
@@ -665,7 +797,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
 
-            var httpResponse = httpClient.get("/filter-values")
+            var httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             var filters: DistinctRolesServicesActions = httpResponse.body()
             filters.roles.size shouldBe 2
@@ -674,7 +806,7 @@ class ApplicationTest : StringSpec({
 
             ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "different-ROLE", action = "new1"))
 
-            httpResponse = httpClient.get("/filter-values")
+            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
             filters.roles.size shouldBe 2 // Still 2 since its less than 24h since we refreshed last time
@@ -684,36 +816,37 @@ class ApplicationTest : StringSpec({
             val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), ZoneId.of(ZONE_ID_OSLO))
             ebmsMessageDetailService.setClockForTests(tomorrow)
 
-            httpResponse = httpClient.get("/filter-values")
+            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
             filters.roles.size shouldBe 3 // Now it should be 3
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 4 // new1 and new2 are also added
+
+            filters.roles shouldContain "different-role"
+            filters.roles shouldContain "different-ROLE"
         }
     }
-}) {
-    companion object {
-        fun PostgreSQLContainer<Nothing>.testConfiguration(): HikariConfig {
-            return HikariConfig().apply {
-                jdbcUrl = this@testConfiguration.jdbcUrl
-                username = this@testConfiguration.username
-                password = this@testConfiguration.password
-                maximumPoolSize = 5
-                minimumIdle = 1
-                idleTimeout = 500001
-                connectionTimeout = 10000
-                maxLifetime = 600001
-                initializationFailTimeout = 5000
-            }
-        }
 
-        private fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> =
-            PostgreSQLContainer<Nothing>("postgres:15").apply {
-                withUsername("$EVENT_DB_NAME-admin")
-                withReuse(true)
-                withLabel("app-name", "emottak-event-manager")
-                start()
-            }
+    "filter-values endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+
+            val httpResponse = httpClient.get("/filter-values")
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+})
+
+suspend fun HttpClient.getWithAuth(
+    url: String,
+    getToken: (String) -> SignedJWT,
+    audience: String = AuthConfig.getScope()
+): io.ktor.client.statement.HttpResponse {
+    return this.get(url) {
+        header(
+            "Authorization",
+            "Bearer ${getToken(audience).serialize()}"
+        )
     }
 }

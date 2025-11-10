@@ -132,13 +132,12 @@ class EbmsMessageDetailService(
             .isNotEmpty()
     }
 
-    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions? {
+    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions {
         val filterValues = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-        val refreshRate = Instant.now(clock).minus(config().database.materalizedViewRefreshRateInHours.value, ChronoUnit.HOURS)
+        val refreshRate = Instant.now(clock).minus(config().database.distinctValuesRefreshRateInHours.value, ChronoUnit.HOURS)
         if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
-            log.info("Requesting refresh of distict_roles_services_actions materalized view")
-            distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-            return distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
+            log.info("Requesting refresh of distict_roles_services_actions")
+            return distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
         }
         return filterValues
     }
