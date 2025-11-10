@@ -4,7 +4,7 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             version("exposed", "0.47.0")
-            version("ktor", "3.1.2")
+            version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
             version("arrow", "2.0.1")
@@ -14,7 +14,7 @@ dependencyResolutionManagement {
             version("logstash", "8.0")
             version("prometheus", "1.12.4")
             version("vault-jdbc", "1.3.10")
-            version("token-validation-ktor", "5.0.15")
+            version("token-validation-ktor", "5.0.30")
 
             library("hikari", "com.zaxxer:HikariCP:5.0.1")
 
