@@ -11,7 +11,7 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Branch name
         run: echo running on branch ${GITHUB_REF##*/}
       - name: Setup java
@@ -62,7 +62,7 @@ jobs:
       id-token: "write"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: nais/deploy/actions/deploy@v2
       env:
         CLUSTER: prod-fss
