@@ -19,13 +19,13 @@ import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.annotations.TestOnly
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
-import org.slf4j.Logger
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 class EbmsMessageDetailService(
