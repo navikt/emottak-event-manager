@@ -25,6 +25,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPa
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Query
+import org.jetbrains.exposed.sql.QueryBuilder
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
@@ -37,6 +38,7 @@ import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
@@ -44,6 +46,7 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 class EbmsMessageDetailRepository(private val database: Database) {
+    private val log = LoggerFactory.getLogger(EbmsMessageDetailRepository::class.java)
 
     suspend fun insert(ebmsMessageDetail: EbmsMessageDetail): Uuid = withContext(Dispatchers.IO) {
         transaction(database.db) {
@@ -135,7 +138,9 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 .apply {
                     this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
                     this.applyRoleServiceActionFilters(role, service, action)
-                }.count()
+                }
+                .also { log.debug("TotalCount-query: ${it.prepareSQL(QueryBuilder(false)) }") }
+                .count()
             val list =
                 EbmsMessageDetailTable
                     .select(EbmsMessageDetailTable.columns)
@@ -148,6 +153,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                             this.orderBy(savedAt, pageable.getSortOrder())
                         }
                     }
+                    .also { log.debug("EbmsMessageDetailTable-query: ${it.prepareSQL(QueryBuilder(false)) }") }
                     .mapNotNull {
                         toEbmsMessageDetail(it)
                     }
@@ -187,12 +193,14 @@ class EbmsMessageDetailRepository(private val database: Database) {
             val subQuery = EbmsMessageDetailTable
                 .select(conversationId, relatedReadableIdsColumn)
                 .groupBy(conversationId)
+                .also { log.debug("subQuery: ${it.prepareSQL(QueryBuilder(false)) }") }
                 .alias("related")
 
             EbmsMessageDetailTable
                 .join(subQuery, JoinType.INNER, conversationId, subQuery[conversationId])
                 .select(requestId, subQuery[relatedReadableIdsColumn])
                 .where { requestId.inList(requestIds.map { it.toJavaUuid() }) }
+                .also { log.debug("Query: ${it.prepareSQL(QueryBuilder(false)) }") }
                 .mapNotNull {
                     Pair(it[requestId].toKotlinUuid(), it[subQuery[relatedReadableIdsColumn]])
                 }

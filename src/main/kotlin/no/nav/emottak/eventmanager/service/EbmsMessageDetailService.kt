@@ -77,7 +77,6 @@ class EbmsMessageDetailService(
         val resultList = messageDetailsList.map {
             val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
             val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
-
             val messageStatus = getMessageStatus(relatedEvents)
 
             MessageInfo(
