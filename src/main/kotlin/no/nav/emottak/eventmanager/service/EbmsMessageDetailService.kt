@@ -67,7 +67,7 @@ class EbmsMessageDetailService(
         log.feilsok(messageDetailsList.size, "messageDetails", timestamp)
 
         timestamp = clock.instant()
-        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.requestId })
+        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
         log.feilsok(relatedReadableIds.size, "relatedReadableIds", timestamp)
 
         timestamp = clock.instant()
