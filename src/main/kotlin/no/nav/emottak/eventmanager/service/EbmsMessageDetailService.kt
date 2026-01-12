@@ -61,18 +61,12 @@ class EbmsMessageDetailService(
         action: String = "",
         pageable: Pageable? = null
     ): Page<MessageInfo> {
-        var timestamp = clock.instant()
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
-        log.feilsok(messageDetailsList.size, "messageDetails", timestamp)
 
-        timestamp = clock.instant()
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
-        log.feilsok(relatedReadableIds.size, "relatedReadableIds", timestamp)
 
-        timestamp = clock.instant()
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
-        log.feilsok(relatedEvents.size, "relatedEvents", timestamp)
 
         val resultList = messageDetailsList.map {
             val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
@@ -197,9 +191,5 @@ class EbmsMessageDetailService(
     @TestOnly
     fun setClockForTests(testClock: Clock) {
         clock = testClock
-    }
-
-    private fun Logger.feilsok(size: Int, detail: String, startTimestamp: Instant) {
-        debug("Found $size $detail - used ${ChronoUnit.SECONDS.between(startTimestamp,clock.instant())} seconds")
     }
 }
