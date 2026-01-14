@@ -27,14 +27,14 @@ class EventService(
 
     suspend fun process(value: ByteArray) {
         try {
-            log.info("Event read from Kafka: ${String(value)}")
+            log.debug("Event read from Kafka: ${String(value)}")
             val transportEvent: TransportEvent = Json.decodeFromString(String(value))
             val event = Event.fromTransportModel(transportEvent)
 
             updateMessageDetails(event)
 
             eventRepository.insert(event)
-            log.info("Event processed successfully: $event")
+            log.info(event.marker, "Event processed successfully: $event")
         } catch (e: Exception) {
             log.error("Exception while processing event:${String(value)}", e)
         }

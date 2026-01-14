@@ -1,6 +1,18 @@
 package no.nav.emottak.eventmanager.model
 
+import net.logstash.logback.marker.LogstashMarker
+import net.logstash.logback.marker.Markers
 import no.nav.emottak.eventmanager.constants.Constants
+import no.nav.emottak.utils.common.constants.LogFields.ACTION
+import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
+import no.nav.emottak.utils.common.constants.LogFields.CPA_ID
+import no.nav.emottak.utils.common.constants.LogFields.FROM_PARTY
+import no.nav.emottak.utils.common.constants.LogFields.FROM_ROLE
+import no.nav.emottak.utils.common.constants.LogFields.MESSAGE_ID
+import no.nav.emottak.utils.common.constants.LogFields.SERVICE
+import no.nav.emottak.utils.common.constants.LogFields.TO_PARTY
+import no.nav.emottak.utils.common.constants.LogFields.TO_ROLE
+import no.nav.emottak.utils.common.constants.LogFields.X_REQUEST_ID
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -28,6 +40,22 @@ data class EbmsMessageDetail(
     val refParam: String? = null,
     val readableId: String? = null
 ) {
+
+    val marker: LogstashMarker = Markers.appendEntries(
+        mapOf(
+            X_REQUEST_ID to this.requestId,
+            MESSAGE_ID to this.messageId,
+            CONVERSATION_ID to this.conversationId,
+            CPA_ID to this.cpaId,
+            SERVICE to this.service,
+            ACTION to this.action,
+            TO_ROLE to (this.toRole ?: ""),
+            FROM_ROLE to (this.fromRole ?: ""),
+            TO_PARTY to this.toPartyId,
+            FROM_PARTY to this.fromPartyId
+        )
+    )
+
     companion object {
         fun fromTransportModel(transportEbmsMessageDetail: TransportEbmsMessageDetail): EbmsMessageDetail {
             return EbmsMessageDetail(

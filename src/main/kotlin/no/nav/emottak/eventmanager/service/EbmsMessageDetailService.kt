@@ -38,12 +38,12 @@ class EbmsMessageDetailService(
 
     suspend fun process(value: ByteArray) {
         try {
-            log.info("EBMS message details read from Kafka: ${String(value)}")
+            log.debug("EBMS message details read from Kafka: ${String(value)}")
 
             val transportEbmsMessageDetail: TransportEbmsMessageDetail = Json.decodeFromString(String(value))
             val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
             ebmsMessageDetailRepository.insert(ebmsMessageDetail)
-            log.info("EBMS message details processed successfully: $ebmsMessageDetail")
+            log.info(ebmsMessageDetail.marker, "EBMS message details processed successfully: $ebmsMessageDetail")
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)
         }
