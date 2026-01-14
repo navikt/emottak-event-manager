@@ -62,13 +62,14 @@ class EbmsMessageDetailService(
     ): Page<MessageInfo> {
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
-        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.requestId })
+
+        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
+
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
         val resultList = messageDetailsList.map {
             val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
             val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
-
             val messageStatus = getMessageStatus(relatedEvents)
 
             MessageInfo(

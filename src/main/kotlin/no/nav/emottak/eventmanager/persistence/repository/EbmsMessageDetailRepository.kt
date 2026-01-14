@@ -180,12 +180,13 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findRelatedReadableIds(requestIds: List<Uuid>): Map<Uuid, String?> = withContext(Dispatchers.IO) {
+    suspend fun findRelatedReadableIds(conversationIds: List<String>, requestIds: List<Uuid>): Map<Uuid, String?> = withContext(Dispatchers.IO) {
         transaction(database.db) {
             val relatedReadableIdsColumn = readableId.groupConcat(",").alias("related_readable_ids")
 
             val subQuery = EbmsMessageDetailTable
                 .select(conversationId, relatedReadableIdsColumn)
+                .where { conversationId.inList(conversationIds) }
                 .groupBy(conversationId)
                 .alias("related")
 

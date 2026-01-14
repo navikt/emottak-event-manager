@@ -391,8 +391,9 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         ebmsMessageDetailRepository.insert(messageDetails2)
         ebmsMessageDetailRepository.insert(messageDetails3)
 
+        val conversationIds = listOf(messageDetails1.conversationId, messageDetails2.conversationId, messageDetails3.conversationId)
         val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
-        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(requestIds)
+        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(conversationIds, requestIds)
 
         relatedReadableIds.size shouldBe 3
         relatedReadableIds[messageDetails1.requestId] shouldBe "${messageDetails1.generateReadableId()},${messageDetails2.generateReadableId()}"
