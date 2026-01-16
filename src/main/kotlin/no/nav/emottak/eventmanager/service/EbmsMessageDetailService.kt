@@ -67,20 +67,25 @@ class EbmsMessageDetailService(
 
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
-        val resultList = messageDetailsList.map {
-            val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
-            val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
-            val messageStatus = getMessageStatus(relatedEvents)
+        val resultList = messageDetailsList.map { msgDetail ->
+            log.debug(
+                "Lager MessageInfo for requestId: {} (conversationId: {})",
+                msgDetail.requestId,
+                msgDetail.conversationId
+            )
+            val senderName = msgDetail.senderName.also { log.debug("SenderName ble funnet direkte på MessageDetail: {}", it) } ?: findSenderName(msgDetail.requestId, relatedEvents)
+            val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
+            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
 
             MessageInfo(
-                receivedDate = it.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
-                readableIdList = relatedReadableIds[it.requestId] ?: "",
-                role = it.fromRole,
-                service = it.service,
-                action = it.action,
+                receivedDate = msgDetail.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                readableIdList = relatedReadableIds[msgDetail.requestId] ?: "",
+                role = msgDetail.fromRole,
+                service = msgDetail.service,
+                action = msgDetail.action,
                 referenceParameter = refParam,
                 senderName = senderName,
-                cpaId = it.cpaId,
+                cpaId = msgDetail.cpaId,
                 count = relatedEvents.count(),
                 status = messageStatus
             )
@@ -106,7 +111,7 @@ class EbmsMessageDetailService(
 
         val senderName = messageDetails.senderName ?: findSenderName(messageDetails.requestId, relatedEvents)
         val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
-        val messageStatus = getMessageStatus(relatedEvents)
+        val messageStatus = getMessageStatus(messageDetails.requestId, relatedEvents)
 
         return listOf(
             ReadableIdInfo(
@@ -144,14 +149,22 @@ class EbmsMessageDetailService(
     }
 
     private fun findSenderName(requestId: Uuid, events: List<Event>): String {
+        log.debug("Finner avsenderName for requestId: {}", requestId)
         events.firstOrNull {
             it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
+            log.debug(
+                "Fant hendelsestype {}: {}",
+                EventType.MESSAGE_VALIDATED_AGAINST_CPA,
+                EventType.MESSAGE_VALIDATED_AGAINST_CPA.description
+            )
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData[EventDataType.SENDER_NAME.value]
         }?.let {
+            log.debug("Returnerer '{}'", it)
             return it
         }
+        log.debug("Returnerer ukjent SenderName")
         return Constants.UNKNOWN
     }
 
@@ -167,10 +180,14 @@ class EbmsMessageDetailService(
         return Constants.UNKNOWN
     }
 
-    private suspend fun getMessageStatus(relatedEvents: List<Event>): String {
-        val relatedEventTypeIds = relatedEvents.map { event ->
+    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>): String {
+        log.debug("Totalt antall relatedEvents: ${relatedEvents.size}")
+        val relatedEventTypeIds = relatedEvents.filter { event ->
+            event.requestId == requestId
+        }.map { event ->
             event.eventType.value
         }
+        log.debug("Filtrert antall relatedEvents: ${relatedEventTypeIds.size}")
         val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
 
         return when {
