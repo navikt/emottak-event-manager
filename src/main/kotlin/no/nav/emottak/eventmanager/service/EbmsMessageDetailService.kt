@@ -73,7 +73,7 @@ class EbmsMessageDetailService(
                 msgDetail.requestId,
                 msgDetail.conversationId
             )
-            val senderName = msgDetail.senderName.also { log.debug("SenderName ble funnet direkte på MessageDetail: {}", it) } ?: findSenderName(msgDetail.requestId, relatedEvents)
+            val senderName = msgDetail.senderName?.also { log.debug("SenderName ble funnet direkte på MessageDetail: {}", it) } ?: findSenderName(msgDetail.requestId, relatedEvents)
             val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
             val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
 
