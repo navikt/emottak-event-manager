@@ -173,13 +173,11 @@ class EbmsMessageDetailService(
     }
 
     private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>): String {
-        log.debug("Totalt antall relatedEvents: ${relatedEvents.size}")
         val relatedEventTypeIds = relatedEvents.filter { event ->
             event.requestId == requestId
         }.map { event ->
             event.eventType.value
         }
-        log.debug("Filtrert antall relatedEvents: ${relatedEventTypeIds.size}")
         val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
 
         return when {
