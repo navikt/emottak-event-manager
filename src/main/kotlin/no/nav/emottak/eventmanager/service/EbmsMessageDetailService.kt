@@ -159,7 +159,7 @@ class EbmsMessageDetailService(
                 EventType.MESSAGE_VALIDATED_AGAINST_CPA.description
             )
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
-            eventData[EventDataType.SENDER_NAME.value]
+            eventData[EventDataType.SENDER_NAME.value] ?: eventData[EventDataType.SENDER_NAME.value.uppercase()]
         }?.let {
             log.debug("Returnerer '{}'", it)
             return it
