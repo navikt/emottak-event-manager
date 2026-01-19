@@ -274,7 +274,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             list
         )
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
