@@ -60,20 +60,19 @@ class EbmsMessageDetailService(
         action: String = "",
         pageable: Pageable? = null
     ): Page<MessageInfo> {
+        val filterMsg = createFilterMessage(from, to, readableId, cpaId, messageId, role, service, action, pageable)
+        log.info("Fetching message details by time and filter: $filterMsg")
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
 
+        log.debug("Finding related readable id's for coresponding conversation id's...")
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
 
+        log.debug("Finding events for related readable id's...")
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
         val resultList = messageDetailsList.map { msgDetail ->
-            log.debug(
-                "Lager MessageInfo for requestId: {} (conversationId: {})",
-                msgDetail.requestId,
-                msgDetail.conversationId
-            )
-            val senderName = msgDetail.senderName?.also { log.debug("SenderName ble funnet direkte på MessageDetail: {}", it) } ?: findSenderName(msgDetail.requestId, relatedEvents)
+            val senderName = msgDetail.senderName ?: findSenderName(msgDetail.requestId, relatedEvents)
             val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
             val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
 
@@ -90,6 +89,7 @@ class EbmsMessageDetailService(
                 status = messageStatus
             )
         }
+        log.debug("Returning ${messageDetailsPage.size} message details")
         return Page(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.sort, messageDetailsPage.totalElements, resultList)
     }
 
@@ -149,22 +149,14 @@ class EbmsMessageDetailService(
     }
 
     private fun findSenderName(requestId: Uuid, events: List<Event>): String {
-        log.debug("Finner avsenderName for requestId: {}", requestId)
         events.firstOrNull {
             it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
-            log.debug(
-                "Fant hendelsestype {}: {}",
-                EventType.MESSAGE_VALIDATED_AGAINST_CPA,
-                EventType.MESSAGE_VALIDATED_AGAINST_CPA.description
-            )
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData[EventDataType.SENDER_NAME.value] ?: eventData[EventDataType.SENDER_NAME.value.uppercase()]
         }?.let {
-            log.debug("Returnerer '{}'", it)
             return it
         }
-        log.debug("Returnerer ukjent SenderName")
         return Constants.UNKNOWN
     }
 
@@ -202,6 +194,32 @@ class EbmsMessageDetailService(
 
             else -> Constants.UNKNOWN
         }
+    }
+
+    fun createFilterMessage(
+        from: Instant,
+        to: Instant,
+        readableId: String,
+        cpaId: String,
+        messageId: String,
+        role: String,
+        service: String,
+        action: String,
+        pageable: Pageable? = null): String {
+        val filters = mutableListOf<String>()
+        filters.add("from:'$from'")
+        filters.add("to:'$to'")
+        if (readableId.isNotBlank()) filters.add("readableId:'$readableId'")
+        if (cpaId.isNotBlank()) filters.add("cpaId:'$cpaId'")
+        if (messageId.isNotBlank()) filters.add("messageId:'$messageId'")
+        if (role.isNotBlank()) filters.add("role:'$role'")
+        if (service.isNotBlank()) filters.add("service:'$service'")
+        if (action.isNotBlank()) filters.add("action:'$action'")
+        if (pageable != null) {
+            filters.add("pageSize:'${pageable.pageSize}'")
+            filters.add("pageNumber:'${pageable.pageNumber}'")
+        }
+        return filters.joinToString(", ")
     }
 
     @TestOnly
