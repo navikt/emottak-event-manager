@@ -153,7 +153,7 @@ class EbmsMessageDetailService(
             it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
-            eventData[EventDataType.SENDER_NAME.value] ?: eventData[EventDataType.SENDER_NAME.value.uppercase()] // Uppercase-version due to a bug, see https://github.com/navikt/ebxml-processor/pull/208
+            eventData[EventDataType.SENDER_NAME.value]
         }?.let {
             return it
         }

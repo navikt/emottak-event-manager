@@ -250,38 +250,6 @@ class EbmsMessageDetailServiceTest : StringSpec({
         result.content.first().senderName shouldBe "Test EPJ AS"
     }
 
-    "Bug-workaround: Should find sender name from related events when key is in uppercase" {
-        val testDetails = buildTestEbmsMessageDetail().copy(senderName = null)
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val relatedEvents = listOf(
-            buildTestEvent(),
-            buildTestEvent().copy(
-                eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
-                requestId = testDetails.requestId,
-                eventData = Json.encodeToString(mapOf(EventDataType.SENDER_NAME to "Test STORE BOKSTAVER"))
-            )
-        )
-
-        val list = listOf(testDetails)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
-
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
-
-        result.content.first().senderName shouldBe "Test STORE BOKSTAVER"
-    }
-
     "Should find reference parameter from related events" {
         val reference = "abcd1234"
         val testDetails = buildTestEbmsMessageDetail().copy(refParam = null)
