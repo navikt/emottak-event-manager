@@ -72,7 +72,7 @@ class EbmsMessageDetailService(
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
         val resultList = messageDetailsList.map { msgDetail ->
-            val senderName = msgDetail.senderName ?: findSenderName(msgDetail.requestId, relatedEvents)
+            val senderName = msgDetail.getReadableSenderName() ?: findSenderName(msgDetail.requestId, relatedEvents)
             val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
             val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
 
@@ -109,7 +109,7 @@ class EbmsMessageDetailService(
 
         val relatedEvents = eventRepository.findByRequestId(messageDetails.requestId)
 
-        val senderName = messageDetails.senderName ?: findSenderName(messageDetails.requestId, relatedEvents)
+        val senderName = messageDetails.getReadableSenderName() ?: findSenderName(messageDetails.requestId, relatedEvents)
         val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
         val messageStatus = getMessageStatus(messageDetails.requestId, relatedEvents)
 
