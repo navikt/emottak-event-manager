@@ -91,13 +91,13 @@ fun buildDatabaseContainer(): PostgreSQLContainer<Nothing> {
     }
 }
 
-fun buildTestEvent(): Event {
-    return Event.fromTransportModel(buildTestTransportEvent())
+fun buildTestEvent(requestId: Uuid = Uuid.random()): Event {
+    return Event.fromTransportModel(buildTestTransportEvent(requestId))
 }
 
-fun buildTestTransportEvent(): no.nav.emottak.utils.kafka.model.Event = no.nav.emottak.utils.kafka.model.Event(
+fun buildTestTransportEvent(requestId: Uuid = Uuid.random()): no.nav.emottak.utils.kafka.model.Event = no.nav.emottak.utils.kafka.model.Event(
     eventType = EventType.MESSAGE_SAVED_IN_JURIDISK_LOGG,
-    requestId = Uuid.random(),
+    requestId = requestId,
     contentId = "test-content-id",
     messageId = "test-message-id",
     eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",

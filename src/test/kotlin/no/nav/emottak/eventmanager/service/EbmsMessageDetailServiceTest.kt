@@ -54,7 +54,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
     "Should call database repository on fetching EBMS message details by time interval" {
         val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent()
+        val testEvent = buildTestEvent(testDetails.requestId)
         val testEventType = EventType(
             eventTypeId = 19,
             description = "Melding lagret i juridisk logg",
@@ -91,7 +91,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
     "Should call database repository on fetching EBMS message details by time interval and filtered by readableId" {
         val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent()
+        val testEvent = buildTestEvent(testDetails.requestId)
         val testEventType = EventType(
             eventTypeId = 19,
             description = "Melding lagret i juridisk logg",
@@ -129,7 +129,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
     "Should call database repository on fetching EBMS message details by time interval and filtered by messageId" {
         val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent()
+        val testEvent = buildTestEvent(testDetails.requestId)
         val testEventType = EventType(
             eventTypeId = 19,
             description = "Melding lagret i juridisk logg",

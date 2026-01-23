@@ -60,31 +60,36 @@ class EbmsMessageDetailService(
         action: String = "",
         pageable: Pageable? = null
     ): Page<MessageInfo> {
+        val filterMsg = createFilterLogMessage(from, to, readableId, cpaId, messageId, role, service, action, pageable)
+        log.info("Fetching message details by time and filter: $filterMsg")
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
 
+        log.debug("Finding related readable id's for coresponding conversation id's...")
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
 
+        log.debug("Finding events for related readable id's...")
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
-        val resultList = messageDetailsList.map {
-            val senderName = it.senderName ?: findSenderName(it.requestId, relatedEvents)
-            val refParam = it.refParam ?: findRefParam(it.requestId, relatedEvents)
-            val messageStatus = getMessageStatus(relatedEvents)
+        val resultList = messageDetailsList.map { msgDetail ->
+            val senderName = msgDetail.getReadableSenderName() ?: findSenderName(msgDetail.requestId, relatedEvents)
+            val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
+            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
 
             MessageInfo(
-                receivedDate = it.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
-                readableIdList = relatedReadableIds[it.requestId] ?: "",
-                role = it.fromRole,
-                service = it.service,
-                action = it.action,
+                receivedDate = msgDetail.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                readableIdList = relatedReadableIds[msgDetail.requestId] ?: "",
+                role = msgDetail.fromRole,
+                service = msgDetail.service,
+                action = msgDetail.action,
                 referenceParameter = refParam,
                 senderName = senderName,
-                cpaId = it.cpaId,
+                cpaId = msgDetail.cpaId,
                 count = relatedEvents.count(),
                 status = messageStatus
             )
         }
+        log.debug("Returning ${messageDetailsPage.size} message details")
         return Page(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.sort, messageDetailsPage.totalElements, resultList)
     }
 
@@ -104,9 +109,9 @@ class EbmsMessageDetailService(
 
         val relatedEvents = eventRepository.findByRequestId(messageDetails.requestId)
 
-        val senderName = messageDetails.senderName ?: findSenderName(messageDetails.requestId, relatedEvents)
+        val senderName = messageDetails.getReadableSenderName() ?: findSenderName(messageDetails.requestId, relatedEvents)
         val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
-        val messageStatus = getMessageStatus(relatedEvents)
+        val messageStatus = getMessageStatus(messageDetails.requestId, relatedEvents)
 
         return listOf(
             ReadableIdInfo(
@@ -167,8 +172,10 @@ class EbmsMessageDetailService(
         return Constants.UNKNOWN
     }
 
-    private suspend fun getMessageStatus(relatedEvents: List<Event>): String {
-        val relatedEventTypeIds = relatedEvents.map { event ->
+    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>): String {
+        val relatedEventTypeIds = relatedEvents.filter { event ->
+            event.requestId == requestId
+        }.map { event ->
             event.eventType.value
         }
         val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
@@ -185,6 +192,33 @@ class EbmsMessageDetailService(
 
             else -> Constants.UNKNOWN
         }
+    }
+
+    private fun createFilterLogMessage(
+        from: Instant,
+        to: Instant,
+        readableId: String,
+        cpaId: String,
+        messageId: String,
+        role: String,
+        service: String,
+        action: String,
+        pageable: Pageable? = null
+    ): String {
+        val filters = mutableListOf<String>()
+        filters.add("from:'$from'")
+        filters.add("to:'$to'")
+        if (readableId.isNotBlank()) filters.add("readableId:'$readableId'")
+        if (cpaId.isNotBlank()) filters.add("cpaId:'$cpaId'")
+        if (messageId.isNotBlank()) filters.add("messageId:'$messageId'")
+        if (role.isNotBlank()) filters.add("role:'$role'")
+        if (service.isNotBlank()) filters.add("service:'$service'")
+        if (action.isNotBlank()) filters.add("action:'$action'")
+        if (pageable != null) {
+            filters.add("pageSize:'${pageable.pageSize}'")
+            filters.add("pageNumber:'${pageable.pageNumber}'")
+        }
+        return filters.joinToString(", ")
     }
 
     @TestOnly

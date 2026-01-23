@@ -77,15 +77,15 @@ data class EbmsMessageDetail(
     }
 
     fun generateReadableId(): String {
-        val direction = if (this.refToMessageId == null) "IN" else "OUT"
+        val direction = getDirection()
 
         val formatter = DateTimeFormatter.ofPattern("yyMMddHHmm")
         val savedAtString: String = this.savedAt
             .atZone(ZoneId.of(Constants.ZONE_ID_OSLO))
             .format(formatter)
 
-        val senderName = if (this.refToMessageId != null) {
-            "NAVM" // NAV Mottak
+        val senderName = if (getReadableSenderName() == "NAV Mottak") {
+            "NAVM"
         } else {
             this.senderName?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "UNKN"
         }
@@ -93,5 +93,13 @@ data class EbmsMessageDetail(
         val id = this.requestId.toString().takeLast(6)
 
         return "$direction.$savedAtString.$senderName.$id"
+    }
+
+    fun getDirection() = if (this.refToMessageId == null) "IN" else "OUT"
+
+    fun getReadableSenderName() = if (this.refToMessageId != null) {
+        "NAV Mottak"
+    } else {
+        this.senderName
     }
 }
