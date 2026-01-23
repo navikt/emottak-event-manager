@@ -60,7 +60,7 @@ class EbmsMessageDetailService(
         action: String = "",
         pageable: Pageable? = null
     ): Page<MessageInfo> {
-        val filterMsg = createFilterMessage(from, to, readableId, cpaId, messageId, role, service, action, pageable)
+        val filterMsg = createFilterLogMessage(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         log.info("Fetching message details by time and filter: $filterMsg")
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
@@ -194,7 +194,7 @@ class EbmsMessageDetailService(
         }
     }
 
-    private fun createFilterMessage(
+    private fun createFilterLogMessage(
         from: Instant,
         to: Instant,
         readableId: String,
