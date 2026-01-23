@@ -194,7 +194,7 @@ class EbmsMessageDetailService(
         }
     }
 
-    fun createFilterMessage(
+    private fun createFilterMessage(
         from: Instant,
         to: Instant,
         readableId: String,
