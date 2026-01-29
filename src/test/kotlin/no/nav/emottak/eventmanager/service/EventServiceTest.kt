@@ -5,7 +5,6 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
@@ -14,8 +13,8 @@ import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.repository.buildTestTransportEvent
+import no.nav.emottak.eventmanager.utils.toOsloZone
 import java.time.Instant
-import java.time.ZoneId
 
 class EventServiceTest : StringSpec({
 
@@ -54,7 +53,7 @@ class EventServiceTest : StringSpec({
         val eventsPage = eventService.fetchEvents(from, to)
         val eventsList = eventsPage.content
         eventsList.size shouldBe 1
-        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
@@ -83,7 +82,7 @@ class EventServiceTest : StringSpec({
         val eventsPage = eventService.fetchEvents(from, to, role = roleFilter)
         val eventsList = eventsPage.content
         eventsList.size shouldBe 1
-        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
@@ -112,7 +111,7 @@ class EventServiceTest : StringSpec({
         val eventsPage = eventService.fetchEvents(from, to, service = serviceFilter)
         val eventsList = eventsPage.content
         eventsList.size shouldBe 1
-        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
@@ -141,7 +140,7 @@ class EventServiceTest : StringSpec({
         val eventsPage = eventService.fetchEvents(from, to, action = actionFilter)
         val eventsList = eventsPage.content
         eventsList.size shouldBe 1
-        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
@@ -156,7 +155,7 @@ class EventServiceTest : StringSpec({
         val eventsList = eventService.fetchMessageLogInfo(testEvent.requestId.toString())
 
         eventsList.size shouldBe 1
-        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].eventDescription shouldBe testEvent.eventType.description
         eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
 
@@ -173,7 +172,7 @@ class EventServiceTest : StringSpec({
         val eventsList = eventService.fetchMessageLogInfo(testMessageDetail.generateReadableId())
 
         eventsList.size shouldBe 1
-        eventsList[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString()
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].eventDescription shouldBe testEvent.eventType.description
         eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
 

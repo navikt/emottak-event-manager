@@ -247,7 +247,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             list
         )
         coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            mapOf(testDetails.requestId to testDetails.generateReadableId())
         coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
 
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
@@ -270,13 +270,13 @@ class EbmsMessageDetailServiceTest : StringSpec({
             buildTestEvent(testDetails1.requestId),
             buildTestEvent().copy(
                 eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
-                requestId = testDetails1.requestId,
+                requestId = testDetails1.requestId
             ),
             buildTestEvent(testDetails2.requestId),
             buildTestEvent().copy(
                 eventType = EventTypeEnum.VALIDATION_AGAINST_CPA_FAILED,
-                requestId = testDetails2.requestId,
-            ),
+                requestId = testDetails2.requestId
+            )
         )
         val testEventTypes = listOf(
             EventType(
@@ -310,7 +310,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
         coEvery {
             ebmsMessageDetailRepository.findRelatedReadableIds(
                 conversationIds = listOf(testDetails1.conversationId, testDetails2.conversationId),
-                requestIds = listOf(testDetails1.requestId, testDetails2.requestId))
+                requestIds = listOf(testDetails1.requestId, testDetails2.requestId)
+            )
         } returns
             mapOf(testDetails2.requestId to testDetails2.generateReadableId())
 
@@ -318,7 +319,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
             eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId))
         } returns relatedEvents
 
-        coEvery { eventTypeRepository.findEventTypesByIds(any() ) } returns testEventTypes
+        coEvery { eventTypeRepository.findEventTypesByIds(any()) } returns testEventTypes
 
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
 
