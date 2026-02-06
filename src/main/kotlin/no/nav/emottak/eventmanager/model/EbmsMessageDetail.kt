@@ -2,6 +2,7 @@ package no.nav.emottak.eventmanager.model
 
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.utils.toOsloZone
 import no.nav.emottak.utils.common.constants.LogFields.ACTION
 import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
@@ -37,7 +38,11 @@ data class EbmsMessageDetail(
     // Extra fields
     val senderName: String? = null,
     val refParam: String? = null,
-    val readableId: String? = null
+    val readableId: String? = null,
+
+    // Extra fields - only populated when asking for conversations:
+    val latestEventAt: Instant? = null,
+    val latestEventStatus: EventStatusEnum? = null
 ) {
 
     val marker: LogstashMarker = Markers.appendEntries(
