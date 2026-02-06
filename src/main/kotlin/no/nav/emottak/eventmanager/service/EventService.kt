@@ -1,7 +1,6 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageLogInfo
@@ -10,11 +9,11 @@ import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.route.validation.Validation
+import no.nav.emottak.eventmanager.utils.toOsloZone
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import org.slf4j.LoggerFactory
 import java.time.Instant
-import java.time.ZoneId
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.Event as TransportEvent
 
@@ -62,7 +61,7 @@ class EventService(
             val ebmsMessageDetail = messageDetailsMap[it.requestId]
             if (ebmsMessageDetail == null) numberOfRequestIdsNotFound++
             EventInfo(
-                eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                eventDate = it.createdAt.toOsloZone().toString(),
                 description = it.eventType.description,
                 eventData = it.eventData,
                 readableId = ebmsMessageDetail?.readableId ?: "",
@@ -97,7 +96,7 @@ class EventService(
         return eventsList.sortedBy { it.createdAt }
             .map {
                 MessageLogInfo(
-                    eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                    eventDate = it.createdAt.toOsloZone().toString(),
                     eventDescription = it.eventType.description,
                     eventId = it.eventType.value.toString()
                 )

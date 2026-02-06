@@ -65,16 +65,19 @@ class EbmsMessageDetailService(
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
 
-        log.debug("Finding related readable id's for coresponding conversation id's...")
+        log.debug("Finding related readable id's for corresponding conversation id's...")
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
 
         log.debug("Finding events for related readable id's...")
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
+        log.debug("Finding all EventTypes for requestIds...")
+        val eventTypes = getRelatedEventTypes(relatedEvents)
+
         val resultList = messageDetailsList.map { msgDetail ->
             val senderName = msgDetail.getReadableSenderName() ?: findSenderName(msgDetail.requestId, relatedEvents)
             val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
-            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
+            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents, eventTypes)
 
             MessageInfo(
                 receivedDate = msgDetail.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
@@ -172,13 +175,22 @@ class EbmsMessageDetailService(
         return Constants.UNKNOWN
     }
 
-    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>): String {
+    private suspend fun getRelatedEventTypes(relatedEvents: List<Event>): List<no.nav.emottak.eventmanager.model.EventType> {
+        val relatedEventTypeIds = relatedEvents.map { event ->
+            event.eventType.value
+        }.distinct()
+        return eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
+    }
+
+    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>, eventTypes: List<no.nav.emottak.eventmanager.model.EventType>? = null): String {
         val relatedEventTypeIds = relatedEvents.filter { event ->
             event.requestId == requestId
         }.map { event ->
             event.eventType.value
         }
-        val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
+        val relatedEventTypes = eventTypes?.filter { eventType ->
+            eventType.eventTypeId in relatedEventTypeIds
+        } ?: eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
 
         return when {
             relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }

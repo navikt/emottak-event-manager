@@ -2,7 +2,8 @@ package no.nav.emottak.eventmanager.model
 
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers
-import no.nav.emottak.eventmanager.constants.Constants
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.utils.toOsloZone
 import no.nav.emottak.utils.common.constants.LogFields.ACTION
 import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
 import no.nav.emottak.utils.common.constants.LogFields.CPA_ID
@@ -14,7 +15,6 @@ import no.nav.emottak.utils.common.constants.LogFields.TO_PARTY
 import no.nav.emottak.utils.common.constants.LogFields.TO_ROLE
 import no.nav.emottak.utils.common.constants.LogFields.X_REQUEST_ID
 import java.time.Instant
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
@@ -38,7 +38,11 @@ data class EbmsMessageDetail(
     // Extra fields
     val senderName: String? = null,
     val refParam: String? = null,
-    val readableId: String? = null
+    val readableId: String? = null,
+
+    // Extra fields - only populated when asking for conversations:
+    val latestEventAt: Instant? = null,
+    val latestEventStatus: EventStatusEnum? = null
 ) {
 
     val marker: LogstashMarker = Markers.appendEntries(
@@ -80,8 +84,7 @@ data class EbmsMessageDetail(
         val direction = getDirection()
 
         val formatter = DateTimeFormatter.ofPattern("yyMMddHHmm")
-        val savedAtString: String = this.savedAt
-            .atZone(ZoneId.of(Constants.ZONE_ID_OSLO))
+        val savedAtString: String = this.savedAt.toOsloZone()
             .format(formatter)
 
         val senderName = if (getReadableSenderName() == "NAV Mottak") {
