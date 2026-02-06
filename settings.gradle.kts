@@ -3,7 +3,7 @@ rootProject.name = "emottak-event-manager"
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
-            version("exposed", "0.47.0")
+            version("exposed", "0.61.0")
             version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")

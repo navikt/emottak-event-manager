@@ -164,7 +164,7 @@ class EventServiceTest : StringSpec({
 
     "Should call database on fetching events related to a specific message by Readable ID" {
         val testMessageDetail = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent().copy(requestId = testMessageDetail.requestId)
+        val testEvent = buildTestEvent(requestId = testMessageDetail.requestId)
 
         coEvery { eventRepository.findByRequestId(testEvent.requestId) } returns listOf(testEvent)
         coEvery { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) } returns testMessageDetail

@@ -154,7 +154,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return list of events" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -258,7 +258,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return empty list if no events found" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -292,7 +292,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return Unauthorized if access token is missing" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -307,7 +307,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return Unauthorized if access token is invalid" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -322,7 +322,7 @@ class ApplicationTest : StringSpec({
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
             val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc", getToken)
@@ -347,7 +347,7 @@ class ApplicationTest : StringSpec({
     "message-details endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
             val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken)
@@ -362,7 +362,7 @@ class ApplicationTest : StringSpec({
     "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
         withTestApplication { httpClient ->
             val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
             val readableId = messageDetails.generateReadableId()
@@ -435,7 +435,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id>/events endpoint should return list of related events info by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val relatedEvent = buildTestEvent(requestId = messageDetails.requestId)
             val unrelatedEvent = buildTestEvent()
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -457,7 +457,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id>/events endpoint should return list of related events info by Readable ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val relatedEvent = buildTestEvent(requestId = messageDetails.requestId)
             val unrelatedEvent = buildTestEvent()
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -665,7 +665,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return list of message details by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
@@ -690,7 +690,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return list of message details by Readable ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
@@ -715,7 +715,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return list of message details by Readable ID pattern" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
