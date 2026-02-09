@@ -1,7 +1,6 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.EventInfo
 import no.nav.emottak.eventmanager.model.MessageLogInfo
@@ -10,11 +9,11 @@ import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.route.validation.Validation
+import no.nav.emottak.eventmanager.utils.toOsloZone
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import org.slf4j.LoggerFactory
 import java.time.Instant
-import java.time.ZoneId
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.Event as TransportEvent
 
@@ -31,12 +30,12 @@ class EventService(
             val transportEvent: TransportEvent = Json.decodeFromString(String(value))
             val event = Event.fromTransportModel(transportEvent)
 
-            updateMessageDetails(event)
+            updateMessageDetail(event)
 
             eventRepository.insert(event)
             log.info(event.marker, "Event processed successfully: $event")
         } catch (e: Exception) {
-            log.error("Exception while processing event:${String(value)}", e)
+            log.error("Exception while processing event: ${String(value)}", e)
         }
     }
 
@@ -62,7 +61,7 @@ class EventService(
             val ebmsMessageDetail = messageDetailsMap[it.requestId]
             if (ebmsMessageDetail == null) numberOfRequestIdsNotFound++
             EventInfo(
-                eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                eventDate = it.createdAt.toOsloZone().toString(),
                 description = it.eventType.description,
                 eventData = it.eventData,
                 readableId = ebmsMessageDetail?.readableId ?: "",
@@ -97,22 +96,22 @@ class EventService(
         return eventsList.sortedBy { it.createdAt }
             .map {
                 MessageLogInfo(
-                    eventDate = it.createdAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                    eventDate = it.createdAt.toOsloZone().toString(),
                     eventDescription = it.eventType.description,
                     eventId = it.eventType.value.toString()
                 )
             }.toList()
     }
 
-    private suspend fun updateMessageDetails(event: Event) {
+    private suspend fun updateMessageDetail(event: Event) {
         if (event.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA) {
-            val relatedMessageDetails = ebmsMessageDetailRepository.findByRequestId(event.requestId)
-            if (relatedMessageDetails != null) {
+            val relatedMessageDetail = ebmsMessageDetailRepository.findByRequestId(event.requestId)
+            if (relatedMessageDetail != null) {
                 val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
 
                 eventData[EventDataType.SENDER_NAME.value]?.also {
-                    val updatedMessageDetails = relatedMessageDetails.copy(senderName = it)
-                    ebmsMessageDetailRepository.update(updatedMessageDetails)
+                    val updatedMessageDetail = relatedMessageDetail.copy(senderName = it)
+                    ebmsMessageDetailRepository.update(updatedMessageDetail)
                     log.info("Sender updated successfully for requestId: ${event.requestId}")
                 }
             } else {
@@ -121,13 +120,13 @@ class EventService(
         }
 
         if (event.eventType == EventType.REFERENCE_RETRIEVED) {
-            val relatedMessageDetails = ebmsMessageDetailRepository.findByRequestId(event.requestId)
-            if (relatedMessageDetails != null) {
+            val relatedMessageDetail = ebmsMessageDetailRepository.findByRequestId(event.requestId)
+            if (relatedMessageDetail != null) {
                 val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
 
                 eventData[EventDataType.REFERENCE_PARAMETER.value]?.also {
-                    val updatedMessageDetails = relatedMessageDetails.copy(refParam = it)
-                    ebmsMessageDetailRepository.update(updatedMessageDetails)
+                    val updatedMessageDetail = relatedMessageDetail.copy(refParam = it)
+                    ebmsMessageDetailRepository.update(updatedMessageDetail)
                     log.info("Reference parameter updated successfully for requestId: ${event.requestId}")
                 }
             } else {

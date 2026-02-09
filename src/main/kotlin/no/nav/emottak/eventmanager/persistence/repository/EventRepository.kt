@@ -106,7 +106,7 @@ class EventRepository(private val database: Database) {
                     .where { createdAt.between(from, to) }
                     .apply {
                         if (pageable != null) {
-                            this.limit(pageable.pageSize, pageable.offset)
+                            this.limit(pageable.pageSize).offset(pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())
                         }
                     }
@@ -150,7 +150,7 @@ class EventRepository(private val database: Database) {
                     .apply {
                         this.applyRoleServiceActionFilters(role, service, action)
                         if (pageable != null) {
-                            this.limit(pageable.pageSize, pageable.offset)
+                            this.limit(pageable.pageSize).offset(pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())
                         }
                     }

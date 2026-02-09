@@ -23,7 +23,7 @@ object EventTable : Table("events") {
     )
 
     val createdAt: Column<java.time.Instant> = timestamp("created_at")
-        .defaultExpression(org.jetbrains.exposed.sql.javatime.CurrentTimestamp())
+        .defaultExpression(org.jetbrains.exposed.sql.javatime.CurrentTimestamp)
 
     override val primaryKey = PrimaryKey(eventId)
 }
