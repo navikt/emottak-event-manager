@@ -180,40 +180,47 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
     ebmsMessageDetailRepository: EbmsMessageDetailRepository,
     eventRepository: EventRepository
 ): Pair<List<EbmsMessageDetail>, List<List<Event>>> {
-    val md1 = buildTestEbmsMessageDetail().copy(
+    val c1md1 = buildTestEbmsMessageDetail().copy(
         savedAt = Instant.parse("2025-04-30T12:52:45.000Z"),
         readableId = "readable-id-1"
     )
-    val md2 = buildTestEbmsMessageDetail().copy(
+    val c1md2 = buildTestEbmsMessageDetail().copy(
         messageId = "another-message-id-1",
         savedAt = Instant.parse("2025-04-30T12:54:46.000Z"),
         readableId = "another-readable-id-1"
     )
-    val md3 = buildTestEbmsMessageDetail().copy(
-        savedAt = Instant.parse("2025-04-30T12:56:47.000Z"),
-        refToMessageId = "message-id-reference",
-        readableId = "readable-id-2"
-    )
-    val md4 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-4",
+    val c2md1 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-3",
         cpaId = "another-cpa-id",
         messageId = "another-message-id-2",
-        savedAt = Instant.parse("2025-04-30T12:58:48.000Z"),
+        savedAt = Instant.parse("2025-04-30T12:56:47.000Z"),
         refToMessageId = "message-id-reference-D",
         readableId = "another-readable-id-2"
     )
+    val c1md3 = buildTestEbmsMessageDetail().copy(
+        savedAt = Instant.parse("2025-04-30T12:58:48.000Z"),
+        refToMessageId = "message-id-reference",
+        readableId = "readable-id-2"
+    )
+    val c3md1 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-5",
+        savedAt = Instant.parse("2025-04-30T12:59:49.000Z"),
+        service = "another-service"
+    )
 
-    ebmsMessageDetailRepository.insert(md1)
-    ebmsMessageDetailRepository.insert(md2)
-    ebmsMessageDetailRepository.insert(md3)
-    ebmsMessageDetailRepository.insert(md4)
+    ebmsMessageDetailRepository.insert(c1md1)
+    ebmsMessageDetailRepository.insert(c1md2)
+    ebmsMessageDetailRepository.insert(c2md1)
+    ebmsMessageDetailRepository.insert(c1md3)
+    ebmsMessageDetailRepository.insert(c3md1)
 
-    val events1 = buildAndInsertTestEvents(eventRepository, md1)
-    val events2 = buildAndInsertTestEvents(eventRepository, md2)
-    val events3 = buildAndInsertTestEvents(eventRepository, md3, KafkaEventType.UNKNOWN_ERROR_OCCURRED)
-    val events4 = buildAndInsertTestEvents(eventRepository, md4)
+    val events1 = buildAndInsertTestEvents(eventRepository, c1md1)
+    val events2 = buildAndInsertTestEvents(eventRepository, c1md2)
+    val events3 = buildAndInsertTestEvents(eventRepository, c2md1)
+    val events4 = buildAndInsertTestEvents(eventRepository, c1md3, KafkaEventType.UNKNOWN_ERROR_OCCURRED)
+    val events5 = buildAndInsertTestEvents(eventRepository, c3md1)
 
-    return Pair(listOf(md1, md2, md3, md4), listOf(events1, events2, events3, events4))
+    return Pair(listOf(c1md1, c1md2, c2md1, c1md3, c3md1), listOf(events1, events2, events3, events4, events5))
 }
 
 suspend fun buildAndInsertTestEvents(

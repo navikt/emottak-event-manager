@@ -260,31 +260,32 @@ class EbmsMessageDetailRepository(private val database: Database) {
         pageable: Pageable? = null
     ): Page<Conversation> = withContext(Dispatchers.IO) {
         transaction(database.db) {
-            // 1) Siste status pr conversation_id innenfor angitt tidsperiode:
+            // 1) Subquery-alias: Siste status pr conversation_id innenfor angitt tidsperiode:
             log.debug("Creating latest status pr distinct conversation subquery...")
             val statusPrConversationAlias = getConversationsQuery(from, to, readableIdPattern, cpaIdPattern, service)
                 .alias("latest_status_pr_conversation")
 
             /* 2) Telle antall conversation_id'er hvor siste status er forespurt status (i det gitte tidsrommet):
             SELECT count(conversation_id) FROM statusPrConversationAlias
-            WHERE latest_status IN ('Feil', 'Informasjon');
+            WHERE latest_status IN ('Feil', 'Informasjon')
+            ORDER BY latest_event_timestamp;
             */
-            log.debug("Counting distinct conversations with prefered statuses...")
-            val countQuery = statusPrConversationAlias
-                .select(statusPrConversationAlias[conversationId].countDistinct())
+            log.debug("Getting distinct conversations with prefered statuses...")
+            val conversationsQuery = statusPrConversationAlias
+                .select(statusPrConversationAlias[conversationId])
                 .where {
                     statusPrConversationAlias[EventTypeTable.status]
                         .castTo<String>(VarCharColumnType()).inList(statuses.map { it.toString() })
                 }
-                .single()
+                .orderBy(statusPrConversationAlias[EventTable.createdAt] to SortOrder.DESC)
+                // TODO: Burde vi heller sortere på EbmsMessageDetailTable.savedAt i stedet for EventTable.createdAt?
 
-            val totalCount = countQuery[statusPrConversationAlias[conversationId].countDistinct()]
+            val totalCount = conversationsQuery.count()
             log.debug("Total distinct conversations: $totalCount")
 
             // 3) Hente alle request_id'er til conversation_id'er fra SUBQUERY:
             log.debug("Getting all conversationIds for page {}...", pageable?.pageNumber ?: 1)
-            val conversationIds = getConversationsQuery(from, to, readableIdPattern, cpaIdPattern, service, selectConversationIdOnly = true, pageable)
-                .map { it[conversationId] }
+            val conversationIds = conversationsQuery.map { it[statusPrConversationAlias[conversationId]] }.limit(pageable)
             log.debug("A list of {} conversationIds was returned.", conversationIds.size)
 
             // 4) Hente alle messagedetails (med siste status) til relevante conversationIds:
@@ -301,6 +302,10 @@ class EbmsMessageDetailRepository(private val database: Database) {
 
             val conversationList = conversationIds.mapNotNull { conversationId ->
                 val msgList = conversationsMap[conversationId]?.sortedByDescending { it.latestEventAt } ?: return@mapNotNull null
+
+                val latestEventStatus = msgList.first().latestEventStatus
+                if (latestEventStatus == null || !statuses.contains(latestEventStatus)) return@mapNotNull null
+
                 Conversation(
                     messageDetails = msgList.sortedBy { it.savedAt },
                     createdAt = msgList.last().savedAt,
@@ -313,6 +318,14 @@ class EbmsMessageDetailRepository(private val database: Database) {
             if (returnPageable == null) returnPageable = Pageable(1, conversationList.size)
             Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, conversationList)
         }
+    }
+
+    private fun List<String>.limit(pageable: Pageable?): List<String> {
+        if (pageable == null) return this
+        val itemsPrPage = pageable.pageSize
+        val fromIndex = pageable.offset.toInt()
+        val toIndex = minOf(fromIndex + itemsPrPage, this.size)
+        return this.subList(fromIndex, toIndex)
     }
 
     private fun toEbmsMessageDetail(it: ResultRow) =
@@ -341,7 +354,6 @@ class EbmsMessageDetailRepository(private val database: Database) {
         readableIdPattern: String = "",
         cpaIdPattern: String = "",
         service: String = "",
-        selectConversationIdOnly: Boolean = false,
         pageable: Pageable? = null
     ): Query {
         /*
@@ -363,7 +375,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                 onColumn = EventTypeTable.eventTypeId,
                 otherColumn = EventTable.eventTypeId
             )
-            .setSelectFields(selectConversationIdOnly)
+            .select(conversationId, EventTable.createdAt, EventTypeTable.status)
             .withDistinctOn(conversationId)
             .where { savedAt.between(from, to) }
             .apply {
@@ -439,10 +451,3 @@ internal fun Query.applyPagableLimit(pageable: Pageable?, orderByColumn: Column<
             .orderBy(orderByColumn, pageable.getSortOrder())
     }
 }
-
-private fun ColumnSet.setSelectFields(selectConversationIdOnly: Boolean) =
-    if (selectConversationIdOnly) {
-        this.select(conversationId)
-    } else {
-        this.select(conversationId, EventTable.createdAt, EventTypeTable.status)
-    }
