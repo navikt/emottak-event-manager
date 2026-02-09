@@ -110,9 +110,11 @@ class ApplicationTest : StringSpec({
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
 
+        // Creating db with emottak-event-manager-db-admin:
         val migrationDb = Database(dbContainer.testConfiguration())
         migrationDb.migrate(migrationDb.dataSource)
         migrationDb.dataSource.close()
+        // Connecting to db with emottak-event-manager-db-user:
         db = Database(dbContainer.testConfiguration(user = "user"))
 
         mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
