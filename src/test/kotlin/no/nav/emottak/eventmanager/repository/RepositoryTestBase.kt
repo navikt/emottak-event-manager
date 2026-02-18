@@ -185,7 +185,8 @@ suspend fun buildAndInsertTestEbmsMessageDetailFilterData(repository: EbmsMessag
 
 suspend fun buildAndInsertTestEbmsMessageDetailConversation(
     ebmsMessageDetailRepository: EbmsMessageDetailRepository,
-    eventRepository: EventRepository
+    eventRepository: EventRepository,
+    conversationStatusRepository: ConversationStatusRepository
 ): Pair<List<EbmsMessageDetail>, List<List<Event>>> {
     val c1md1 = buildTestEbmsMessageDetail().copy(
         savedAt = Instant.parse("2025-04-30T12:52:45.000Z"),
@@ -197,7 +198,7 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
         readableId = "another-readable-id-1"
     )
     val c2md1 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-3",
+        conversationId = "conversation-id-2",
         cpaId = "another-cpa-id",
         messageId = "another-message-id-2",
         savedAt = Instant.parse("2025-04-30T12:56:47.000Z"),
@@ -210,7 +211,7 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
         readableId = "readable-id-2"
     )
     val c3md1 = buildTestEbmsMessageDetail().copy(
-        conversationId = "conversation-id-5",
+        conversationId = "conversation-id-3",
         savedAt = Instant.parse("2025-04-30T12:59:49.000Z"),
         service = "another-service"
     )
@@ -220,6 +221,12 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
     ebmsMessageDetailRepository.insert(c2md1)
     ebmsMessageDetailRepository.insert(c1md3)
     ebmsMessageDetailRepository.insert(c3md1)
+
+    conversationStatusRepository.insert(c1md1.conversationId)
+    conversationStatusRepository.insert(c1md2.conversationId)
+    conversationStatusRepository.insert(c2md1.conversationId)
+    conversationStatusRepository.insert(c1md3.conversationId)
+    conversationStatusRepository.insert(c3md1.conversationId)
 
     val events1 = buildAndInsertTestEvents(eventRepository, c1md1)
     val events2 = buildAndInsertTestEvents(eventRepository, c1md2)

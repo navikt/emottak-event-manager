@@ -60,4 +60,24 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         val updated = conversationStatusRepository.update(conversationId, EventStatusEnum.ERROR)
         updated shouldBe false
     }
+
+    "Should find conversations" {
+        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters()
+
+        pagable.totalElements shouldBe 3
+        pagable.size shouldBe 3
+
+        // TODO: Fiks sorteringsrekkefølgen - trolig med subquery
+        /*
+        val conversations = pagable.content
+        conversations[0].conversationId shouldBe c3md1.conversationId
+        conversations[1].conversationId shouldBe c2md1.conversationId
+        conversations[2].conversationId shouldBe c1md3.conversationId
+        conversations[0].statusAt shouldBeGreaterThan conversations[1].statusAt
+        conversations[1].statusAt shouldBeGreaterThan conversations[2].statusAt
+        */
+    }
 })
