@@ -166,13 +166,15 @@ class EventService(
                 id = conversationId,
                 status = eventStatus
             )
-            if (!success) log.warn(event.marker, "Cannot update conversation status! ConversationId: $conversationId not found")
+            if (!success) log.warn(event.marker, "Cannot update conversation status! ConversationId: $conversationId not found in conversation_status-table!")
         }
     }
 
     private suspend fun getConversationIdAtRelevantEventTypes(event: Event): String? {
         if (event.conversationId != null) return event.conversationId
-        if (event.eventType == EventType.MESSAGE_SENT_VIA_SMTP ||
+        // Ikke hent conversationId for andre eventtyper enn der vi trenger å oppdatere conversation status:
+        if (event.eventType == EventType.RETRY_TRIGGED ||
+            event.eventType == EventType.MESSAGE_SENT_VIA_SMTP ||
             event.eventType == EventType.MESSAGE_SENT_VIA_HTTP ||
             event.eventType.isErrorEvent()
         ) {
@@ -226,6 +228,6 @@ fun EventType.isCompleteEvent() = this in listOf(
     // Skal sette conversation til complete hvis kallet skjedde synkront:
     EventType.MESSAGE_SENT_VIA_HTTP,
     // Skal sette conversation til complete hvis det er avsluttende Acknowledgement fra konsument.
-    // Denne sjekken skjer i getConversationIdForRelevantEvents() (smtp-transport sender ikke conversationId):
+    // Denne sjekken skjer i getConversationIdAtRelevantEventTypes():
     EventType.MESSAGE_SENT_VIA_SMTP
 )

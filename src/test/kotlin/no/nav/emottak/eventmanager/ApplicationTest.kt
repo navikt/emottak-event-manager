@@ -112,7 +112,7 @@ class ApplicationTest : StringSpec({
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
 
-        // Creating db with emottak-event-manager-db-admin:
+        // Creating db as emottak-event-manager-db-admin:
         val migrationDb = Database(dbContainer.testConfiguration())
         migrationDb.migrate(migrationDb.dataSource)
         migrationDb.dataSource.close()

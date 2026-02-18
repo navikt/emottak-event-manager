@@ -1,5 +1,6 @@
 package no.nav.emottak.eventmanager.repository
 
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
@@ -42,14 +43,16 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         conversationStatus shouldNotBe null
         conversationStatus!!.conversationId shouldBe conversationId
         conversationStatus.latestStatus shouldBe EventStatusEnum.INFORMATION
+        conversationStatus.createdAt shouldBe conversationStatus.statusAt
 
         val updated = conversationStatusRepository.update(conversationId, EventStatusEnum.PROCESSING_COMPLETED)
         updated shouldBe true
 
-        val updatedconversationStatus = conversationStatusRepository.get(conversationId)
-        updatedconversationStatus shouldNotBe null
-        updatedconversationStatus!!.conversationId shouldBe conversationId
-        updatedconversationStatus.latestStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
+        val updatedConversationStatus = conversationStatusRepository.get(conversationId)
+        updatedConversationStatus shouldNotBe null
+        updatedConversationStatus!!.conversationId shouldBe conversationId
+        updatedConversationStatus.latestStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
+        updatedConversationStatus.createdAt shouldBeLessThan updatedConversationStatus.statusAt
     }
 
     "Update should return false if conversationId not found" {

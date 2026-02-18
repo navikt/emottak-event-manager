@@ -157,7 +157,7 @@ class EventServiceTest : StringSpec({
         val testEvent = Event.fromTransportModel(testTransportEvent)
         val testMessageDetail = buildTestEbmsMessageDetail(testTransportEvent.requestId).copy(
             action = ACKNOWLEDGMENT_ACTION,
-            fromRole = NOT_APPLICABLE_ROLE,
+            fromRole = NOT_APPLICABLE_ROLE, // From NAV
             conversationId = "my-conversation-id"
         )
 
