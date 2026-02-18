@@ -12,6 +12,7 @@ import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -32,11 +33,13 @@ class EbmsMessageDetailServiceTest : StringSpec({
     val ebmsMessageDetailRepository = mockk<EbmsMessageDetailRepository>()
     val eventTypeRepository = mockk<EventTypeRepository>(relaxed = true)
     val distinctRolesServicesActionsRepository = mockk<DistinctRolesServicesActionsRepository>()
+    val conversationStatusRepository = mockk<ConversationStatusRepository>()
     val ebmsMessageDetailService = EbmsMessageDetailService(
         eventRepository,
         ebmsMessageDetailRepository,
         eventTypeRepository,
-        distinctRolesServicesActionsRepository
+        distinctRolesServicesActionsRepository,
+        conversationStatusRepository
     )
 
     beforeEach {
@@ -44,8 +47,22 @@ class EbmsMessageDetailServiceTest : StringSpec({
     }
 
     "Should call database repository on processing EBMS message details" {
-
         val testTransportMessageDetail = buildTestTransportMessageDetail()
+        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+
+        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
+
+        coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
+        coEvery { conversationStatusRepository.insert(testDetails.conversationId) } returns true
+
+        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId) }
+    }
+
+    "Should not insert conversation status when refToMessageId is set" {
+        val testTransportMessageDetail = buildTestTransportMessageDetail().copy(refToMessageId = "another-msg-id")
         val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
 
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
@@ -54,7 +71,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        coVerify { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 0) { conversationStatusRepository.insert(any()) }
     }
 
     "Should call database repository on fetching EBMS message details by time interval" {

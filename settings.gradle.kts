@@ -8,7 +8,7 @@ dependencyResolutionManagement {
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
             version("arrow", "2.0.1")
-            version("emottak-utils", "0.3.5")
+            version("emottak-utils", "0.3.6")
             version("kotlin-kafka", "0.4.1")
             version("logback", "1.5.18")
             version("logstash", "8.0")
@@ -67,7 +67,7 @@ dependencyResolutionManagement {
         create("testLibs") {
             version("kotest", "5.9.1")
             version("ktor-test", "1.1.5")
-            version("testcontainers", "1.18.1")
+            version("testcontainers", "1.21.4")
             version("mockk", "1.13.17")
 
             library("kotest-runner", "io.kotest", "kotest-runner-junit5").versionRef("kotest")

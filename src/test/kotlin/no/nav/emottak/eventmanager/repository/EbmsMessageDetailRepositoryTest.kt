@@ -4,11 +4,8 @@ import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldStartWith
-import no.nav.emottak.eventmanager.model.Conversation
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
@@ -430,95 +427,4 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         retrievedDetails.size shouldBe 1
         retrievedDetails[0].requestId shouldBe messageDetails1.requestId
     }
-
-    "Conversation: Should retreive all conversations within given time interval" {
-        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository)
-        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
-
-        val retreivedConversations = ebmsMessageDetailRepository.findConversationsByTimeInterval(
-            Instant.parse("2025-04-30T12:00:00Z"),
-            Instant.parse("2025-04-30T13:00:00Z")
-        ).content
-
-        retreivedConversations.size shouldBe 3
-        printConversation(1, retreivedConversations[0])
-        printConversation(2, retreivedConversations[1])
-        printConversation(3, retreivedConversations[2])
-
-        retreivedConversations[0].latestEventAt shouldBe c3md1.savedAt.plusMillis(1000)
-        retreivedConversations[0].latestEventStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
-        retreivedConversations[0].messageDetails.size shouldBe 1
-
-        retreivedConversations[1].latestEventAt shouldBe c1md3.savedAt.plusMillis(1000)
-        retreivedConversations[1].latestEventStatus shouldBe EventStatusEnum.ERROR
-        retreivedConversations[1].messageDetails.size shouldBe 3
-
-        retreivedConversations[2].latestEventAt shouldBe c2md1.savedAt.plusMillis(1000)
-        retreivedConversations[2].latestEventStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
-        retreivedConversations[2].messageDetails.size shouldBe 1
-    }
-
-    "Conversation: Should filter on status" {
-        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository)
-        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
-
-        val retreivedConversations = ebmsMessageDetailRepository.findConversationsByTimeInterval(
-            Instant.parse("2025-04-30T12:00:00Z"),
-            Instant.parse("2025-04-30T13:00:00Z"),
-            statuses = listOf(EventStatusEnum.ERROR)
-        ).content
-        retreivedConversations.size shouldBe 1
-
-        retreivedConversations[0].messageDetails.size shouldBe 3
-        retreivedConversations[0].latestEventAt shouldBe c1md3.savedAt.plusMillis(1000)
-        retreivedConversations[0].latestEventStatus shouldBe EventStatusEnum.ERROR
-    }
-
-    "Conversation: Should filter on cpaId" {
-        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository)
-        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
-
-        val cpaIdPattern = "another-cpa"
-        val retreivedConversations = ebmsMessageDetailRepository.findConversationsByTimeInterval(
-            Instant.parse("2025-04-30T12:00:00Z"),
-            Instant.parse("2025-04-30T13:00:00Z"),
-            cpaIdPattern = cpaIdPattern
-        ).content
-        retreivedConversations.size shouldBe 1
-
-        retreivedConversations[0].messageDetails.size shouldBe 1
-        retreivedConversations[0].latestEventAt shouldBe c2md1.savedAt.plusMillis(1000)
-        retreivedConversations[0].latestEventStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
-        retreivedConversations[0].messageDetails.first().cpaId shouldBe c2md1.cpaId
-        retreivedConversations[0].messageDetails.first().cpaId shouldStartWith cpaIdPattern
-    }
-
-    "Conversation: Should filter on service" {
-        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository)
-        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
-
-        val service = "another-service"
-        val retreivedConversations = ebmsMessageDetailRepository.findConversationsByTimeInterval(
-            Instant.parse("2025-04-30T12:00:00Z"),
-            Instant.parse("2025-04-30T13:00:00Z"),
-            service = service
-        ).content
-        retreivedConversations.size shouldBe 1
-
-        retreivedConversations[0].messageDetails.size shouldBe 1
-        retreivedConversations[0].latestEventAt shouldBe c3md1.savedAt.plusMillis(1000)
-        retreivedConversations[0].latestEventStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
-        retreivedConversations[0].messageDetails.first().service shouldBe c3md1.service
-        retreivedConversations[0].messageDetails.first().service shouldStartWith service
-    }
 })
-
-private fun printConversation(i: Int, conversation: Conversation) {
-    var str = "$i. conversation:\n"
-    str += "createdAt=${conversation.createdAt}\n"
-    str += "latestEventAt=${conversation.latestEventAt}\n"
-    str += "latestEventStatus=${conversation.latestEventStatus}\n"
-    str += "Antall MessageDetails=${conversation.messageDetails.size}\n"
-    for (md in conversation.messageDetails) str += "EbmsMessageDetail($md)\n"
-    println(str)
-}

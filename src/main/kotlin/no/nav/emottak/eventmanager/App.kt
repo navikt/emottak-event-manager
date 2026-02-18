@@ -17,6 +17,7 @@ import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
 import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
+import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -54,10 +55,11 @@ suspend fun ResourceScope.runServer() {
     val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
     val eventTypeRepository = EventTypeRepository(database)
     val distinctRolesServicesActionsRepository = DistinctRolesServicesActionsRepository(database)
+    val conversationStatusRepository = ConversationStatusRepository(database)
 
-    val eventService = EventService(eventRepository, ebmsMessageDetailRepository)
+    val eventService = EventService(eventRepository, ebmsMessageDetailRepository, conversationStatusRepository)
     val ebmsMessageDetailService =
-        EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository, distinctRolesServicesActionsRepository)
+        EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository, distinctRolesServicesActionsRepository, conversationStatusRepository)
 
     val serverConfig = config.server
     server(

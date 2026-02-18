@@ -6,14 +6,17 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.core.test.TestCase
 import io.kotest.core.test.TestResult
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.model.ConversationStatus
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.EVENT_DB_NAME
+import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import kotlin.uuid.Uuid
@@ -32,6 +35,7 @@ abstract class RepositoryTestBase(
     internal lateinit var eventTypeRepository: EventTypeRepository
     internal lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
     internal lateinit var distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository
+    internal lateinit var conversationStatusRepository: ConversationStatusRepository
 
     override suspend fun beforeSpec(spec: Spec) {
         dbContainer = buildDatabaseContainer()
@@ -46,6 +50,7 @@ abstract class RepositoryTestBase(
         eventTypeRepository = EventTypeRepository(db)
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
         distinctRolesServicesActionsRepository = DistinctRolesServicesActionsRepository(db)
+        conversationStatusRepository = ConversationStatusRepository(db)
     }
 
     override suspend fun afterSpec(spec: Spec) {
@@ -58,6 +63,7 @@ abstract class RepositoryTestBase(
             conn.createStatement().execute("DELETE FROM events")
             conn.createStatement().execute("DELETE FROM ebms_message_details")
             conn.createStatement().execute("DELETE FROM distict_roles_services_actions")
+            conn.createStatement().execute("DELETE FROM conversation_status")
         }
     }
 
@@ -105,15 +111,16 @@ fun buildTestTransportEvent(requestId: Uuid = Uuid.random()): KafkaEvent = Kafka
     contentId = "test-content-id",
     messageId = "test-message-id",
     eventData = "{\"juridisk_logg_id\":\"1_msg_20250401145445386\"}",
-    createdAt = Instant.parse("2025-04-01T12:54:45.386Z")
+    createdAt = Instant.parse("2025-04-01T12:54:45.386Z"),
+    conversationId = "test-conversation-id"
 )
 
-fun buildTestEbmsMessageDetail(): EbmsMessageDetail {
-    return EbmsMessageDetail.fromTransportModel(buildTestTransportMessageDetail())
+fun buildTestEbmsMessageDetail(requestId: Uuid = Uuid.random()): EbmsMessageDetail {
+    return EbmsMessageDetail.fromTransportModel(buildTestTransportMessageDetail(requestId))
 }
 
-fun buildTestTransportMessageDetail(): KafkaEbmsMessageDetail = KafkaEbmsMessageDetail(
-    requestId = Uuid.random(),
+fun buildTestTransportMessageDetail(requestId: Uuid = Uuid.random()): KafkaEbmsMessageDetail = KafkaEbmsMessageDetail(
+    requestId = requestId,
     cpaId = "test-cpa-id",
     conversationId = "test-conversation-id",
     messageId = "test-message-id",
@@ -253,3 +260,10 @@ suspend fun buildAndInsertTestEvents(
 
     return listOf(event1, event2, event3, event4)
 }
+
+fun buildTestConversationStatus(conversationId: String = Uuid.random().toString(), status: EventStatusEnum = EventStatusEnum.INFORMATION) = ConversationStatus(
+    conversationId = conversationId,
+    createdAt = Instant.now(),
+    latestStatus = status,
+    statusAt = Instant.now()
+)

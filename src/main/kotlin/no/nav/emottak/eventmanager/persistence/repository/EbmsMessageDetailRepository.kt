@@ -2,7 +2,6 @@ package no.nav.emottak.eventmanager.persistence.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.emottak.eventmanager.model.Conversation
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
@@ -24,32 +23,21 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.sent
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.service
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRole
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
-import no.nav.emottak.eventmanager.persistence.table.EventTable
-import no.nav.emottak.eventmanager.persistence.table.EventTypeTable
 import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.ColumnSet
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
-import org.jetbrains.exposed.sql.VarCharColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.castTo
-import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.text.isNotEmpty
@@ -58,7 +46,6 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 
 class EbmsMessageDetailRepository(private val database: Database) {
-    private val log = LoggerFactory.getLogger(EbmsMessageDetailRepository::class.java)
 
     suspend fun insert(ebmsMessageDetail: EbmsMessageDetail): Uuid = withContext(Dispatchers.IO) {
         transaction(database.db) {
@@ -250,84 +237,6 @@ class EbmsMessageDetailRepository(private val database: Database) {
         }
     }
 
-    suspend fun findConversationsByTimeInterval(
-        from: Instant,
-        to: Instant,
-        readableIdPattern: String = "",
-        cpaIdPattern: String = "",
-        service: String = "",
-        statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED),
-        pageable: Pageable? = null
-    ): Page<Conversation> = withContext(Dispatchers.IO) {
-        transaction(database.db) {
-            // 1) Subquery-alias: Siste status pr conversation_id innenfor angitt tidsperiode:
-            log.debug("Creating latest status pr distinct conversation subquery...")
-            val statusPrConversationAlias = getConversationsQuery(from, to, readableIdPattern, cpaIdPattern, service)
-                .alias("latest_status_pr_conversation")
-
-            /* 2) Telle antall conversation_id'er hvor siste status er forespurt status (i det gitte tidsrommet):
-            SELECT count(conversation_id) FROM statusPrConversationAlias
-            WHERE latest_status IN ('Feil', 'Informasjon')
-            ORDER BY latest_event_timestamp;
-            */
-            log.debug("Getting distinct conversations with prefered statuses...")
-            val conversationsQuery = statusPrConversationAlias
-                .select(statusPrConversationAlias[conversationId])
-                .where {
-                    statusPrConversationAlias[EventTypeTable.status]
-                        .castTo<String>(VarCharColumnType()).inList(statuses.map { it.toString() })
-                }
-                .orderBy(statusPrConversationAlias[EventTable.createdAt] to SortOrder.DESC)
-                // TODO: Burde vi heller sortere på EbmsMessageDetailTable.savedAt i stedet for EventTable.createdAt?
-
-            val totalCount = conversationsQuery.count()
-            log.debug("Total distinct conversations: $totalCount")
-
-            // 3) Hente alle request_id'er til conversation_id'er fra SUBQUERY:
-            log.debug("Getting all conversationIds for page {}...", pageable?.pageNumber ?: 1)
-            val conversationIds = conversationsQuery.map { it[statusPrConversationAlias[conversationId]] }.limit(pageable)
-            log.debug("A list of {} conversationIds was returned.", conversationIds.size)
-
-            // 4) Hente alle messagedetails (med siste status) til relevante conversationIds:
-            log.debug("Getting all MessageDetails for given conversationIds...")
-            val conversationsMap = getLatestStatusPrRequestQuery(conversationIds)
-                .map {
-                    toEbmsMessageDetail(it).copy(
-                        latestEventAt = it[EventTable.createdAt],
-                        latestEventStatus = it[EventTypeTable.status]
-                    )
-                }
-                .groupBy { it.conversationId }
-            log.debug("A map with {} conversations containing a total of {} MessageDetails was returned.", conversationsMap.size, conversationsMap.flatMap { (_, value) -> value }.size)
-
-            val conversationList = conversationIds.mapNotNull { conversationId ->
-                val msgList = conversationsMap[conversationId]?.sortedByDescending { it.latestEventAt } ?: return@mapNotNull null
-
-                val latestEventStatus = msgList.first().latestEventStatus
-                if (latestEventStatus == null || !statuses.contains(latestEventStatus)) return@mapNotNull null
-
-                Conversation(
-                    messageDetails = msgList.sortedBy { it.savedAt },
-                    createdAt = msgList.last().savedAt,
-                    latestEventAt = msgList.first().latestEventAt!!,
-                    latestEventStatus = msgList.first().latestEventStatus!!
-                )
-            }
-
-            var returnPageable = pageable
-            if (returnPageable == null) returnPageable = Pageable(1, conversationList.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, conversationList)
-        }
-    }
-
-    private fun List<String>.limit(pageable: Pageable?): List<String> {
-        if (pageable == null) return this
-        val itemsPrPage = pageable.pageSize
-        val fromIndex = pageable.offset.toInt()
-        val toIndex = minOf(fromIndex + itemsPrPage, this.size)
-        return this.subList(fromIndex, toIndex)
-    }
-
     private fun toEbmsMessageDetail(it: ResultRow) =
         EbmsMessageDetail(
             requestId = it[requestId].toKotlinUuid(),
@@ -347,71 +256,6 @@ class EbmsMessageDetailRepository(private val database: Database) {
             sentAt = it[sentAt],
             savedAt = it[savedAt]
         )
-
-    private fun getConversationsQuery(
-        from: Instant,
-        to: Instant,
-        readableIdPattern: String = "",
-        cpaIdPattern: String = "",
-        service: String = "",
-        pageable: Pageable? = null
-    ): Query {
-        /*
-            SELECT DISTINCT ON (m.conversation_id)
-                m.conversation_id  AS conversation_id,
-                e.created_at       AS latest_event_timestamp,
-                t.status           AS latest_status
-            FROM   events e
-                INNER JOIN   ebms_message_details m ON m.request_id = e.request_id
-                INNER JOIN   event_types          t ON t.event_type_id = e.event_type_id
-            WHERE  m.saved_at BETWEEN '2026-01-28T12:00:00.000Z' AND '2026-01-28T13:00:00.000Z'
-            ORDER  BY m.conversation_id, e.created_at DESC;
-        */
-        return EventTable
-            .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = requestId, otherColumn = EventTable.requestId)
-            .join(
-                EventTypeTable,
-                JoinType.INNER,
-                onColumn = EventTypeTable.eventTypeId,
-                otherColumn = EventTable.eventTypeId
-            )
-            .select(conversationId, EventTable.createdAt, EventTypeTable.status)
-            .withDistinctOn(conversationId)
-            .where { savedAt.between(from, to) }
-            .apply {
-                this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern)
-                if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
-                this.applyPagableLimit(pageable, savedAt)
-            }
-            .orderBy(
-                conversationId to SortOrder.ASC,
-                EventTable.createdAt to SortOrder.DESC
-            )
-    }
-
-    private fun getLatestStatusPrRequestQuery(conversationIds: List<String>): Query {
-        /*
-        SELECT DISTINCT ON (e.request_id)
-            m.*,
-            e.created_at       AS latest_event_timestamp,
-            t.status           AS latest_status
-        FROM   events e
-                   INNER JOIN   ebms_message_details m ON m.request_id = e.request_id
-                   INNER JOIN   event_types          t ON t.event_type_id = e.event_type_id
-        WHERE  e.conversation_id IN ('2224c91e-847c-4262-b481-9306636780d0', '191fdbe4-53c6-4028-a98c-d162abac0965')
-        ORDER  BY e.request_id, e.created_at DESC;
-        */
-        return EventTable
-            .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = requestId, otherColumn = EventTable.requestId)
-            .join(EventTypeTable, JoinType.INNER, onColumn = EventTypeTable.eventTypeId, otherColumn = EventTable.eventTypeId)
-            .select(EbmsMessageDetailTable.columns + EventTable.createdAt + EventTypeTable.status)
-            .withDistinctOn(EventTable.requestId)
-            .where { conversationId inList conversationIds }
-            .orderBy(
-                EventTable.requestId to SortOrder.ASC,
-                EventTable.createdAt to SortOrder.DESC
-            )
-    }
 }
 
 private fun UpdateBuilder<*>.populateFrom(ebmsMessageDetail: EbmsMessageDetail) {
