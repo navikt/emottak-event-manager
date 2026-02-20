@@ -88,12 +88,12 @@ class EventServiceTest : StringSpec({
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.ERROR) } returns true
+        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.ERROR, any()) } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
         coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.ERROR) }
+        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.ERROR, any()) }
     }
 
     "Should update conversation status on retry event" {
@@ -103,12 +103,12 @@ class EventServiceTest : StringSpec({
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.INFORMATION) } returns true
+        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.INFORMATION, any()) } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
         coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.INFORMATION) }
+        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.INFORMATION, any()) }
     }
 
     "Should update conversation status to complete on MESSAGE_SENT_VIA_HTTP event" {
@@ -118,12 +118,12 @@ class EventServiceTest : StringSpec({
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED) } returns true
+        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
         coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED) }
+        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED, any()) }
     }
 
     "Should update conversation status to complete on MESSAGE_SENT_VIA_SMTP event when message detail is Acknowledgment from consumer" {
@@ -140,13 +140,13 @@ class EventServiceTest : StringSpec({
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
         coEvery { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) } returns testMessageDetail
-        coEvery { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED) } returns true
+        coEvery { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
         coVerify { eventRepository.insert(testEvent) }
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED) }
+        coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) }
     }
 
     "Should not update conversation status to complete on MESSAGE_SENT_VIA_SMTP event when message detail is Acknowledgment but from NAV" {
