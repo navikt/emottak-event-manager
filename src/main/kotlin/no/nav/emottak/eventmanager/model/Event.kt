@@ -2,6 +2,7 @@ package no.nav.emottak.eventmanager.model
 
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers
+import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
 import no.nav.emottak.utils.common.constants.LogFields.MESSAGE_ID
 import no.nav.emottak.utils.common.constants.LogFields.X_REQUEST_ID
 import no.nav.emottak.utils.kafka.model.EventType
@@ -15,13 +16,15 @@ data class Event(
     val contentId: String? = null,
     val messageId: String,
     val eventData: String,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val conversationId: String? = null
 ) {
 
     val marker: LogstashMarker = Markers.appendEntries(
         mapOf(
             X_REQUEST_ID to this.requestId,
-            MESSAGE_ID to this.messageId
+            MESSAGE_ID to this.messageId,
+            CONVERSATION_ID to this.conversationId
         )
     )
 
@@ -33,7 +36,8 @@ data class Event(
                 contentId = transportEvent.contentId,
                 messageId = transportEvent.messageId,
                 eventData = transportEvent.eventData,
-                createdAt = transportEvent.createdAt
+                createdAt = transportEvent.createdAt,
+                conversationId = transportEvent.conversationId
             )
         }
     }

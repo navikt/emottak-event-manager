@@ -4,6 +4,8 @@ import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import no.nav.emottak.eventmanager.model.ASCENDING
+import no.nav.emottak.eventmanager.model.DESCENDING
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Pageable
 import java.time.Instant
@@ -80,10 +82,10 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             Instant.parse("2025-04-30T13:00:00Z")
         ).content
         retrievedDetails.size shouldBe 4
-        retrievedDetails[0].requestId shouldBe md1.requestId
-        retrievedDetails[1].requestId shouldBe md2.requestId
-        retrievedDetails[2].requestId shouldBe md3.requestId
-        retrievedDetails[3].requestId shouldBe md4.requestId
+        retrievedDetails[0].requestId shouldBe md4.requestId
+        retrievedDetails[1].requestId shouldBe md3.requestId
+        retrievedDetails[2].requestId shouldBe md2.requestId
+        retrievedDetails[3].requestId shouldBe md1.requestId
     }
 
     "Should retrieve records by time interval and filtered by readableId" {
@@ -105,32 +107,34 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             readableIdPattern = "OUT."
         ).content
         retrievedDetails.size shouldBe 2
-        retrievedDetails[0].requestId shouldBe md3.requestId
-        retrievedDetails[1].requestId shouldBe md4.requestId
+        retrievedDetails[0].requestId shouldBe md4.requestId
+        retrievedDetails[1].requestId shouldBe md3.requestId
     }
 
-    "Should retrieve records by time interval and filtered by cpaId" {
+    "Should retrieve records by time interval and filtered by cpaId, sorted ascending" {
         val (_, messageDetailsInInterval2, _, messageDetailsOutOfInterval2) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
         val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
-            cpaIdPattern = "another-cpa-id"
+            cpaIdPattern = "another-cpa-id",
+            pageable = Pageable(pageNumber = 1, pageSize = 10, sort = ASCENDING)
         ).content
         retrievedDetails.size shouldBe 2
         retrievedDetails[0].requestId shouldBe messageDetailsInInterval2.requestId
         retrievedDetails[1].requestId shouldBe messageDetailsOutOfInterval2.requestId
     }
 
-    "Should retrieve records by time interval and filtered by part of cpaId string-value" {
+    "Should retrieve records by time interval and filtered by part of cpaId string-value, sorted descending" {
         val (_, md2, _, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
         val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             Instant.parse("2025-04-30T12:00:00Z"),
             Instant.parse("2025-04-30T13:00:00Z"),
-            cpaIdPattern = "another"
+            cpaIdPattern = "another",
+            pageable = Pageable(pageNumber = 1, pageSize = 10, sort = DESCENDING)
         ).content
         retrievedDetails.size shouldBe 2
-        retrievedDetails[0].requestId shouldBe md2.requestId
-        retrievedDetails[1].requestId shouldBe md4.requestId
+        retrievedDetails[0].requestId shouldBe md4.requestId
+        retrievedDetails[1].requestId shouldBe md2.requestId
     }
 
     "Should retrieve records by time interval and filtered by messageId" {
@@ -152,8 +156,8 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             messageIdPattern = "another-message"
         ).content
         retrievedDetails.size shouldBe 2
-        retrievedDetails[0].requestId shouldBe md2.requestId
-        retrievedDetails[1].requestId shouldBe md4.requestId
+        retrievedDetails[0].requestId shouldBe md4.requestId
+        retrievedDetails[1].requestId shouldBe md2.requestId
     }
 
     "Should retrieve records by time interval and filtered by readableId, cpaId and messageId" {

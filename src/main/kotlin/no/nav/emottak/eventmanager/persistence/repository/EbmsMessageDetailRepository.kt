@@ -13,6 +13,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.cpaI
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.fromPartyId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.fromRole
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.messageId
+import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.nullable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.readableId
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.refParam
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.refToMessageId
@@ -29,7 +30,6 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.insert
@@ -143,10 +143,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     .apply {
                         this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
                         this.applyRoleServiceActionFilters(role, service, action)
-                        if (pageable != null) {
-                            this.limit(pageable.pageSize, pageable.offset)
-                            this.orderBy(savedAt, pageable.getSortOrder())
-                        }
+                        this.applyPagableLimitAndOrderBy(pageable, savedAt)
                     }
                     .mapNotNull {
                         toEbmsMessageDetail(it)
@@ -278,13 +275,13 @@ private fun UpdateBuilder<*>.populateFrom(ebmsMessageDetail: EbmsMessageDetail) 
 }
 
 private fun Query.applyReadableIdCpaIdMessageIdFilters(readableIdPattern: String = "", cpaIdPattern: String = "", messageIdPattern: String = "") {
-    if (readableIdPattern.isNotBlank()) this.andWhere { readableId.lowerCase() like "%$readableIdPattern%".lowercase() }
-    if (cpaIdPattern.isNotBlank()) this.andWhere { cpaId.lowerCase() like "%$cpaIdPattern%".lowercase() }
-    if (messageIdPattern.isNotBlank()) this.andWhere { messageId.lowerCase() like "%$messageIdPattern%".lowercase() }
+    this.applyPatternFilter(readableIdPattern, readableId)
+    this.applyPatternFilter(cpaIdPattern, cpaId.nullable())
+    this.applyPatternFilter(messageIdPattern, messageId.nullable())
 }
 
 internal fun Query.applyRoleServiceActionFilters(role: String = "", service: String = "", action: String = "") {
-    if (role.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.fromRole eq role }
-    if (service.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.service eq service }
-    if (action.isNotEmpty()) this.andWhere { EbmsMessageDetailTable.action eq action }
+    this.applyFilter(role, EbmsMessageDetailTable.fromRole)
+    this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
+    this.applyFilter(action, EbmsMessageDetailTable.action.nullable())
 }
