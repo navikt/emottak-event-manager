@@ -74,9 +74,8 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and order it by createdAt descending" {
-        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (c1md1, _, c2md1, _, c3md1) = messageDetails
-        val (_, _, _, c1md3EventsList, c3md1EventsList) = events
 
         val pagable = conversationStatusRepository.findByFilters()
 
@@ -90,15 +89,6 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         conversations[2].conversationId shouldBe c1md1.conversationId
         conversations[0].createdAt shouldBeGreaterThan conversations[1].createdAt
         conversations[1].createdAt shouldBeGreaterThan conversations[2].createdAt
-        conversations[0].createdAt shouldBe c3md1.savedAt
-        conversations[1].createdAt shouldBe c2md1.savedAt
-        conversations[2].createdAt shouldBe c1md1.savedAt
-        conversations[0].latestStatus shouldBe PROCESSING_COMPLETED
-        conversations[1].latestStatus shouldBe INFORMATION
-        conversations[2].latestStatus shouldBe ERROR
-        conversations[0].statusAt shouldBe c3md1EventsList.last().createdAt
-        conversations[1].statusAt shouldBe c2md1.savedAt // Alle events er 'Informasjon', så ingen update på status utført
-        conversations[2].statusAt shouldBe c1md3EventsList.last().createdAt
     }
 
     "Should find conversations and order it by createdAt ascending" {
@@ -125,6 +115,49 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         conversations[0].conversationId shouldBe c1md1.conversationId
         conversations[1].conversationId shouldBe c2md1.conversationId
         conversations[2].conversationId shouldBe c3md1.conversationId
+        conversations[0].createdAt shouldBeLessThan conversations[1].createdAt
+        conversations[1].createdAt shouldBeLessThan conversations[2].createdAt
+    }
+
+    "Should find conversations and return expected fields" {
+        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+        val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+        val readableIdC1md1 = ebmsMessageDetailRepository.findByRequestId(c1md1.requestId)!!.readableId
+        val readableIdC1md2 = ebmsMessageDetailRepository.findByRequestId(c1md2.requestId)!!.readableId
+        val readableIdC2md1 = ebmsMessageDetailRepository.findByRequestId(c2md1.requestId)!!.readableId
+        val readableIdC1md3 = ebmsMessageDetailRepository.findByRequestId(c1md3.requestId)!!.readableId
+        val readableIdC3md1 = ebmsMessageDetailRepository.findByRequestId(c3md1.requestId)!!.readableId
+
+        val pagable = conversationStatusRepository.findByFilters()
+
+        pagable.totalElements shouldBe 3
+        pagable.size shouldBe 3
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c3md1.conversationId
+        conversations[1].conversationId shouldBe c2md1.conversationId
+        conversations[2].conversationId shouldBe c1md1.conversationId
+        conversations[0].createdAt shouldBe c3md1.savedAt
+        conversations[1].createdAt shouldBe c2md1.savedAt
+        conversations[2].createdAt shouldBe c1md1.savedAt
+        conversations[0].latestStatus shouldBe PROCESSING_COMPLETED
+        conversations[1].latestStatus shouldBe INFORMATION
+        conversations[2].latestStatus shouldBe ERROR
+        conversations[0].statusAt shouldBe c3md1EventsList.last().createdAt
+        conversations[1].statusAt shouldBe c2md1.savedAt // Alle events er 'Informasjon', så ingen update på status utført
+        conversations[2].statusAt shouldBe c1md3EventsList.last().createdAt
+        conversations[0].cpaId shouldBe c3md1.cpaId
+        conversations[1].cpaId shouldBe c2md1.cpaId
+        conversations[2].cpaId shouldBe c1md1.cpaId
+        conversations[0].service shouldBe c3md1.service
+        conversations[1].service shouldBe c2md1.service
+        conversations[2].service shouldBe c1md1.service
+        conversations[0].readableIdList shouldBe readableIdC3md1
+        conversations[1].readableIdList shouldBe readableIdC2md1
+        conversations[2].readableIdList shouldBe listOf(readableIdC1md1, readableIdC1md2, readableIdC1md3).joinToString(",")
     }
 
     "Should find conversations and filter on CPA-id" {
@@ -138,6 +171,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
 
         val conversations = pagable.content
         conversations[0].conversationId shouldBe c2md1.conversationId
+        conversations[0].cpaId shouldBe c2md1.cpaId
         conversations[0].createdAt shouldBe c2md1.savedAt
         conversations[0].statusAt shouldBe c2md1.savedAt // Alle events er 'Informasjon', ingen update utført
     }
@@ -153,6 +187,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
 
         val conversations = pagable.content
         conversations[0].conversationId shouldBe c2md1.conversationId
+        conversations[0].cpaId shouldBe c2md1.cpaId
     }
 
     "Should find conversations and filter on service" {
@@ -167,6 +202,8 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         val conversations = pagable.content
         conversations[0].conversationId shouldBe c2md1.conversationId
         conversations[1].conversationId shouldBe c1md1.conversationId
+        conversations[0].service shouldBe c2md1.service
+        conversations[1].service shouldBe c1md1.service
     }
 
     "Should find conversations and filter on from-timestamp" {

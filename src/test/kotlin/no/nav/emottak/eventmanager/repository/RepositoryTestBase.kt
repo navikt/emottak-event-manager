@@ -191,28 +191,24 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
 ): Pair<List<EbmsMessageDetail>, List<List<Event>>> {
     val c1md1 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-1",
-        savedAt = LocalDateTime.parse("2025-04-30T12:52:45.000").atZone(zoneOslo()).toInstant(),
-        readableId = "readable-id-1"
+        savedAt = LocalDateTime.parse("2025-04-30T12:52:45.000").atZone(zoneOslo()).toInstant()
     )
     val c1md2 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-1",
         messageId = "another-message-id-1",
-        savedAt = LocalDateTime.parse("2025-04-30T12:54:46.000").atZone(zoneOslo()).toInstant(),
-        readableId = "another-readable-id-1"
+        savedAt = LocalDateTime.parse("2025-04-30T12:54:46.000").atZone(zoneOslo()).toInstant()
     )
     val c2md1 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-2",
         cpaId = "another-cpa-id",
         messageId = "another-message-id-2",
         savedAt = LocalDateTime.parse("2025-04-30T12:56:47.000").atZone(zoneOslo()).toInstant(),
-        refToMessageId = "message-id-reference-D",
-        readableId = "another-readable-id-2"
+        refToMessageId = "message-id-reference-D"
     )
     val c1md3 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-1",
         savedAt = LocalDateTime.parse("2025-04-30T12:58:48.000").atZone(zoneOslo()).toInstant(),
-        refToMessageId = "message-id-reference",
-        readableId = "readable-id-2"
+        refToMessageId = "message-id-reference"
     )
     val c3md1 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-3",
