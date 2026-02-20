@@ -53,12 +53,12 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
         coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
-        coEvery { conversationStatusRepository.insert(testDetails.conversationId) } returns true
+        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
 
         ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
         coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
-        coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId) }
+        coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
     }
 
     "Should not insert conversation status when refToMessageId is set" {

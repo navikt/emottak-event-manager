@@ -143,7 +143,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     .apply {
                         this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
                         this.applyRoleServiceActionFilters(role, service, action)
-                        this.applyPagableLimit(pageable, savedAt)
+                        this.applyPagableLimitAndOrderBy(pageable, savedAt)
                     }
                     .mapNotNull {
                         toEbmsMessageDetail(it)

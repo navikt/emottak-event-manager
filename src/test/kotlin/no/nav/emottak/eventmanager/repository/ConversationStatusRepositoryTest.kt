@@ -1,9 +1,15 @@
 package no.nav.emottak.eventmanager.repository
 
+import io.kotest.matchers.comparables.shouldBeGreaterThan
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.model.ASCENDING
+import no.nav.emottak.eventmanager.model.DESCENDING
+import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import kotlin.uuid.Uuid
 
 class ConversationStatusRepositoryTest : RepositoryTestBase({
@@ -31,7 +37,13 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         val conversationStatus = conversationStatusRepository.get(conversationId)
         conversationStatus shouldNotBe null
         conversationStatus!!.conversationId shouldBe conversationId
-        conversationStatus.latestStatus shouldBe EventStatusEnum.INFORMATION
+        conversationStatus.latestStatus shouldBe INFORMATION
+    }
+
+    "Should retreive null when conversation status not found" {
+        val conversationId = Uuid.random().toString()
+        val conversationStatus = conversationStatusRepository.get(conversationId)
+        conversationStatus shouldBe null
     }
 
     "Should update conversation status" {
@@ -42,42 +54,209 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         val conversationStatus = conversationStatusRepository.get(conversationId)
         conversationStatus shouldNotBe null
         conversationStatus!!.conversationId shouldBe conversationId
-        conversationStatus.latestStatus shouldBe EventStatusEnum.INFORMATION
+        conversationStatus.latestStatus shouldBe INFORMATION
         conversationStatus.createdAt shouldBe conversationStatus.statusAt
 
-        val updated = conversationStatusRepository.update(conversationId, EventStatusEnum.PROCESSING_COMPLETED)
+        val updated = conversationStatusRepository.update(conversationId, PROCESSING_COMPLETED)
         updated shouldBe true
 
         val updatedConversationStatus = conversationStatusRepository.get(conversationId)
         updatedConversationStatus shouldNotBe null
         updatedConversationStatus!!.conversationId shouldBe conversationId
-        updatedConversationStatus.latestStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED
+        updatedConversationStatus.latestStatus shouldBe PROCESSING_COMPLETED
         updatedConversationStatus.createdAt shouldBeLessThan updatedConversationStatus.statusAt
     }
 
     "Update should return false if conversationId not found" {
         val conversationId = Uuid.random().toString()
-        val updated = conversationStatusRepository.update(conversationId, EventStatusEnum.ERROR)
+        val updated = conversationStatusRepository.update(conversationId, ERROR)
         updated shouldBe false
     }
 
-    "Should find conversations" {
+    "Should find conversations and order it by createdAt descending" {
         val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
-        val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+        val (c1md1, _, c2md1, _, c3md1) = messageDetails
+        val (_, _, _, c1md3EventsList, c3md1EventsList) = events
 
         val pagable = conversationStatusRepository.findByFilters()
 
         pagable.totalElements shouldBe 3
         pagable.size shouldBe 3
 
-        // TODO: Fiks sorteringsrekkefølgen - trolig med subquery
-        /*
         val conversations = pagable.content
+        println(conversations)
         conversations[0].conversationId shouldBe c3md1.conversationId
         conversations[1].conversationId shouldBe c2md1.conversationId
-        conversations[2].conversationId shouldBe c1md3.conversationId
-        conversations[0].statusAt shouldBeGreaterThan conversations[1].statusAt
-        conversations[1].statusAt shouldBeGreaterThan conversations[2].statusAt
-        */
+        conversations[2].conversationId shouldBe c1md1.conversationId
+        conversations[0].createdAt shouldBeGreaterThan conversations[1].createdAt
+        conversations[1].createdAt shouldBeGreaterThan conversations[2].createdAt
+        conversations[0].createdAt shouldBe c3md1.savedAt
+        conversations[1].createdAt shouldBe c2md1.savedAt
+        conversations[2].createdAt shouldBe c1md1.savedAt
+        conversations[0].latestStatus shouldBe PROCESSING_COMPLETED
+        conversations[1].latestStatus shouldBe INFORMATION
+        conversations[2].latestStatus shouldBe ERROR
+        conversations[0].statusAt shouldBe c3md1EventsList.last().createdAt
+        conversations[1].statusAt shouldBe c2md1.savedAt // Alle events er 'Informasjon', så ingen update på status utført
+        conversations[2].statusAt shouldBe c1md3EventsList.last().createdAt
+    }
+
+    "Should find conversations and order it by createdAt ascending" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(
+            ebmsMessageDetailRepository,
+            eventRepository,
+            conversationStatusRepository
+        )
+        val (c1md1, _, c2md1, _, c3md1) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(
+            pageable = Pageable(
+                pageNumber = 1,
+                pageSize = 10,
+                sort = ASCENDING
+            )
+        )
+
+        pagable.totalElements shouldBe 3
+        pagable.size shouldBe 10
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c1md1.conversationId
+        conversations[1].conversationId shouldBe c2md1.conversationId
+        conversations[2].conversationId shouldBe c3md1.conversationId
+    }
+
+    "Should find conversations and filter on CPA-id" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, c2md1, _, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(cpaIdPattern = c2md1.cpaId)
+
+        pagable.totalElements shouldBe 1
+        pagable.size shouldBe 1
+
+        val conversations = pagable.content
+        conversations[0].conversationId shouldBe c2md1.conversationId
+        conversations[0].createdAt shouldBe c2md1.savedAt
+        conversations[0].statusAt shouldBe c2md1.savedAt // Alle events er 'Informasjon', ingen update utført
+    }
+
+    "Should find conversations and filter on CPA-id pattern" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, c2md1, _, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(cpaIdPattern = "another")
+
+        pagable.totalElements shouldBe 1
+        pagable.size shouldBe 1
+
+        val conversations = pagable.content
+        conversations[0].conversationId shouldBe c2md1.conversationId
+    }
+
+    "Should find conversations and filter on service" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (c1md1, _, c2md1, _, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(service = c1md1.service)
+
+        pagable.totalElements shouldBe 2
+        pagable.size shouldBe 2
+
+        val conversations = pagable.content
+        conversations[0].conversationId shouldBe c2md1.conversationId
+        conversations[1].conversationId shouldBe c1md1.conversationId
+    }
+
+    "Should find conversations and filter on from-timestamp" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, c2md1, _, c3md1) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(from = c2md1.savedAt)
+
+        pagable.totalElements shouldBe 2
+        pagable.size shouldBe 2
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c3md1.conversationId
+        conversations[1].conversationId shouldBe c2md1.conversationId
+    }
+
+    "Should find conversations and filter on to-timestamp" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (c1md1, _, c2md1, _, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(to = c2md1.savedAt)
+
+        pagable.totalElements shouldBe 2
+        pagable.size shouldBe 2
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c2md1.conversationId
+        conversations[1].conversationId shouldBe c1md1.conversationId
+    }
+
+    "Should find conversations and filter on from- and to-timestamp" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, c2md1, _, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(from = c2md1.savedAt, to = c2md1.savedAt)
+
+        pagable.totalElements shouldBe 1
+        pagable.size shouldBe 1
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c2md1.conversationId
+    }
+
+    "Should find conversations and filter on status (unfinished)" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, c2md1, c1md3, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(statuses = listOf(ERROR, INFORMATION))
+
+        pagable.totalElements shouldBe 2
+        pagable.size shouldBe 2
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c2md1.conversationId
+        conversations[1].conversationId shouldBe c1md3.conversationId
+    }
+
+    "Should find conversations and filter on status (failed)" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, _, c1md3, _) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(statuses = listOf(ERROR))
+
+        pagable.totalElements shouldBe 1
+        pagable.size shouldBe 1
+
+        val conversations = pagable.content
+        println(conversations)
+        conversations[0].conversationId shouldBe c1md3.conversationId
+    }
+
+    "Should find conversations and limit by pageable" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (_, _, c2md1, c1md3, c3md1) = messageDetails
+
+        val page1 = conversationStatusRepository.findByFilters(pageable = Pageable(pageNumber = 1, pageSize = 2, sort = DESCENDING))
+        page1.totalElements shouldBe 3
+        page1.size shouldBe 2
+        page1.content.size shouldBe 2
+        page1.content[0].conversationId shouldBe c3md1.conversationId
+        page1.content[1].conversationId shouldBe c2md1.conversationId
+
+        val page2 = conversationStatusRepository.findByFilters(pageable = Pageable(pageNumber = 2, pageSize = 2, sort = DESCENDING))
+        page2.totalElements shouldBe 3
+        page2.size shouldBe 2
+        page2.content.size shouldBe 1
+        page2.content[0].conversationId shouldBe c1md3.conversationId
     }
 })

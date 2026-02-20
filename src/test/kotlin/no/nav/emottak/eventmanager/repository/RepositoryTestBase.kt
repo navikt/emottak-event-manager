@@ -6,7 +6,6 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.core.test.TestCase
 import io.kotest.core.test.TestResult
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.model.ConversationStatus
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.persistence.Database
@@ -16,9 +15,11 @@ import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesA
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.service.getEventStatusEnum
+import no.nav.emottak.utils.common.zoneOslo
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
+import java.time.LocalDateTime
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as KafkaEbmsMessageDetail
 import no.nav.emottak.utils.kafka.model.Event as KafkaEvent
@@ -189,30 +190,33 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
     conversationStatusRepository: ConversationStatusRepository
 ): Pair<List<EbmsMessageDetail>, List<List<Event>>> {
     val c1md1 = buildTestEbmsMessageDetail().copy(
-        savedAt = Instant.parse("2025-04-30T12:52:45.000Z"),
+        conversationId = "conversation-id-1",
+        savedAt = LocalDateTime.parse("2025-04-30T12:52:45.000").atZone(zoneOslo()).toInstant(),
         readableId = "readable-id-1"
     )
     val c1md2 = buildTestEbmsMessageDetail().copy(
+        conversationId = "conversation-id-1",
         messageId = "another-message-id-1",
-        savedAt = Instant.parse("2025-04-30T12:54:46.000Z"),
+        savedAt = LocalDateTime.parse("2025-04-30T12:54:46.000").atZone(zoneOslo()).toInstant(),
         readableId = "another-readable-id-1"
     )
     val c2md1 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-2",
         cpaId = "another-cpa-id",
         messageId = "another-message-id-2",
-        savedAt = Instant.parse("2025-04-30T12:56:47.000Z"),
+        savedAt = LocalDateTime.parse("2025-04-30T12:56:47.000").atZone(zoneOslo()).toInstant(),
         refToMessageId = "message-id-reference-D",
         readableId = "another-readable-id-2"
     )
     val c1md3 = buildTestEbmsMessageDetail().copy(
-        savedAt = Instant.parse("2025-04-30T12:58:48.000Z"),
+        conversationId = "conversation-id-1",
+        savedAt = LocalDateTime.parse("2025-04-30T12:58:48.000").atZone(zoneOslo()).toInstant(),
         refToMessageId = "message-id-reference",
         readableId = "readable-id-2"
     )
     val c3md1 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-3",
-        savedAt = Instant.parse("2025-04-30T12:59:49.000Z"),
+        savedAt = LocalDateTime.parse("2025-04-30T12:59:49.000").atZone(zoneOslo()).toInstant(),
         service = "another-service"
     )
 
@@ -222,55 +226,56 @@ suspend fun buildAndInsertTestEbmsMessageDetailConversation(
     ebmsMessageDetailRepository.insert(c1md3)
     ebmsMessageDetailRepository.insert(c3md1)
 
-    conversationStatusRepository.insert(c1md1.conversationId)
-    conversationStatusRepository.insert(c1md2.conversationId)
-    conversationStatusRepository.insert(c2md1.conversationId)
-    conversationStatusRepository.insert(c1md3.conversationId)
-    conversationStatusRepository.insert(c3md1.conversationId)
+    conversationStatusRepository.insert(c1md1.conversationId, c1md1.savedAt)
+    conversationStatusRepository.insert(c2md1.conversationId, c2md1.savedAt)
+    conversationStatusRepository.insert(c3md1.conversationId, c3md1.savedAt)
 
-    val events1 = buildAndInsertTestEvents(eventRepository, c1md1)
-    val events2 = buildAndInsertTestEvents(eventRepository, c1md2)
-    val events3 = buildAndInsertTestEvents(eventRepository, c2md1)
-    val events4 = buildAndInsertTestEvents(eventRepository, c1md3, KafkaEventType.UNKNOWN_ERROR_OCCURRED)
-    val events5 = buildAndInsertTestEvents(eventRepository, c3md1)
+    val events1 = buildAndInsertTestEvents(eventRepository, conversationStatusRepository, c1md1)
+    val events2 = buildAndInsertTestEvents(eventRepository, conversationStatusRepository, c1md2)
+    val events3 = buildAndInsertTestEvents(eventRepository, conversationStatusRepository, c2md1)
+    val events4 = buildAndInsertTestEvents(eventRepository, conversationStatusRepository, c1md3, KafkaEventType.UNKNOWN_ERROR_OCCURRED)
+    val events5 = buildAndInsertTestEvents(eventRepository, conversationStatusRepository, c3md1, KafkaEventType.MESSAGE_SENT_VIA_HTTP)
 
     return Pair(listOf(c1md1, c1md2, c2md1, c1md3, c3md1), listOf(events1, events2, events3, events4, events5))
 }
 
 suspend fun buildAndInsertTestEvents(
-    repository: EventRepository,
+    eventRepository: EventRepository,
+    statusRepository: ConversationStatusRepository,
     messageDetail: EbmsMessageDetail,
     lastEventType: KafkaEventType = KafkaEventType.MESSAGE_SENT_TO_FAGSYSTEM
 ): List<Event> {
     val event1 = buildTestEvent(messageDetail.requestId).copy(
+        conversationId = messageDetail.conversationId,
         eventType = KafkaEventType.MESSAGE_RECEIVED_VIA_HTTP,
         createdAt = messageDetail.savedAt.plusMillis(250)
     )
     val event2 = buildTestEvent(messageDetail.requestId).copy(
+        conversationId = messageDetail.conversationId,
         eventType = KafkaEventType.MESSAGE_VALIDATED_AGAINST_CPA,
         eventData = Json.encodeToString(mapOf(KafkaEventDataType.SENDER_NAME.value to "Test EPJ AS")),
         createdAt = messageDetail.savedAt.plusMillis(500)
     )
     val event3 = buildTestEvent(messageDetail.requestId).copy(
+        conversationId = messageDetail.conversationId,
         eventType = KafkaEventType.REFERENCE_RETRIEVED,
         createdAt = messageDetail.savedAt.plusMillis(750)
     )
     val event4 = buildTestEvent(messageDetail.requestId).copy(
+        conversationId = messageDetail.conversationId,
         eventType = lastEventType,
         createdAt = messageDetail.savedAt.plusMillis(1000)
     )
 
-    repository.insert(event1)
-    repository.insert(event2)
-    repository.insert(event3)
-    repository.insert(event4)
+    eventRepository.insert(event1)
+    eventRepository.insert(event2)
+    eventRepository.insert(event3)
+    eventRepository.insert(event4)
+
+    val eventStatus = event4.getEventStatusEnum()
+    if (eventStatus != null) {
+        statusRepository.update(event4.conversationId!!, eventStatus, event4.createdAt)
+    }
 
     return listOf(event1, event2, event3, event4)
 }
-
-fun buildTestConversationStatus(conversationId: String = Uuid.random().toString(), status: EventStatusEnum = EventStatusEnum.INFORMATION) = ConversationStatus(
-    conversationId = conversationId,
-    createdAt = Instant.now(),
-    latestStatus = status,
-    statusAt = Instant.now()
-)

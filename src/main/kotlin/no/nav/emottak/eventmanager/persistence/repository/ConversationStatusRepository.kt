@@ -19,10 +19,10 @@ import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import no.nav.emottak.utils.common.nowOsloToInstant
 import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.VarCharColumnType
+import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.castTo
-import org.jetbrains.exposed.sql.countDistinct
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -31,25 +31,28 @@ import java.time.temporal.ChronoUnit
 
 class ConversationStatusRepository(private val database: Database) {
 
-    suspend fun insert(id: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun insert(id: String, datetime: Instant = nowOsloToInstant().truncatedTo(ChronoUnit.MICROS)): Boolean = withContext(Dispatchers.IO) {
         transaction(database.db) {
             ConversationStatusTable.insertIgnore {
-                val now = nowOsloToInstant().truncatedTo(ChronoUnit.MICROS)
                 it[conversationId] = id
-                it[createdAt] = now
+                it[createdAt] = datetime
                 it[latestStatus] = INFORMATION
-                it[statusAt] = now
+                it[statusAt] = datetime
             }.insertedCount == 1
         }
     }
 
-    suspend fun update(id: String, status: EventStatusEnum): Boolean = withContext(Dispatchers.IO) {
+    suspend fun update(
+        id: String,
+        status: EventStatusEnum,
+        datetime: Instant = nowOsloToInstant().truncatedTo(ChronoUnit.MICROS)
+    ): Boolean = withContext(Dispatchers.IO) {
         transaction(database.db) {
             val updatedRows = ConversationStatusTable.update({
                 conversationId eq id
             }) {
                 it[latestStatus] = status
-                it[statusAt] = nowOsloToInstant().truncatedTo(ChronoUnit.MICROS)
+                it[statusAt] = datetime
             }
             updatedRows == 1
         }
@@ -82,53 +85,54 @@ class ConversationStatusRepository(private val database: Database) {
         pageable: Pageable? = null
     ): Page<ConversationStatus> = withContext(Dispatchers.IO) {
         transaction(database.db) {
-            val countColumn = conversationId.countDistinct()
-            val totalCount = ConversationStatusTable
-                .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = conversationId, otherColumn = EbmsMessageDetailTable.conversationId)
-                .select(countColumn)
-                .where {
-                    latestStatus.castTo<String>(VarCharColumnType())
-                        .inList(statuses.map { it.toString() })
-                }
+            val subqueryAlias = getConversationsQuery(from, to, cpaIdPattern, service, statuses)
+                .alias("conversations_matching_filters")
+
+            // Tell antall rader:
+            val totalCount = subqueryAlias.select(subqueryAlias[conversationId]).count()
+
+            // Hent relevante rader:
+            val conversations = subqueryAlias
+                .select(subqueryAlias[conversationId], subqueryAlias[createdAt], subqueryAlias[latestStatus], subqueryAlias[statusAt])
                 .apply {
-                    this.applyDatetimeFilter(statusAt, from, to)
-                    this.applyPatternFilter(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
-                    this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
+                    this.applyPagableLimitAndOrderBy(pageable, subqueryAlias[createdAt]) // TODO: Sortere på createdAt eller statusAt?
                 }
-                .map {
-                    it[countColumn]
-                }
-                .single()
-            val conversations = ConversationStatusTable
-                .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = conversationId, otherColumn = EbmsMessageDetailTable.conversationId)
-                .select(ConversationStatusTable.columns)
-                .withDistinctOn(conversationId)
-                .where {
-                    latestStatus.castTo<String>(VarCharColumnType())
-                        .inList(statuses.map { it.toString() })
-                }
-                .apply {
-                    this.applyDatetimeFilter(statusAt, from, to)
-                    this.applyPatternFilter(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
-                    this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
-                    this.applyPagableLimit(pageable, statusAt)
-                }
-                .orderBy(
-                    // conversationId to SortOrder.ASC
-                    statusAt to (pageable?.getSortOrder() ?: SortOrder.ASC)
-                )
                 .mapNotNull {
                     ConversationStatus(
-                        conversationId = it[conversationId],
-                        createdAt = it[createdAt],
-                        latestStatus = it[latestStatus],
-                        statusAt = it[statusAt]
+                        conversationId = it[subqueryAlias[conversationId]],
+                        createdAt = it[subqueryAlias[createdAt]],
+                        latestStatus = it[subqueryAlias[latestStatus]],
+                        statusAt = it[subqueryAlias[statusAt]]
                     )
                 }
                 .toList()
+
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, conversations.size)
             Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, conversations)
         }
+    }
+
+    private fun getConversationsQuery(
+        from: Instant? = null,
+        to: Instant? = null,
+        cpaIdPattern: String = "",
+        service: String = "",
+        statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED)
+    ): Query {
+        return ConversationStatusTable
+            .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = conversationId, otherColumn = EbmsMessageDetailTable.conversationId)
+            .select(ConversationStatusTable.columns)
+            .withDistinctOn(conversationId)
+            .where {
+                latestStatus.castTo<String>(VarCharColumnType())
+                    .inList(statuses.map { it.toString() })
+            }
+            .apply {
+                this.applyDatetimeFilter(createdAt, from, to) // TODO: Filtrere på createdAt eller statusAt?
+                this.applyPatternFilter(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
+                this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
+            }
+            .orderBy(conversationId)
     }
 }

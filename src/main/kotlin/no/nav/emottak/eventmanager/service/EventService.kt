@@ -150,16 +150,7 @@ class EventService(
         // smtp-transport sender ikke med conversationId:
         val conversationId: String? = getConversationIdAtRelevantEventTypes(event)
 
-        val eventStatus: EventStatusEnum? =
-            if (event.eventType == EventType.RETRY_TRIGGED) {
-                EventStatusEnum.INFORMATION
-            } else if (event.eventType.isCompleteEvent()) {
-                EventStatusEnum.PROCESSING_COMPLETED
-            } else if (event.eventType.isErrorEvent()) {
-                EventStatusEnum.ERROR
-            } else {
-                null
-            }
+        val eventStatus = event.getEventStatusEnum()
 
         if (eventStatus != null && conversationId != null) {
             val success = conversationStatusRepository.update(
@@ -231,3 +222,13 @@ fun EventType.isCompleteEvent() = this in listOf(
     // Denne sjekken skjer i getConversationIdAtRelevantEventTypes():
     EventType.MESSAGE_SENT_VIA_SMTP
 )
+
+fun Event.getEventStatusEnum() = if (this.eventType == EventType.RETRY_TRIGGED) {
+    EventStatusEnum.INFORMATION
+} else if (this.eventType.isCompleteEvent()) {
+    EventStatusEnum.PROCESSING_COMPLETED
+} else if (this.eventType.isErrorEvent()) {
+    EventStatusEnum.ERROR
+} else {
+    null
+}
