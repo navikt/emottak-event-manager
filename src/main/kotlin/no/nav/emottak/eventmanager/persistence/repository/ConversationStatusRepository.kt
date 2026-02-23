@@ -96,7 +96,7 @@ class ConversationStatusRepository(private val database: Database) {
 
             // Hent relevante rader:
             val relatedReadableIdsColumn = readableId.groupConcat(
-                ",",
+                separator = ",",
                 orderBy = arrayOf(
                     EbmsMessageDetailTable.savedAt to SortOrder.ASC
                 )

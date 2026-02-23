@@ -28,6 +28,7 @@ internal fun Query.applyPagableLimitAndOrderBy(pageable: Pageable?, orderByColum
             .offset(pageable.offset)
             .orderBy(orderByColumn, pageable.getSortOrder())
     } else {
+        // TODO: Burde vi hatt en default max-limit her?
         this.orderBy(orderByColumn, defaultSortOrder)
     }
 }

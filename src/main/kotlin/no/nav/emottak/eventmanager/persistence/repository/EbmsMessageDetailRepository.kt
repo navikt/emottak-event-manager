@@ -42,6 +42,7 @@ import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
+import org.jetbrains.exposed.sql.SortOrder
 
 class EbmsMessageDetailRepository(private val database: Database) {
 
@@ -159,7 +160,12 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction(database.db) {
             val relatedRequestIdsColumn = requestId.castTo<String>(
                 columnType = TextColumnType()
-            ).groupConcat(",").alias("related_request_ids")
+            ).groupConcat(
+                separator = ",",
+                orderBy = arrayOf(
+                    savedAt to SortOrder.ASC
+                )
+            ).alias("related_request_ids")
 
             val subQuery = EbmsMessageDetailTable
                 .select(conversationId, relatedRequestIdsColumn)
@@ -179,7 +185,12 @@ class EbmsMessageDetailRepository(private val database: Database) {
 
     suspend fun findRelatedReadableIds(conversationIds: List<String>, requestIds: List<Uuid>): Map<Uuid, String?> = withContext(Dispatchers.IO) {
         transaction(database.db) {
-            val relatedReadableIdsColumn = readableId.groupConcat(",").alias("related_readable_ids")
+            val relatedReadableIdsColumn = readableId.groupConcat(
+                separator = ",",
+                orderBy = arrayOf(
+                    savedAt to SortOrder.ASC
+                )
+            ).alias("related_readable_ids")
 
             val subQuery = EbmsMessageDetailTable
                 .select(conversationId, relatedReadableIdsColumn)
