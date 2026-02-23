@@ -145,17 +145,20 @@ private fun getInputDate(request: RoutingRequest, param: String): Instant? {
     return if (request.queryParameters[param] != null) Validation.parseDate(request.queryParameters[param]!!) else null
 }
 
-private fun parseStatuses(statuses: String?): List<EventStatusEnum> {
-    if (statuses == null) return emptyList()
+private fun parseStatuses(statuses: String): List<EventStatusEnum> {
+    if (statuses == "") return emptyList()
     log.debug("Parsing statuses: {}", statuses)
     return statuses.split(",").map { EventStatusEnum.valueOf(it) }
 }
 
 private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>) {
     var msg = "Retrieving conversation statuses with filters: "
-    if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && statuses.isEmpty()) log.debug("{} None", msg)
+    if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && statuses.isEmpty()) {
+        log.debug("Retrieving conversation statuses without filters")
+        return
+    }
     if (fromDate != null) msg += "fromDate: '$fromDate', "
-    if (toDate != null) msg += " toDate: '$toDate', "
+    if (toDate != null) msg += "toDate: '$toDate', "
     if (cpaIdPattern != "") msg += "cpaIdPattern: '$cpaIdPattern', "
     if (service != "") msg += "service: '$service', "
     if (statuses.isNotEmpty()) msg += "statuses: '$statuses', "

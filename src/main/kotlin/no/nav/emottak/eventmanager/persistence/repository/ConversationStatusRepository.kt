@@ -88,7 +88,8 @@ class ConversationStatusRepository(private val database: Database) {
         pageable: Pageable? = null
     ): Page<ConversationStatusData> = withContext(Dispatchers.IO) {
         transaction(database.db) {
-            val subqueryAlias = getConversationsQuery(from, to, cpaIdPattern, service, statuses)
+            val matchStatuses = statuses.ifEmpty { listOf(ERROR, INFORMATION, PROCESSING_COMPLETED) }
+            val subqueryAlias = getConversationsQuery(from, to, cpaIdPattern, service, matchStatuses)
                 .alias("conversations_matching_filters")
 
             // Tell antall rader:

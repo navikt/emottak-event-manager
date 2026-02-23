@@ -74,7 +74,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and order it by createdAt descending" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (c1md1, _, c2md1, _, c3md1) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters()
@@ -83,7 +83,6 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 3
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c3md1.conversationId
         conversations[1].conversationId shouldBe c2md1.conversationId
         conversations[2].conversationId shouldBe c1md1.conversationId
@@ -92,7 +91,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and order it by createdAt ascending" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(
             ebmsMessageDetailRepository,
             eventRepository,
             conversationStatusRepository
@@ -111,7 +110,6 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 10
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c1md1.conversationId
         conversations[1].conversationId shouldBe c2md1.conversationId
         conversations[2].conversationId shouldBe c3md1.conversationId
@@ -120,7 +118,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and return expected fields" {
-        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
         val (_, _, _, c1md3EventsList, c3md1EventsList) = events
 
@@ -136,7 +134,6 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 3
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c3md1.conversationId
         conversations[1].conversationId shouldBe c2md1.conversationId
         conversations[2].conversationId shouldBe c1md1.conversationId
@@ -161,7 +158,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and filter on CPA-id" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, c2md1, _, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(cpaIdPattern = c2md1.cpaId)
@@ -177,7 +174,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and filter on CPA-id pattern" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, c2md1, _, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(cpaIdPattern = "another")
@@ -191,7 +188,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and filter on service" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (c1md1, _, c2md1, _, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(service = c1md1.service)
@@ -207,7 +204,7 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
     }
 
     "Should find conversations and filter on from-timestamp" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, c2md1, _, c3md1) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(from = c2md1.savedAt)
@@ -216,13 +213,12 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 2
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c3md1.conversationId
         conversations[1].conversationId shouldBe c2md1.conversationId
     }
 
     "Should find conversations and filter on to-timestamp" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (c1md1, _, c2md1, _, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(to = c2md1.savedAt)
@@ -231,13 +227,12 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 2
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c2md1.conversationId
         conversations[1].conversationId shouldBe c1md1.conversationId
     }
 
     "Should find conversations and filter on from- and to-timestamp" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, c2md1, _, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(from = c2md1.savedAt, to = c2md1.savedAt)
@@ -246,12 +241,11 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 1
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c2md1.conversationId
     }
 
     "Should find conversations and filter on status (unfinished)" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, c2md1, c1md3, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(statuses = listOf(ERROR, INFORMATION))
@@ -260,13 +254,14 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 2
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c2md1.conversationId
         conversations[1].conversationId shouldBe c1md3.conversationId
+        conversations[0].latestStatus shouldBe INFORMATION
+        conversations[1].latestStatus shouldBe ERROR
     }
 
     "Should find conversations and filter on status (failed)" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, _, c1md3, _) = messageDetails
 
         val pagable = conversationStatusRepository.findByFilters(statuses = listOf(ERROR))
@@ -275,12 +270,12 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         pagable.size shouldBe 1
 
         val conversations = pagable.content
-        println(conversations)
         conversations[0].conversationId shouldBe c1md3.conversationId
+        conversations[0].latestStatus shouldBe ERROR
     }
 
     "Should find conversations and limit by pageable" {
-        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
         val (_, _, c2md1, c1md3, c3md1) = messageDetails
 
         val page1 = conversationStatusRepository.findByFilters(pageable = Pageable(pageNumber = 1, pageSize = 2, sort = DESCENDING))
@@ -295,5 +290,20 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         page2.size shouldBe 2
         page2.content.size shouldBe 1
         page2.content[0].conversationId shouldBe c1md3.conversationId
+    }
+
+    "Should find all conversations when statuses is an empty list" {
+        val (messageDetails, _) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+        val (c1md1, _, c2md1, _, c3md1) = messageDetails
+
+        val pagable = conversationStatusRepository.findByFilters(statuses = emptyList())
+
+        pagable.totalElements shouldBe 3
+        pagable.size shouldBe 3
+
+        val conversations = pagable.content
+        conversations[0].conversationId shouldBe c3md1.conversationId
+        conversations[1].conversationId shouldBe c2md1.conversationId
+        conversations[2].conversationId shouldBe c1md1.conversationId
     }
 })
