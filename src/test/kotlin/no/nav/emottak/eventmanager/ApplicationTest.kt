@@ -52,6 +52,7 @@ import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.repository.testConfiguration
+import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
@@ -80,6 +81,7 @@ class ApplicationTest : StringSpec({
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
+    lateinit var conversationStatusService: ConversationStatusService
 
     val getToken: (String) -> SignedJWT = { audience: String ->
         mockOAuth2Server.issueToken(
@@ -95,7 +97,7 @@ class ApplicationTest : StringSpec({
             val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
             application(
-                eventManagerModule(eventService, ebmsMessageDetailService, meterRegistry)
+                eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, meterRegistry)
             )
 
             val httpClient = createClient {
@@ -135,6 +137,7 @@ class ApplicationTest : StringSpec({
             distinctRolesServicesActionsRepository,
             conversationStatusRepository
         )
+        conversationStatusService = ConversationStatusService(conversationStatusRepository)
     }
 
     afterSpec {

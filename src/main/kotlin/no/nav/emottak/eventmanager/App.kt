@@ -26,6 +26,7 @@ import no.nav.emottak.eventmanager.plugin.configureAuthentication
 import no.nav.emottak.eventmanager.plugin.configureContentNegotiation
 import no.nav.emottak.eventmanager.plugin.configureMetrics
 import no.nav.emottak.eventmanager.plugin.configureRoutes
+import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.coroutines.coroutineScope
@@ -60,13 +61,14 @@ suspend fun ResourceScope.runServer() {
     val eventService = EventService(eventRepository, ebmsMessageDetailRepository, conversationStatusRepository)
     val ebmsMessageDetailService =
         EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository, distinctRolesServicesActionsRepository, conversationStatusRepository)
+    val conversationStatusService = ConversationStatusService(conversationStatusRepository)
 
     val serverConfig = config.server
     server(
         factory = Netty,
         port = serverConfig.port.value,
         preWait = serverConfig.preWait,
-        module = eventManagerModule(eventService, ebmsMessageDetailService, prometheusMeterRegistry)
+        module = eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, prometheusMeterRegistry)
     )
 
     log.debug("Configuration: {}", config)
@@ -89,12 +91,13 @@ suspend fun ResourceScope.runServer() {
 fun eventManagerModule(
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService,
+    conversationStatusService: ConversationStatusService,
     prometheusMeterRegistry: PrometheusMeterRegistry
 ): Application.() -> Unit {
     return {
         configureMetrics(prometheusMeterRegistry)
         configureContentNegotiation()
         configureAuthentication()
-        configureRoutes(eventService, ebmsMessageDetailService, prometheusMeterRegistry)
+        configureRoutes(eventService, ebmsMessageDetailService, conversationStatusService, prometheusMeterRegistry)
     }
 }

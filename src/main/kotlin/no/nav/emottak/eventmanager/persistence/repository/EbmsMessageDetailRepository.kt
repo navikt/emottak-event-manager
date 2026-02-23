@@ -27,6 +27,7 @@ import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.toRo
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
@@ -42,7 +43,6 @@ import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
-import org.jetbrains.exposed.sql.SortOrder
 
 class EbmsMessageDetailRepository(private val database: Database) {
 
