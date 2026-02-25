@@ -10,19 +10,23 @@ import no.nav.emottak.eventmanager.model.MessageInfo
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.ReadableIdInfo
+import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import no.nav.emottak.eventmanager.route.validation.Validation
+import no.nav.emottak.utils.common.toOsloZone
+import no.nav.emottak.utils.common.zoneOslo
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.annotations.TestOnly
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Instant
-import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
@@ -32,7 +36,8 @@ class EbmsMessageDetailService(
     private val ebmsMessageDetailRepository: EbmsMessageDetailRepository,
     private val eventTypeRepository: EventTypeRepository,
     private val distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository,
-    private var clock: Clock = Clock.system(ZoneId.of(Constants.ZONE_ID_OSLO))
+    private val conversationStatusRepository: ConversationStatusRepository,
+    private var clock: Clock = Clock.system(zoneOslo())
 ) {
     private val log = LoggerFactory.getLogger(EbmsMessageDetailService::class.java)
 
@@ -44,6 +49,12 @@ class EbmsMessageDetailService(
             val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
             ebmsMessageDetailRepository.insert(ebmsMessageDetail)
             log.info(ebmsMessageDetail.marker, "EBMS message details processed successfully: $ebmsMessageDetail")
+            if (ebmsMessageDetail.refToMessageId != null) return
+            if (conversationStatusRepository.insert(ebmsMessageDetail.conversationId)) {
+                log.info(ebmsMessageDetail.marker, "Conversation status inserted successfully: {}", ebmsMessageDetail.conversationId)
+            } else {
+                log.warn(ebmsMessageDetail.marker, "Conversation status NOT inserted: {}", ebmsMessageDetail.conversationId)
+            }
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)
         }
@@ -65,19 +76,22 @@ class EbmsMessageDetailService(
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         val messageDetailsList = messageDetailsPage.content
 
-        log.debug("Finding related readable id's for coresponding conversation id's...")
+        log.debug("Finding related readable id's for corresponding conversation id's...")
         val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
 
         log.debug("Finding events for related readable id's...")
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
 
+        log.debug("Finding all EventTypes for requestIds...")
+        val eventTypes = getRelatedEventTypes(relatedEvents)
+
         val resultList = messageDetailsList.map { msgDetail ->
             val senderName = msgDetail.getReadableSenderName() ?: findSenderName(msgDetail.requestId, relatedEvents)
             val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
-            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents)
+            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents, eventTypes)
 
             MessageInfo(
-                receivedDate = msgDetail.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                receivedDate = msgDetail.savedAt.toOsloZone().toString(),
                 readableIdList = relatedReadableIds[msgDetail.requestId] ?: "",
                 role = msgDetail.fromRole,
                 service = msgDetail.service,
@@ -115,7 +129,7 @@ class EbmsMessageDetailService(
 
         return listOf(
             ReadableIdInfo(
-                receivedDate = messageDetails.savedAt.atZone(ZoneId.of(Constants.ZONE_ID_OSLO)).toString(),
+                receivedDate = messageDetails.savedAt.toOsloZone().toString(),
                 readableId = messageDetails.readableId ?: "",
                 cpaId = messageDetails.cpaId,
                 role = messageDetails.fromRole,
@@ -172,23 +186,32 @@ class EbmsMessageDetailService(
         return Constants.UNKNOWN
     }
 
-    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>): String {
+    private suspend fun getRelatedEventTypes(relatedEvents: List<Event>): List<no.nav.emottak.eventmanager.model.EventType> {
+        val relatedEventTypeIds = relatedEvents.map { event ->
+            event.eventType.value
+        }.distinct()
+        return eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
+    }
+
+    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>, eventTypes: List<no.nav.emottak.eventmanager.model.EventType>? = null): String {
         val relatedEventTypeIds = relatedEvents.filter { event ->
             event.requestId == requestId
         }.map { event ->
             event.eventType.value
         }
-        val relatedEventTypes = eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
+        val relatedEventTypes = eventTypes?.filter { eventType ->
+            eventType.eventTypeId in relatedEventTypeIds
+        } ?: eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
 
         return when {
-            relatedEventTypes.any { type -> type.status == EventStatusEnum.PROCESSING_COMPLETED }
-            -> EventStatusEnum.PROCESSING_COMPLETED.description
+            relatedEventTypes.any { type -> type.status == PROCESSING_COMPLETED }
+            -> PROCESSING_COMPLETED.description
 
-            relatedEventTypes.any { type -> type.status == EventStatusEnum.ERROR }
-            -> EventStatusEnum.ERROR.description
+            relatedEventTypes.any { type -> type.status == ERROR }
+            -> ERROR.description
 
-            relatedEventTypes.any { type -> type.status == EventStatusEnum.INFORMATION }
-            -> EventStatusEnum.INFORMATION.description
+            relatedEventTypes.any { type -> type.status == INFORMATION }
+            -> INFORMATION.description
 
             else -> Constants.UNKNOWN
         }
@@ -197,12 +220,12 @@ class EbmsMessageDetailService(
     private fun createFilterLogMessage(
         from: Instant,
         to: Instant,
-        readableId: String,
-        cpaId: String,
-        messageId: String,
-        role: String,
-        service: String,
-        action: String,
+        readableId: String = "",
+        cpaId: String = "",
+        messageId: String = "",
+        role: String = "",
+        service: String = "",
+        action: String = "",
         pageable: Pageable? = null
     ): String {
         val filters = mutableListOf<String>()

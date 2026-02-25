@@ -10,12 +10,14 @@ import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.route.duplicateCheckRoute
 import no.nav.emottak.eventmanager.route.eventManagerRoutes
 import no.nav.emottak.eventmanager.route.naisRoutes
+import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 
 fun Application.configureRoutes(
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService,
+    conversationStatusService: ConversationStatusService,
     prometheusMeterRegistry: PrometheusMeterRegistry
 ) {
     routing {
@@ -24,7 +26,7 @@ fun Application.configureRoutes(
             call.respondText("Event Manager running properly")
         }
         authenticate(AZURE_AD_AUTH) {
-            eventManagerRoutes(eventService, ebmsMessageDetailService)
+            eventManagerRoutes(eventService, ebmsMessageDetailService, conversationStatusService)
             duplicateCheckRoute(ebmsMessageDetailService)
         }
     }

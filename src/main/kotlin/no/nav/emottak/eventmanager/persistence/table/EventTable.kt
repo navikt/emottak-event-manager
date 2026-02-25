@@ -21,9 +21,9 @@ object EventTable : Table("events") {
         Json,
         MapSerializer(String.serializer(), String.serializer())
     )
-
     val createdAt: Column<java.time.Instant> = timestamp("created_at")
-        .defaultExpression(org.jetbrains.exposed.sql.javatime.CurrentTimestamp())
+        .defaultExpression(org.jetbrains.exposed.sql.javatime.CurrentTimestamp)
+    val conversationId: Column<String?> = varchar("conversation_id", 256).nullable()
 
     override val primaryKey = PrimaryKey(eventId)
 }

@@ -2,6 +2,7 @@ package no.nav.emottak.eventmanager.service
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -11,6 +12,7 @@ import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -31,16 +33,36 @@ class EbmsMessageDetailServiceTest : StringSpec({
     val ebmsMessageDetailRepository = mockk<EbmsMessageDetailRepository>()
     val eventTypeRepository = mockk<EventTypeRepository>(relaxed = true)
     val distinctRolesServicesActionsRepository = mockk<DistinctRolesServicesActionsRepository>()
+    val conversationStatusRepository = mockk<ConversationStatusRepository>()
     val ebmsMessageDetailService = EbmsMessageDetailService(
         eventRepository,
         ebmsMessageDetailRepository,
         eventTypeRepository,
-        distinctRolesServicesActionsRepository
+        distinctRolesServicesActionsRepository,
+        conversationStatusRepository
     )
 
-    "Should call database repository on processing EBMS message details" {
+    beforeEach {
+        clearAllMocks()
+    }
 
+    "Should call database repository on processing EBMS message details" {
         val testTransportMessageDetail = buildTestTransportMessageDetail()
+        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+
+        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
+
+        coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
+        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
+
+        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
+    }
+
+    "Should not insert conversation status when refToMessageId is set" {
+        val testTransportMessageDetail = buildTestTransportMessageDetail().copy(refToMessageId = "another-msg-id")
         val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
 
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
@@ -49,7 +71,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        coVerify { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 0) { conversationStatusRepository.insert(any()) }
     }
 
     "Should call database repository on fetching EBMS message details by time interval" {
@@ -248,6 +271,84 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
 
         result.content.first().senderName shouldBe "Test EPJ AS"
+    }
+
+    "Should call eventTypeRepository.findEventTypesByIds() once pr page" {
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        val testDetails1 = buildTestEbmsMessageDetail()
+        val testDetails2 = buildTestEbmsMessageDetail().copy(
+            cpaId = "test-cpa-id-2",
+            conversationId = "test-conversation-id-2",
+            savedAt = Instant.parse("2025-05-08T12:55:00.000Z")
+        )
+
+        val relatedEvents = listOf(
+            buildTestEvent(testDetails1.requestId),
+            buildTestEvent().copy(
+                eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
+                requestId = testDetails1.requestId
+            ),
+            buildTestEvent(testDetails2.requestId),
+            buildTestEvent().copy(
+                eventType = EventTypeEnum.VALIDATION_AGAINST_CPA_FAILED,
+                requestId = testDetails2.requestId
+            )
+        )
+        val testEventTypes = listOf(
+            EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            ),
+            EventType(
+                eventTypeId = 37,
+                description = "Melding validert mot CPA",
+                status = EventStatusEnum.INFORMATION
+            ),
+            EventType(
+                eventTypeId = 38,
+                description = "Validering mot CPA mislykket",
+                status = EventStatusEnum.ERROR
+            )
+        )
+
+        val list = listOf(testDetails1, testDetails2)
+        val pageable = Pageable(1, list.size)
+
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+            pageable.pageNumber,
+            pageable.pageSize,
+            "ASC",
+            list.size.toLong(),
+            list
+        )
+
+        coEvery {
+            ebmsMessageDetailRepository.findRelatedReadableIds(
+                conversationIds = listOf(testDetails1.conversationId, testDetails2.conversationId),
+                requestIds = listOf(testDetails1.requestId, testDetails2.requestId)
+            )
+        } returns
+            mapOf(testDetails2.requestId to testDetails2.generateReadableId())
+
+        coEvery {
+            eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId))
+        } returns relatedEvents
+
+        coEvery { eventTypeRepository.findEventTypesByIds(any()) } returns testEventTypes
+
+        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+
+        result.content.size shouldBe 2
+        result.content.first().cpaId shouldBe testDetails1.cpaId
+        result.content.last().cpaId shouldBe testDetails2.cpaId
+
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findRelatedReadableIds(any(), any()) }
+        coVerify(exactly = 1) { eventRepository.findByRequestIds(any()) }
+        coVerify(exactly = 1) { eventTypeRepository.findEventTypesByIds(any()) }
     }
 
     "Should find reference parameter from related events" {

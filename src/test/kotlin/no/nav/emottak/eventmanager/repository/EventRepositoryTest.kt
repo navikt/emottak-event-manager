@@ -166,8 +166,8 @@ class EventRepositoryTest : RepositoryTestBase({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(fromRole = roleFilter)
 
-        val event1 = buildTestEvent().copy(requestId = messageDetails1.requestId)
-        val event2 = buildTestEvent().copy(requestId = messageDetails2.requestId)
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
 
         ebmsMessageDetailRepository.insert(messageDetails1)
         ebmsMessageDetailRepository.insert(messageDetails2)
@@ -189,8 +189,8 @@ class EventRepositoryTest : RepositoryTestBase({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(service = serviceFilter)
 
-        val event1 = buildTestEvent().copy(requestId = messageDetails1.requestId)
-        val event2 = buildTestEvent().copy(requestId = messageDetails2.requestId)
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
 
         ebmsMessageDetailRepository.insert(messageDetails1)
         ebmsMessageDetailRepository.insert(messageDetails2)
@@ -212,8 +212,8 @@ class EventRepositoryTest : RepositoryTestBase({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(action = actionFilter)
 
-        val event1 = buildTestEvent().copy(requestId = messageDetails1.requestId)
-        val event2 = buildTestEvent().copy(requestId = messageDetails2.requestId)
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
 
         ebmsMessageDetailRepository.insert(messageDetails1)
         ebmsMessageDetailRepository.insert(messageDetails2)
