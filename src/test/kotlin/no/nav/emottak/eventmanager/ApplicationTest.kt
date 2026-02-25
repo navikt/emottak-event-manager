@@ -32,6 +32,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.model.ConversationStatusInfo
 import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
@@ -46,8 +47,13 @@ import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesA
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFilterData
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
+import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailsForConversation
 import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
@@ -846,6 +852,45 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
+
+    "conversation-status endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.get("/conversation-status")
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "conversation-status endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.getWithAuth("/conversation-status", getToken, invalidAudience)
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "conversation-status endpoint should return list of conversation statuses" {
+        withTestApplication { httpClient ->
+            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+            val httpResponse = httpClient.getWithAuth("/conversation-status", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
+            conversationsPage.size shouldBe 3
+            conversationsPage.totalElements shouldBe 3
+
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 3
+            assertConversationStatus(conversations[0], c3md1, c3md1EventsList.last().createdAt, PROCESSING_COMPLETED)
+            conversations[0].readableIdList shouldBe c3md1.generateReadableId()
+            assertConversationStatus(conversations[1], c2md1, c2md1.savedAt, INFORMATION)
+            conversations[1].readableIdList shouldBe c2md1.generateReadableId()
+            assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
+            conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
 })
 
 suspend fun HttpClient.getWithAuth(
@@ -859,4 +904,17 @@ suspend fun HttpClient.getWithAuth(
             "Bearer ${getToken(audience).serialize()}"
         )
     }
+}
+
+private fun assertConversationStatus(
+    actualConversationStatusInfo: ConversationStatusInfo,
+    expectedMessageDetail: EbmsMessageDetail,
+    expectedStatusAt: Instant,
+    expectedStatus: EventStatusEnum
+) {
+    actualConversationStatusInfo.createdAt shouldBe expectedMessageDetail.savedAt.toOsloZone().toString()
+    actualConversationStatusInfo.cpaId shouldBe expectedMessageDetail.cpaId
+    actualConversationStatusInfo.service shouldBe expectedMessageDetail.service
+    actualConversationStatusInfo.statusAt shouldBe expectedStatusAt.toOsloZone().toString()
+    actualConversationStatusInfo.latestStatus shouldBe expectedStatus.dbValue
 }

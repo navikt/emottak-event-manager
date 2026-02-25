@@ -65,7 +65,7 @@ class ConversationStatusRepository(private val database: Database) {
     suspend fun get(id: String): ConversationStatus? = withContext(Dispatchers.IO) {
         transaction(database.db) {
             ConversationStatusTable
-                .select(ConversationStatusTable.columns)
+                .select(conversationId, createdAt, latestStatus, statusAt)
                 .where { conversationId eq id }
                 .mapNotNull {
                     ConversationStatus(
