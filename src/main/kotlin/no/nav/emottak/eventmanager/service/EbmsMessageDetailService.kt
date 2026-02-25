@@ -49,14 +49,11 @@ class EbmsMessageDetailService(
             val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
             ebmsMessageDetailRepository.insert(ebmsMessageDetail)
             log.info(ebmsMessageDetail.marker, "EBMS message details processed successfully: $ebmsMessageDetail")
-
-            if (ebmsMessageDetail.refToMessageId == null) {
-                val inserted = conversationStatusRepository.insert(ebmsMessageDetail.conversationId)
-                if (inserted) {
-                    log.info(ebmsMessageDetail.marker, "Conversation status inserted successfully: {}", ebmsMessageDetail.conversationId)
-                } else {
-                    log.warn(ebmsMessageDetail.marker, "Conversation status NOT inserted: {}", ebmsMessageDetail.conversationId)
-                }
+            if (ebmsMessageDetail.refToMessageId != null) return
+            if (conversationStatusRepository.insert(ebmsMessageDetail.conversationId)) {
+                log.info(ebmsMessageDetail.marker, "Conversation status inserted successfully: {}", ebmsMessageDetail.conversationId)
+            } else {
+                log.warn(ebmsMessageDetail.marker, "Conversation status NOT inserted: {}", ebmsMessageDetail.conversationId)
             }
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)

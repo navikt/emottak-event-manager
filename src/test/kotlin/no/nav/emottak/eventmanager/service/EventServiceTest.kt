@@ -7,7 +7,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.emottak.eventmanager.constants.Constants.ACKNOWLEDGMENT_ACTION
-import no.nav.emottak.eventmanager.constants.Constants.NOT_APPLICABLE_ROLE
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
@@ -126,10 +125,33 @@ class EventServiceTest : StringSpec({
         coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED, any()) }
     }
 
-    "Should update conversation status to complete on MESSAGE_SENT_VIA_SMTP event when message detail is Acknowledgment from consumer" {
+    "Should update conversation status to complete on MESSAGEFLOW_COMPLETED event" {
         val testTransportEvent = buildTestTransportEvent().copy(
-            eventType = EventType.MESSAGE_SENT_VIA_SMTP,
-            conversationId = null // smtp-transport sender ikke med conversationId
+            eventType = EventType.MESSAGEFLOW_COMPLETED,
+            conversationId = "my-conversation-id"
+        )
+        val testEvent = Event.fromTransportModel(testTransportEvent)
+        val testMessageDetail = buildTestEbmsMessageDetail(testTransportEvent.requestId).copy(
+            action = ACKNOWLEDGMENT_ACTION,
+            fromRole = "Ytelsesutbetaler",
+            conversationId = "my-conversation-id"
+        )
+
+        coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
+        coEvery { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) } returns testMessageDetail
+        coEvery { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
+
+        eventService.process(testTransportEvent.toByteArray())
+
+        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
+        coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) }
+    }
+
+    "Should call ebmsMessageDetailRepository.findByRequestId when conversationId is null when update conversation status is needed" {
+        val testTransportEvent = buildTestTransportEvent().copy(
+            eventType = EventType.MESSAGEFLOW_COMPLETED,
+            conversationId = null
         )
         val testEvent = Event.fromTransportModel(testTransportEvent)
         val testMessageDetail = buildTestEbmsMessageDetail(testTransportEvent.requestId).copy(
@@ -147,28 +169,6 @@ class EventServiceTest : StringSpec({
         coVerify { eventRepository.insert(testEvent) }
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
         coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) }
-    }
-
-    "Should not update conversation status to complete on MESSAGE_SENT_VIA_SMTP event when message detail is Acknowledgment but from NAV" {
-        val testTransportEvent = buildTestTransportEvent().copy(
-            eventType = EventType.MESSAGE_SENT_VIA_SMTP,
-            conversationId = null // smtp-transport sender ikke med conversationId
-        )
-        val testEvent = Event.fromTransportModel(testTransportEvent)
-        val testMessageDetail = buildTestEbmsMessageDetail(testTransportEvent.requestId).copy(
-            action = ACKNOWLEDGMENT_ACTION,
-            fromRole = NOT_APPLICABLE_ROLE, // From NAV
-            conversationId = "my-conversation-id"
-        )
-
-        coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) } returns testMessageDetail
-
-        eventService.process(testTransportEvent.toByteArray())
-
-        coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
-        coVerify(exactly = 0) { conversationStatusRepository.update(any(), any()) }
     }
 
     "Should not update conversation status on event types of status INFORMATION" {
