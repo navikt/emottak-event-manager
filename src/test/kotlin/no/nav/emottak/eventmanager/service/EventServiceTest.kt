@@ -192,4 +192,20 @@ class EventServiceTest : StringSpec({
 
         coVerify { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
     }
+
+    "Should ignore unknown keys for event" {
+        val testTransportEvent = buildTestTransportEvent()
+        val testEvent = Event.fromTransportModel(testTransportEvent)
+
+        coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
+
+        var byteArrayAsString = String(testTransportEvent.toByteArray())
+        byteArrayAsString = byteArrayAsString.replace(
+            oldValue = "\"eventType\":\"MESSAGE_SAVED_IN_JURIDISK_LOGG\"",
+            newValue = "\"eventType\":\"MESSAGE_SAVED_IN_JURIDISK_LOGG\",\"unknownKey\":\"Some value\""
+        )
+        eventService.process(byteArrayAsString.toByteArray())
+
+        coVerify { eventRepository.insert(testEvent) }
+    }
 })
