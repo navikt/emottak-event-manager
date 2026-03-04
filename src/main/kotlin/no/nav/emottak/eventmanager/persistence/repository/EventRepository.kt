@@ -10,7 +10,6 @@ import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable.contentId
-import no.nav.emottak.eventmanager.persistence.table.EventTable.conversationId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
@@ -35,12 +34,11 @@ class EventRepository(private val database: Database) {
             EventTable.insert {
                 it[eventId] = newEventId
                 it[eventTypeId] = event.eventType.value
-                it[requestIdColumn] = event.requestId.toJavaUuid()
+                it[requestId] = event.requestId.toJavaUuid()
                 it[contentId] = event.contentId
                 it[messageId] = event.messageId
                 it[eventData] = Json.decodeFromString<Map<String, String>>(event.eventData)
                 it[createdAt] = event.createdAt.truncatedTo(ChronoUnit.MICROS)
-                it[conversationId] = event.conversationId
             }
         }
         newEventId.toKotlinUuid()
@@ -57,8 +55,7 @@ class EventRepository(private val database: Database) {
                         contentId = it[contentId],
                         messageId = it[messageId],
                         eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
+                        createdAt = it[createdAt]
                     )
                 }
                 .singleOrNull()
@@ -68,7 +65,7 @@ class EventRepository(private val database: Database) {
     suspend fun findByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
-                .where { requestIdColumn eq requestId.toJavaUuid() }
+                .where { EventTable.requestId eq requestId.toJavaUuid() }
                 .mapNotNull {
                     Event(
                         eventType = EventType.fromInt(it[eventTypeId]),
@@ -76,8 +73,7 @@ class EventRepository(private val database: Database) {
                         contentId = it[contentId],
                         messageId = it[messageId],
                         eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
+                        createdAt = it[createdAt]
                     )
                 }
                 .toList()
@@ -95,8 +91,7 @@ class EventRepository(private val database: Database) {
                         contentId = it[contentId],
                         messageId = it[messageId],
                         eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
+                        createdAt = it[createdAt]
                     )
                 }
                 .toList()
@@ -111,7 +106,7 @@ class EventRepository(private val database: Database) {
                     .where { createdAt.between(from, to) }
                     .apply {
                         if (pageable != null) {
-                            this.limit(pageable.pageSize).offset(pageable.offset)
+                            this.limit(pageable.pageSize, pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())
                         }
                     }
@@ -122,8 +117,7 @@ class EventRepository(private val database: Database) {
                             contentId = it[contentId],
                             messageId = it[messageId],
                             eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt],
-                            conversationId = it[conversationId]
+                            createdAt = it[createdAt]
                         )
                     }
                     .toList()
@@ -156,7 +150,7 @@ class EventRepository(private val database: Database) {
                     .apply {
                         this.applyRoleServiceActionFilters(role, service, action)
                         if (pageable != null) {
-                            this.limit(pageable.pageSize).offset(pageable.offset)
+                            this.limit(pageable.pageSize, pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())
                         }
                     }
@@ -167,8 +161,7 @@ class EventRepository(private val database: Database) {
                             contentId = it[contentId],
                             messageId = it[messageId],
                             eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt],
-                            conversationId = it[conversationId]
+                            createdAt = it[createdAt]
                         )
                     }
                     .toList()

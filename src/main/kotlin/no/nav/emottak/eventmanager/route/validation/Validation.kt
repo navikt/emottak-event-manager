@@ -6,6 +6,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.RoutingCall
 import io.ktor.util.logging.error
 import kotlinx.serialization.json.Json
+import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
@@ -15,10 +16,10 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
-import no.nav.emottak.utils.common.zoneOslo
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
 
@@ -117,7 +118,7 @@ object Validation {
     fun parseDate(dateString: String, dateFormatString: String = "yyyy-MM-dd'T'HH:mm"): Instant {
         val formatter = DateTimeFormatter.ofPattern(dateFormatString)
         return LocalDateTime.parse(dateString, formatter)
-            .atZone(zoneOslo())
+            .atZone(ZoneId.of(Constants.ZONE_ID_OSLO))
             .toInstant()
     }
 

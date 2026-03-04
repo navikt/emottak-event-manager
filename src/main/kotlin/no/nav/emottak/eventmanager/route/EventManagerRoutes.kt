@@ -3,7 +3,6 @@ package no.nav.emottak.eventmanager.route
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
-import io.ktor.server.routing.RoutingRequest
 import io.ktor.server.routing.get
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
@@ -16,23 +15,15 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
-import no.nav.emottak.eventmanager.constants.QueryConstants.STATUSES
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.route.validation.Validation
-import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
-import java.time.Instant
 
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
-fun Route.eventManagerRoutes(
-    eventService: EventService,
-    ebmsMessageDetailService: EbmsMessageDetailService,
-    conversationStatusService: ConversationStatusService
-) {
+fun Route.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
     get("/filter-values") {
         val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
         log.debug("Got filter-values (last refreshed at: {})", filterValues.refreshedAt)
@@ -111,18 +102,6 @@ fun Route.eventManagerRoutes(
 
         call.respond(readableIdInfoList)
     }
-
-    get("/conversation-status") {
-        val fromDate: Instant? = getInputDate(call.request, FROM_DATE)
-        val toDate: Instant? = getInputDate(call.request, TO_DATE)
-        val cpaIdPattern = call.request.queryParameters[CPA_ID] ?: ""
-        val service = call.request.queryParameters[SERVICE] ?: ""
-        val statuses = parseStatuses(call.request.queryParameters[STATUSES] ?: "")
-        debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses)
-        val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses)
-        log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
-        call.respond(conversationPage)
-    }
 }
 
 private fun getRoleServiceActionParameters(call: RoutingCall): Triple<String, String, String> {
@@ -140,27 +119,3 @@ private suspend fun getPagableParameters(call: RoutingCall, defaultSize: Int = 5
         call.request.queryParameters[SORT],
         defaultSize
     )
-
-private fun getInputDate(request: RoutingRequest, param: String): Instant? {
-    return if (request.queryParameters[param] != null) Validation.parseDate(request.queryParameters[param]!!) else null
-}
-
-private fun parseStatuses(statuses: String): List<EventStatusEnum> {
-    if (statuses == "") return emptyList()
-    log.debug("Parsing statuses: {}", statuses)
-    return statuses.split(",").map { EventStatusEnum.valueOf(it) }
-}
-
-private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>) {
-    var msg = "Retrieving conversation statuses with filters: "
-    if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && statuses.isEmpty()) {
-        log.debug("Retrieving conversation statuses without filters")
-        return
-    }
-    if (fromDate != null) msg += "fromDate: '$fromDate', "
-    if (toDate != null) msg += "toDate: '$toDate', "
-    if (cpaIdPattern != "") msg += "cpaIdPattern: '$cpaIdPattern', "
-    if (service != "") msg += "service: '$service', "
-    if (statuses.isNotEmpty()) msg += "statuses: '$statuses', "
-    log.debug(msg.dropLast(2))
-}

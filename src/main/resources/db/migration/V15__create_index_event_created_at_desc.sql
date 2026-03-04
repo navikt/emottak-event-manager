@@ -1,1 +1,0 @@
-CREATE INDEX "idx_event_msg_created_at_desc" ON "events" (request_id, created_at DESC, event_type_id);

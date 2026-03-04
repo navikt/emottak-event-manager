@@ -1,1 +1,0 @@
-ALTER TABLE "events" ADD COLUMN "conversation_id" VARCHAR(256);
