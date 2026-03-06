@@ -1,1 +1,1 @@
-ALTER TABLE "events" ADD COLUMN "conversation_id" VARCHAR(256);
+ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "conversation_id" VARCHAR(256);
