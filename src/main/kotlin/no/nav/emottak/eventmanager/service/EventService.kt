@@ -25,11 +25,12 @@ class EventService(
     private val conversationStatusRepository: ConversationStatusRepository
 ) {
     private val log = LoggerFactory.getLogger(EventService::class.java)
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun process(value: ByteArray) {
         try {
             log.debug("Event read from Kafka: ${String(value)}")
-            val transportEvent: TransportEvent = Json.decodeFromString(String(value))
+            val transportEvent: TransportEvent = json.decodeFromString(String(value))
             val event = Event.fromTransportModel(transportEvent)
 
             updateMessageDetail(event)
