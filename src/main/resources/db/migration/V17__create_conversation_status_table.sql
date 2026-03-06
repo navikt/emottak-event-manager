@@ -5,4 +5,4 @@ CREATE TABLE IF NOT EXISTS "conversation_status" (
     "status_at" TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS ON "conversation_status" ("conversation_id");
+CREATE INDEX IF NOT EXISTS "conversation_status_conversation_id_idx" ON "conversation_status" ("conversation_id");
