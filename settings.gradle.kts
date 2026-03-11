@@ -66,8 +66,8 @@ dependencyResolutionManagement {
 
         create("testLibs") {
             version("kotest", "5.9.1")
-            version("ktor-test", "1.1.5")
-            version("testcontainers", "1.18.1")
+            version("ktor-test", "3.3.1")
+            version("testcontainers", "1.21.4")
             version("mockk", "1.13.17")
 
             library("kotest-runner", "io.kotest", "kotest-runner-junit5").versionRef("kotest")
