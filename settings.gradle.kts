@@ -3,12 +3,12 @@ rootProject.name = "emottak-event-manager"
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
-            version("exposed", "0.47.0")
+            version("exposed", "0.61.0")
             version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
             version("arrow", "2.0.1")
-            version("emottak-utils", "0.3.5")
+            version("emottak-utils", "0.3.6")
             version("kotlin-kafka", "0.4.1")
             version("logback", "1.5.18")
             version("logstash", "8.0")
