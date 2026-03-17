@@ -6,6 +6,7 @@ import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -14,6 +15,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -914,6 +916,47 @@ class ApplicationTest : StringSpec({
             conversations[1].readableIdList shouldBe c2md1.generateReadableId()
             assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
             conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
+
+    "conversation-status endpoint should fail when fromDate is unparsable datetime" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.getWithAuth("/conversation-status?fromDate=17.05.2026", getToken)
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
+            httpResponse.bodyAsText() shouldContain "Invalid date: fromDate"
+        }
+    }
+
+    "conversation-status endpoint should parse statuses into enum values" {
+        withTestApplication { httpClient ->
+            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+            val httpResponse = httpClient.getWithAuth("/conversation-status?statuses=Feil,Informasjon,Ferdigbehandlet", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
+            conversationsPage.size shouldBe 3
+            conversationsPage.totalElements shouldBe 3
+
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 3
+            assertConversationStatus(conversations[0], c3md1, c3md1EventsList.last().createdAt, PROCESSING_COMPLETED)
+            conversations[0].readableIdList shouldBe c3md1.generateReadableId()
+            assertConversationStatus(conversations[1], c2md1, c2md1.savedAt, INFORMATION)
+            conversations[1].readableIdList shouldBe c2md1.generateReadableId()
+            assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
+            conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
+
+    "conversation-status endpoint should return HTTP 400 Bad Request if unknown status" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.getWithAuth("/conversation-status?statuses=Error", getToken)
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
+            httpResponse.bodyAsText() shouldContain "Unknown event status: Error"
         }
     }
 })

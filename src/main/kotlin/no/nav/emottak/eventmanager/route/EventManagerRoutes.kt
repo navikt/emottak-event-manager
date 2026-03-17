@@ -25,6 +25,7 @@ import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.time.format.DateTimeParseException
 
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
@@ -117,7 +118,7 @@ fun Route.eventManagerRoutes(
         val toDate: Instant? = getInputDate(call.request, TO_DATE)
         val cpaIdPattern = call.request.queryParameters[CPA_ID] ?: ""
         val service = call.request.queryParameters[SERVICE] ?: ""
-        val statuses = parseStatuses(call.request.queryParameters[STATUSES] ?: "")
+        val statuses = parseStatuses(call.request.queryParameters[STATUSES])
         debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses)
         val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses)
         log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
@@ -145,13 +146,17 @@ private fun getInputDate(request: RoutingRequest, param: String) =
     if (request.queryParameters[param].isNullOrBlank()) {
         null
     } else {
-        Validation.parseDate(request.queryParameters[param]!!)
+        try {
+            Validation.parseDate(request.queryParameters[param]!!)
+        } catch (e: DateTimeParseException) {
+            throw IllegalArgumentException("Invalid date: $param", e)
+        }
     }
 
-private fun parseStatuses(statuses: String): List<EventStatusEnum> {
-    if (statuses == "") return emptyList()
+private fun parseStatuses(statuses: String?): List<EventStatusEnum> {
+    if (statuses.isNullOrBlank()) return emptyList()
     log.debug("Parsing statuses: {}", statuses)
-    return statuses.split(",").map { EventStatusEnum.valueOf(it) }
+    return statuses.split(",").map { EventStatusEnum.fromDbValue(it) }
 }
 
 private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>) {
