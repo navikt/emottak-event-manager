@@ -891,6 +891,31 @@ class ApplicationTest : StringSpec({
             conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
         }
     }
+
+    "conversation-status endpoint should not fail when fromDate or toDate is blank" {
+        withTestApplication { httpClient ->
+            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+            val httpResponse = httpClient.getWithAuth("/conversation-status?fromDate=&toDate=", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
+            conversationsPage.size shouldBe 3
+            conversationsPage.totalElements shouldBe 3
+
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 3
+            assertConversationStatus(conversations[0], c3md1, c3md1EventsList.last().createdAt, PROCESSING_COMPLETED)
+            conversations[0].readableIdList shouldBe c3md1.generateReadableId()
+            assertConversationStatus(conversations[1], c2md1, c2md1.savedAt, INFORMATION)
+            conversations[1].readableIdList shouldBe c2md1.generateReadableId()
+            assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
+            conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
 })
 
 suspend fun HttpClient.getWithAuth(
