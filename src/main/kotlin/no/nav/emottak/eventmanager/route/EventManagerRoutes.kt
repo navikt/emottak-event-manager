@@ -141,9 +141,9 @@ private suspend fun getPagableParameters(call: RoutingCall, defaultSize: Int = 5
         defaultSize
     )
 
-private fun getInputDate(request: RoutingRequest, param: String): Instant? {
-    return if (request.queryParameters[param] != null) Validation.parseDate(request.queryParameters[param]!!) else null
-}
+private fun getInputDate(request: RoutingRequest, param: String) =
+    if (request.queryParameters[param].isNullOrBlank()) null
+    else Validation.parseDate(request.queryParameters[param]!!)
 
 private fun parseStatuses(statuses: String): List<EventStatusEnum> {
     if (statuses == "") return emptyList()
