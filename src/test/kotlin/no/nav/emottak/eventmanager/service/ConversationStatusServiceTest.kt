@@ -6,10 +6,10 @@ import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.mockk
 import no.nav.emottak.eventmanager.model.ASCENDING
-import no.nav.emottak.eventmanager.model.ConversationStatusInfo
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
-import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.model.dto.ConversationStatusDTO
+import no.nav.emottak.eventmanager.model.dto.PageDTO
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
@@ -38,7 +38,7 @@ class ConversationStatusServiceTest : StringSpec({
         val list = listOf(conversationStatus1, conversationStatus2, conversationStatus3)
         val pageable = Pageable(1, list.size)
 
-        coEvery { conversationStatusRepository.findByFilters(pageable = pageable) } returns Page(
+        coEvery { conversationStatusRepository.findByFilters(pageable = pageable) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             ASCENDING,
@@ -68,7 +68,7 @@ class ConversationStatusServiceTest : StringSpec({
         val list = listOf(conversationStatus1, conversationStatus2)
         val pageable = Pageable(1, list.size)
 
-        coEvery { conversationStatusRepository.findByFilters(statuses = requestedStatuses, pageable = pageable) } returns Page(
+        coEvery { conversationStatusRepository.findByFilters(statuses = requestedStatuses, pageable = pageable) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             ASCENDING,
@@ -89,14 +89,14 @@ class ConversationStatusServiceTest : StringSpec({
 })
 
 private fun assertConversationStatus(
-    actualConversationStatusInfo: ConversationStatusInfo,
+    actualConversationStatusDto: ConversationStatusDTO,
     expectedMessageDetail: EbmsMessageDetail,
     expectedStatus: EventStatusEnum
 ) {
-    actualConversationStatusInfo.createdAt shouldBe expectedMessageDetail.savedAt.toOsloZone().toString()
-    actualConversationStatusInfo.readableIdList shouldBe expectedMessageDetail.generateReadableId()
-    actualConversationStatusInfo.cpaId shouldBe expectedMessageDetail.cpaId
-    actualConversationStatusInfo.service shouldBe expectedMessageDetail.service
-    actualConversationStatusInfo.statusAt shouldBe expectedMessageDetail.savedAt.plusMillis(1000).toOsloZone().toString()
-    actualConversationStatusInfo.latestStatus shouldBe expectedStatus.dbValue
+    actualConversationStatusDto.createdAt shouldBe expectedMessageDetail.savedAt.toOsloZone().toString()
+    actualConversationStatusDto.readableIdList shouldBe expectedMessageDetail.generateReadableId()
+    actualConversationStatusDto.cpaId shouldBe expectedMessageDetail.cpaId
+    actualConversationStatusDto.service shouldBe expectedMessageDetail.service
+    actualConversationStatusDto.statusAt shouldBe expectedMessageDetail.savedAt.plusMillis(1000).toOsloZone().toString()
+    actualConversationStatusDto.latestStatus shouldBe expectedStatus.dbValue
 }

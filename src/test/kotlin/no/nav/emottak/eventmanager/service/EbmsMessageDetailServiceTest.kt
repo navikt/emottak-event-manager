@@ -7,11 +7,11 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
-import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDTO
+import no.nav.emottak.eventmanager.model.dto.PageDTO
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
@@ -88,7 +88,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val list = listOf(testDetails)
         val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -126,7 +126,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val list = listOf(testDetails)
         val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -163,7 +163,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val list = listOf(testDetails)
         val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -257,7 +257,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val list = listOf(testDetails)
         val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -317,7 +317,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         val list = listOf(testDetails1, testDetails2)
         val pageable = Pageable(1, list.size)
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -368,7 +368,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val list = listOf(testDetails)
         val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -395,7 +395,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val list = listOf(testDetails1, testDetails2, testDetails3)
         val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns Page(
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDTO(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -429,7 +429,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
     }
 
     "Should retrieve filter-values" {
-        val filters = DistinctRolesServicesActions(
+        val filters = DistinctRolesServicesActionsDTO(
             roles = listOf("roleA", "roleB"),
             services = listOf("servicesA", "servicesB"),
             actions = listOf("actionA", "actionB"),
@@ -442,7 +442,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
     }
 
     "Should call refreshDistinctRolesServicesActions() if getDistinctRolesServicesActions() returns null" {
-        val filters = DistinctRolesServicesActions(
+        val filters = DistinctRolesServicesActionsDTO(
             roles = listOf("roleA", "roleB"),
             services = listOf("servicesA", "servicesB"),
             actions = listOf("actionA", "actionB"),

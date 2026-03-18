@@ -1,9 +1,9 @@
-package no.nav.emottak.eventmanager.model
+package no.nav.emottak.eventmanager.model.dto
 
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ConversationStatusInfo(
+data class ConversationStatusDTO(
     val createdAt: String,
     val readableIdList: String,
     val service: String,

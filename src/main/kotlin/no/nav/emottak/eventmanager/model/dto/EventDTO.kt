@@ -1,9 +1,9 @@
-package no.nav.emottak.eventmanager.model
+package no.nav.emottak.eventmanager.model.dto
 
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class EventInfo(
+data class EventDTO(
     val eventDate: String,
     val description: String,
     val eventData: String,

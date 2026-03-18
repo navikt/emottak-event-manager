@@ -3,8 +3,8 @@ package no.nav.emottak.eventmanager.persistence.repository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
-import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.model.dto.PageDTO
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.action
@@ -130,7 +130,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
-    ): Page<EbmsMessageDetail> = withContext(Dispatchers.IO) {
+    ): PageDTO<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
             val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
                 .apply {
@@ -152,7 +152,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            PageDTO(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 

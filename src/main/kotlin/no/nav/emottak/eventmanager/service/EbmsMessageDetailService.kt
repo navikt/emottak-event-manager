@@ -3,13 +3,13 @@ package no.nav.emottak.eventmanager.service
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.constants.Constants
-import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
-import no.nav.emottak.eventmanager.model.MessageInfo
-import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.ReadableIdInfo
+import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDTO
+import no.nav.emottak.eventmanager.model.dto.MessageDTO
+import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.ReadableIdDTO
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
@@ -70,7 +70,7 @@ class EbmsMessageDetailService(
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
-    ): Page<MessageInfo> {
+    ): PageDTO<MessageDTO> {
         val filterMsg = createFilterLogMessage(from, to, readableId, cpaId, messageId, role, service, action, pageable)
         log.info("Fetching message details by time and filter: $filterMsg")
         val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
@@ -90,7 +90,7 @@ class EbmsMessageDetailService(
             val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
             val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents, eventTypes)
 
-            MessageInfo(
+            MessageDTO(
                 receivedDate = msgDetail.savedAt.toOsloZone().toString(),
                 readableIdList = relatedReadableIds[msgDetail.requestId] ?: "",
                 role = msgDetail.fromRole,
@@ -104,10 +104,10 @@ class EbmsMessageDetailService(
             )
         }
         log.debug("Returning ${messageDetailsPage.size} message details")
-        return Page(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.sort, messageDetailsPage.totalElements, resultList)
+        return PageDTO(messageDetailsPage.page, messageDetailsPage.size, messageDetailsPage.sort, messageDetailsPage.totalElements, resultList)
     }
 
-    suspend fun fetchEbmsMessageDetails(id: String): List<ReadableIdInfo> {
+    suspend fun fetchEbmsMessageDetails(id: String): List<ReadableIdDTO> {
         val (idType, messageDetails) = if (Validation.isValidUuid(id)) {
             log.info("Fetching message details by Request ID: $id")
             Pair("Request ID", ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id)))
@@ -128,7 +128,7 @@ class EbmsMessageDetailService(
         val messageStatus = getMessageStatus(messageDetails.requestId, relatedEvents)
 
         return listOf(
-            ReadableIdInfo(
+            ReadableIdDTO(
                 receivedDate = messageDetails.savedAt.toOsloZone().toString(),
                 readableId = messageDetails.readableId ?: "",
                 cpaId = messageDetails.cpaId,
@@ -152,7 +152,7 @@ class EbmsMessageDetailService(
             .isNotEmpty()
     }
 
-    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActions {
+    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActionsDTO {
         val filterValues = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
         val refreshRate = Instant.now(clock).minus(config().database.distinctValuesRefreshRateInHours.value, ChronoUnit.HOURS)
         if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
