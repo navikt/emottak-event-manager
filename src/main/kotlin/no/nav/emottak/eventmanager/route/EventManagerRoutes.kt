@@ -19,6 +19,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.STATUSES
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.eventmanager.service.ConversationStatusService
@@ -126,8 +127,9 @@ fun Route.eventManagerRoutes(
         val cpaIdPattern = call.request.queryParameters[CPA_ID] ?: ""
         val service = call.request.queryParameters[SERVICE] ?: ""
         val statuses = parseStatuses(call) ?: return@get
-        debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses)
-        val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses)
+        val pageable = getPagableParameters(call) ?: return@get
+        debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
+        val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
         log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
         call.respond(conversationPage)
     }
@@ -172,7 +174,7 @@ private suspend fun parseStatuses(call: RoutingCall): List<EventStatusEnum>? {
     }
 }
 
-private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>) {
+private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>, pageable: Pageable?) {
     var msg = "Retrieving conversation statuses with filters: "
     if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && statuses.isEmpty()) {
         log.debug("Retrieving conversation statuses without filters")
@@ -183,5 +185,6 @@ private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, c
     if (cpaIdPattern != "") msg += "cpaIdPattern: '$cpaIdPattern', "
     if (service != "") msg += "service: '$service', "
     if (statuses.isNotEmpty()) msg += "statuses: '$statuses', "
+    if (pageable != null) msg += "page: '${pageable.pageNumber}', pageSize: '${pageable.pageSize}', sort: '${pageable.sort}', "
     log.debug(msg.dropLast(2))
 }

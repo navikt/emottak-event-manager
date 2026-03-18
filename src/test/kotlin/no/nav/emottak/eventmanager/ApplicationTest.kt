@@ -880,7 +880,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
-            conversationsPage.size shouldBe 3
+            conversationsPage.size shouldBe 50 // Default value when size not set
             conversationsPage.totalElements shouldBe 3
 
             val conversations = conversationsPage.content
@@ -905,7 +905,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
-            conversationsPage.size shouldBe 3
+            conversationsPage.size shouldBe 50 // Default value when size not set
             conversationsPage.totalElements shouldBe 3
 
             val conversations = conversationsPage.content
@@ -938,7 +938,7 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
-            conversationsPage.size shouldBe 3
+            conversationsPage.size shouldBe 50 // Default value when size not set
             conversationsPage.totalElements shouldBe 3
 
             val conversations = conversationsPage.content
@@ -957,6 +957,18 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.getWithAuth("/conversation-status?statuses=Error", getToken)
             httpResponse.status shouldBe HttpStatusCode.BadRequest
             httpResponse.bodyAsText() shouldContain "Unknown event status: Error"
+        }
+    }
+
+    "conversation-status endpoint should limit results when size is set" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val httpResponse = httpClient.getWithAuth("/conversation-status?page=1&size=1", getToken)
+            val conversationsPage: Page<ConversationStatusInfo> = httpResponse.body()
+            conversationsPage.size shouldBe 1
+            conversationsPage.totalElements shouldBe 3
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 1
         }
     }
 })
