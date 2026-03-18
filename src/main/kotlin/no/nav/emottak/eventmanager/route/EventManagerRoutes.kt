@@ -1,10 +1,11 @@
 package no.nav.emottak.eventmanager.route
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
-import io.ktor.server.routing.RoutingRequest
 import io.ktor.server.routing.get
+import io.ktor.util.logging.error
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
@@ -114,11 +115,17 @@ fun Route.eventManagerRoutes(
     }
 
     get("/conversation-status") {
-        val fromDate: Instant? = getInputDate(call.request, FROM_DATE)
-        val toDate: Instant? = getInputDate(call.request, TO_DATE)
+        var fromDate: Instant? = null
+        if (!call.request.queryParameters[FROM_DATE].isNullOrBlank()) {
+            fromDate = getInputDate(call, FROM_DATE) ?: return@get
+        }
+        var toDate: Instant? = null
+        if (!call.request.queryParameters[TO_DATE].isNullOrBlank()) {
+            toDate = getInputDate(call, TO_DATE) ?: return@get
+        }
         val cpaIdPattern = call.request.queryParameters[CPA_ID] ?: ""
         val service = call.request.queryParameters[SERVICE] ?: ""
-        val statuses = parseStatuses(call.request.queryParameters[STATUSES])
+        val statuses = parseStatuses(call) ?: return@get
         debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses)
         val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses)
         log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
@@ -142,21 +149,27 @@ private suspend fun getPagableParameters(call: RoutingCall, defaultSize: Int = 5
         defaultSize
     )
 
-private fun getInputDate(request: RoutingRequest, param: String) =
-    if (request.queryParameters[param].isNullOrBlank()) {
+private suspend fun getInputDate(call: RoutingCall, param: String) =
+    try {
+        Validation.parseDate(call.request.queryParameters[param]!!)
+    } catch (_: DateTimeParseException) {
+        val errorMessage = "Invalid date: $param"
+        log.error(IllegalArgumentException(errorMessage))
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
         null
-    } else {
-        try {
-            Validation.parseDate(request.queryParameters[param]!!)
-        } catch (e: DateTimeParseException) {
-            throw IllegalArgumentException("Invalid date: $param", e)
-        }
     }
 
-private fun parseStatuses(statuses: String?): List<EventStatusEnum> {
+private suspend fun parseStatuses(call: RoutingCall): List<EventStatusEnum>? {
+    val statuses = call.request.queryParameters[STATUSES]
     if (statuses.isNullOrBlank()) return emptyList()
     log.debug("Parsing statuses: {}", statuses)
-    return statuses.split(",").map { EventStatusEnum.fromDbValue(it) }
+    try {
+        return statuses.split(",").map { EventStatusEnum.fromDbValue(it) }
+    } catch (e: IllegalArgumentException) {
+        log.error(e)
+        call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid status code")
+        return null
+    }
 }
 
 private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>) {
