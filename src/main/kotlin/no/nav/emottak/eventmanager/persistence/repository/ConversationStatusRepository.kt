@@ -5,7 +5,7 @@ import kotlinx.coroutines.withContext
 import no.nav.emottak.eventmanager.model.ConversationStatus
 import no.nav.emottak.eventmanager.model.ConversationStatusData
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.conversationId
@@ -86,7 +86,7 @@ class ConversationStatusRepository(private val database: Database) {
         service: String = "",
         statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED),
         pageable: Pageable? = null
-    ): PageDTO<ConversationStatusData> = withContext(Dispatchers.IO) {
+    ): PageDto<ConversationStatusData> = withContext(Dispatchers.IO) {
         transaction(database.db) {
             val matchStatuses = statuses.ifEmpty { listOf(ERROR, INFORMATION, PROCESSING_COMPLETED) }
             val subqueryAlias = getConversationsQuery(from, to, cpaIdPattern, service, matchStatuses)
@@ -139,7 +139,7 @@ class ConversationStatusRepository(private val database: Database) {
 
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, conversations.size)
-            PageDTO(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, conversations)
+            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, conversations)
         }
     }
 

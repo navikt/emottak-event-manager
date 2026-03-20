@@ -3,7 +3,7 @@ package no.nav.emottak.eventmanager.model.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class MessageDTO(
+data class MessageDto(
     val receivedDate: String,
     val readableIdList: String,
     val role: String? = null,

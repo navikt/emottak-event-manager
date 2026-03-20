@@ -9,7 +9,7 @@ import io.mockk.mockk
 import no.nav.emottak.eventmanager.constants.Constants.ACKNOWLEDGMENT_ACTION
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -193,7 +193,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns PageDTO(
+        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -222,7 +222,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role = roleFilter) } returns PageDTO(
+        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role = roleFilter) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -251,7 +251,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, service = serviceFilter) } returns PageDTO(
+        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, service = serviceFilter) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -280,7 +280,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, action = actionFilter) } returns PageDTO(
+        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, action = actionFilter) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",

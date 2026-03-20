@@ -3,9 +3,9 @@ package no.nav.emottak.eventmanager.service
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.dto.EventDTO
-import no.nav.emottak.eventmanager.model.dto.MessageLogDTO
-import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.EventDto
+import no.nav.emottak.eventmanager.model.dto.MessageLogDto
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
@@ -50,7 +50,7 @@ class EventService(
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
-    ): PageDTO<EventDTO> {
+    ): PageDto<EventDto> {
         val eventsPage = if (role.isNotEmpty() || service.isNotEmpty() || action.isNotEmpty()) {
             eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role, service, action, pageable)
         } else {
@@ -64,7 +64,7 @@ class EventService(
         val resultList = eventsList.map {
             val ebmsMessageDetail = messageDetailsMap[it.requestId]
             if (ebmsMessageDetail == null) numberOfRequestIdsNotFound++
-            EventDTO(
+            EventDto(
                 eventDate = it.createdAt.toOsloZone().toString(),
                 description = it.eventType.description,
                 eventData = it.eventData,
@@ -78,10 +78,10 @@ class EventService(
         }.toList().also {
             if (numberOfRequestIdsNotFound > 0) log.warn("Number of requestIds not found: $numberOfRequestIdsNotFound")
         }
-        return PageDTO(eventsPage.page, eventsPage.size, eventsPage.sort, eventsPage.totalElements, resultList)
+        return PageDto(eventsPage.page, eventsPage.size, eventsPage.sort, eventsPage.totalElements, resultList)
     }
 
-    suspend fun fetchMessageLogInfo(id: String): List<MessageLogDTO> {
+    suspend fun fetchMessageLogInfo(id: String): List<MessageLogDto> {
         val eventsList = if (Validation.isValidUuid(id)) {
             log.info("Fetching events by Request ID: $id")
             eventRepository.findByRequestId(Uuid.parse(id))
@@ -99,7 +99,7 @@ class EventService(
 
         return eventsList.sortedBy { it.createdAt }
             .map {
-                MessageLogDTO(
+                MessageLogDto(
                     eventDate = it.createdAt.toOsloZone().toString(),
                     eventDescription = it.eventType.description,
                     eventId = it.eventType.value.toString()

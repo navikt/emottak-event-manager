@@ -2,7 +2,7 @@ package no.nav.emottak.eventmanager.persistence.repository
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDTO
+import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.DistinctRolesServicesActionsTable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
@@ -21,7 +21,7 @@ import kotlin.collections.sorted
 
 class DistinctRolesServicesActionsRepository(private val database: Database) {
 
-    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActionsDTO? = withContext(Dispatchers.IO) {
+    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActionsDto? = withContext(Dispatchers.IO) {
         transaction(database.db) {
             DistinctRolesServicesActionsTable
                 .selectAll()
@@ -33,7 +33,7 @@ class DistinctRolesServicesActionsRepository(private val database: Database) {
                     if (roles == null || services == null || actions == null) {
                         null
                     } else {
-                        DistinctRolesServicesActionsDTO(
+                        DistinctRolesServicesActionsDto(
                             roles = roles.sorted(),
                             services = services.sorted(),
                             actions = actions.sorted(),
@@ -44,7 +44,7 @@ class DistinctRolesServicesActionsRepository(private val database: Database) {
         }
     }
 
-    suspend fun refreshDistinctRolesServicesActions(): DistinctRolesServicesActionsDTO = withContext(Dispatchers.IO) {
+    suspend fun refreshDistinctRolesServicesActions(): DistinctRolesServicesActionsDto = withContext(Dispatchers.IO) {
         transaction(database.db) {
             /*
             SELECT string_agg(distinct from_role::text, ',') AS roles,
@@ -80,7 +80,7 @@ class DistinctRolesServicesActionsRepository(private val database: Database) {
                 it[DistinctRolesServicesActionsTable.refreshedAt] = refreshedAt
             }
 
-            DistinctRolesServicesActionsDTO(
+            DistinctRolesServicesActionsDto(
                 roles = roles.split(",").sorted(),
                 services = services.split(",").sorted(),
                 actions = actions.split(",").sorted(),

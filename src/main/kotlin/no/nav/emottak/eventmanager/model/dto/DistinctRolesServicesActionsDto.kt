@@ -5,7 +5,7 @@ import no.nav.emottak.utils.serialization.InstantSerializer
 import java.time.Instant
 
 @Serializable
-data class DistinctRolesServicesActionsDTO(
+data class DistinctRolesServicesActionsDto(
     val roles: List<String>,
     val services: List<String>,
     val actions: List<String>,

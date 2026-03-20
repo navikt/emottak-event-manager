@@ -1,8 +1,8 @@
 package no.nav.emottak.eventmanager.service
 
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.dto.ConversationStatusDTO
-import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.ConversationStatusDto
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
@@ -22,11 +22,11 @@ class ConversationStatusService(private val conversationStatusRepository: Conver
         service: String = "",
         statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED),
         pageable: Pageable? = null
-    ): PageDTO<ConversationStatusDTO> {
+    ): PageDto<ConversationStatusDto> {
         log.debug("Finding ConversationStatus by filters...")
         val result = conversationStatusRepository.findByFilters(from, to, cpaIdPattern, service, statuses, pageable)
         val resultList = result.content.map { conversationStatus ->
-            ConversationStatusDTO(
+            ConversationStatusDto(
                 createdAt = conversationStatus.createdAt.toOsloZone().toString(),
                 readableIdList = conversationStatus.readableIdList,
                 service = conversationStatus.service,
@@ -35,6 +35,6 @@ class ConversationStatusService(private val conversationStatusRepository: Conver
                 latestStatus = conversationStatus.latestStatus.dbValue
             )
         }
-        return PageDTO(result.page, result.size, result.sort, result.totalElements, resultList)
+        return PageDto(result.page, result.size, result.sort, result.totalElements, resultList)
     }
 }

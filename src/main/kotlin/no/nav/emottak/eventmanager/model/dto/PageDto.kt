@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 // Based on Spring Data's Page implementation
 @Serializable
-data class PageDTO<T> (
+data class PageDto<T> (
     val page: Int,
     val size: Int,
     val sort: String? = null,

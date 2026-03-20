@@ -8,8 +8,8 @@ import io.mockk.mockk
 import no.nav.emottak.eventmanager.model.ASCENDING
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.dto.ConversationStatusDTO
-import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.ConversationStatusDto
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
@@ -38,7 +38,7 @@ class ConversationStatusServiceTest : StringSpec({
         val list = listOf(conversationStatus1, conversationStatus2, conversationStatus3)
         val pageable = Pageable(1, list.size)
 
-        coEvery { conversationStatusRepository.findByFilters(pageable = pageable) } returns PageDTO(
+        coEvery { conversationStatusRepository.findByFilters(pageable = pageable) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             ASCENDING,
@@ -68,7 +68,7 @@ class ConversationStatusServiceTest : StringSpec({
         val list = listOf(conversationStatus1, conversationStatus2)
         val pageable = Pageable(1, list.size)
 
-        coEvery { conversationStatusRepository.findByFilters(statuses = requestedStatuses, pageable = pageable) } returns PageDTO(
+        coEvery { conversationStatusRepository.findByFilters(statuses = requestedStatuses, pageable = pageable) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             ASCENDING,
@@ -89,7 +89,7 @@ class ConversationStatusServiceTest : StringSpec({
 })
 
 private fun assertConversationStatus(
-    actualConversationStatusDto: ConversationStatusDTO,
+    actualConversationStatusDto: ConversationStatusDto,
     expectedMessageDetail: EbmsMessageDetail,
     expectedStatus: EventStatusEnum
 ) {

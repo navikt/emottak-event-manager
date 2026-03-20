@@ -36,13 +36,13 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
-import no.nav.emottak.eventmanager.model.dto.ConversationStatusDTO
-import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDTO
-import no.nav.emottak.eventmanager.model.dto.EventDTO
-import no.nav.emottak.eventmanager.model.dto.MessageDTO
-import no.nav.emottak.eventmanager.model.dto.MessageLogDTO
-import no.nav.emottak.eventmanager.model.dto.PageDTO
-import no.nav.emottak.eventmanager.model.dto.ReadableIdDTO
+import no.nav.emottak.eventmanager.model.dto.ConversationStatusDto
+import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
+import no.nav.emottak.eventmanager.model.dto.EventDto
+import no.nav.emottak.eventmanager.model.dto.MessageDto
+import no.nav.emottak.eventmanager.model.dto.MessageLogDto
+import no.nav.emottak.eventmanager.model.dto.PageDto
+import no.nav.emottak.eventmanager.model.dto.ReadableIdDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
@@ -182,8 +182,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val eventsPage: PageDTO<EventDTO> = httpResponse.body()
-            val events: List<EventDTO> = eventsPage.content
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
             events[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
@@ -215,12 +215,12 @@ class ApplicationTest : StringSpec({
             // default should be descending, try both with explicit sorting and without
             var httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
-            var eventsPage: PageDTO<EventDTO> = httpResponse.body()
+            var eventsPage: PageDto<EventDto> = httpResponse.body()
             eventsPage.page shouldBe 1
             eventsPage.content.size shouldBe 3
             eventsPage.totalPages shouldBe 3
             eventsPage.totalElements shouldBe 9
-            var eventList: List<EventDTO> = eventsPage.content
+            var eventList: List<EventDto> = eventsPage.content
             eventList[0].senderName shouldBe details[8].senderName
             eventList[1].senderName shouldBe details[7].senderName
             eventList[2].senderName shouldBe details[6].senderName
@@ -259,8 +259,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val eventsPage: PageDTO<EventDTO> = httpResponse.body()
-            val events: List<EventDTO> = eventsPage.content
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
             events[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
@@ -285,8 +285,8 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val eventsPage: PageDTO<EventDTO> = httpResponse.body()
-            val events: List<EventDTO> = eventsPage.content
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
             events.size shouldBe 0
         }
     }
@@ -347,8 +347,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageDetailsPage: PageDTO<MessageDTO> = httpResponse.body()
-            val messageDtoList: List<MessageDTO> = messageDetailsPage.content
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
             messageDtoList[0].readableIdList shouldBe messageDetails.generateReadableId()
             messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageDtoList[0].role shouldBe messageDetails.fromRole
@@ -371,8 +371,8 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val messageDetailsPage: PageDTO<MessageDTO> = httpResponse.body()
-            val messageDtoList: List<MessageDTO> = messageDetailsPage.content
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
             messageDtoList.size shouldBe 0
         }
     }
@@ -389,8 +389,8 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageDetailsPage: PageDTO<MessageDTO> = httpResponse.body()
-            val messageDtoList: List<MessageDTO> = messageDetailsPage.content
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
             messageDtoList.size shouldBe 1
             messageDtoList[0].readableIdList shouldBe readableId
             messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
@@ -464,7 +464,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageLogDTO> = httpResponse.body()
+            val messageInfoList: List<MessageLogDto> = httpResponse.body()
             messageInfoList.size shouldBe 1
             messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
@@ -486,7 +486,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageLogDTO> = httpResponse.body()
+            val messageInfoList: List<MessageLogDto> = httpResponse.body()
             messageInfoList.size shouldBe 1
             messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
@@ -506,7 +506,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageLogDTO> = httpResponse.body()
+            val messageInfoList: List<MessageLogDto> = httpResponse.body()
             messageInfoList.size shouldBe 0
         }
     }
@@ -692,7 +692,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<ReadableIdDTO> = httpResponse.body()
+            val messageInfoList: List<ReadableIdDto> = httpResponse.body()
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
@@ -717,7 +717,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<ReadableIdDTO> = httpResponse.body()
+            val messageInfoList: List<ReadableIdDto> = httpResponse.body()
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
@@ -749,7 +749,7 @@ class ApplicationTest : StringSpec({
 
                 httpResponse.status shouldBe HttpStatusCode.OK
 
-                val messageInfoList: List<ReadableIdDTO> = httpResponse.body()
+                val messageInfoList: List<ReadableIdDto> = httpResponse.body()
                 messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
             }
         }
@@ -763,7 +763,7 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val events: List<MessageDTO> = httpResponse.body()
+            val events: List<MessageDto> = httpResponse.body()
             events.size shouldBe 0
         }
     }
@@ -804,7 +804,7 @@ class ApplicationTest : StringSpec({
 
             val httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
-            val filters: DistinctRolesServicesActionsDTO = httpResponse.body()
+            val filters: DistinctRolesServicesActionsDto = httpResponse.body()
             filters.roles.size shouldBe 2
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 2
@@ -817,7 +817,7 @@ class ApplicationTest : StringSpec({
 
             var httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
-            var filters: DistinctRolesServicesActionsDTO = httpResponse.body()
+            var filters: DistinctRolesServicesActionsDto = httpResponse.body()
             filters.roles.size shouldBe 2
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 2
@@ -879,7 +879,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val conversationsPage: PageDTO<ConversationStatusDTO> = httpResponse.body()
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
             conversationsPage.size shouldBe 50 // Default value when size not set
             conversationsPage.totalElements shouldBe 3
 
@@ -904,7 +904,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val conversationsPage: PageDTO<ConversationStatusDTO> = httpResponse.body()
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
             conversationsPage.size shouldBe 50 // Default value when size not set
             conversationsPage.totalElements shouldBe 3
 
@@ -937,7 +937,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val conversationsPage: PageDTO<ConversationStatusDTO> = httpResponse.body()
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
             conversationsPage.size shouldBe 50 // Default value when size not set
             conversationsPage.totalElements shouldBe 3
 
@@ -964,7 +964,7 @@ class ApplicationTest : StringSpec({
         withTestApplication { httpClient ->
             buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
             val httpResponse = httpClient.getWithAuth("/conversation-status?page=1&size=1", getToken)
-            val conversationsPage: PageDTO<ConversationStatusDTO> = httpResponse.body()
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
             conversationsPage.size shouldBe 1
             conversationsPage.totalElements shouldBe 3
             val conversations = conversationsPage.content
@@ -987,7 +987,7 @@ suspend fun HttpClient.getWithAuth(
 }
 
 private fun assertConversationStatus(
-    actualConversationStatusDto: ConversationStatusDTO,
+    actualConversationStatusDto: ConversationStatusDto,
     expectedMessageDetail: EbmsMessageDetail,
     expectedStatusAt: Instant,
     expectedStatus: EventStatusEnum

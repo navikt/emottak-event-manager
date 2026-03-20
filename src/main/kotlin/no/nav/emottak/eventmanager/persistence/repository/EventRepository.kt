@@ -5,7 +5,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.eventmanager.model.dto.PageDTO
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable
@@ -103,7 +103,7 @@ class EventRepository(private val database: Database) {
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant, pageable: Pageable? = null): PageDTO<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, pageable: Pageable? = null): PageDto<Event> = withContext(Dispatchers.IO) {
         transaction {
             val totalCount = EventTable.select(createdAt).where { createdAt.between(from, to) }.count()
             val list =
@@ -129,7 +129,7 @@ class EventRepository(private val database: Database) {
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            PageDTO(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 
@@ -140,7 +140,7 @@ class EventRepository(private val database: Database) {
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
-    ): PageDTO<Event> = withContext(Dispatchers.IO) {
+    ): PageDto<Event> = withContext(Dispatchers.IO) {
         transaction {
             val totalCount = EventTable.join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
                 .select(createdAt).where { createdAt.between(from, to) }
@@ -174,7 +174,7 @@ class EventRepository(private val database: Database) {
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            PageDTO(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 }
