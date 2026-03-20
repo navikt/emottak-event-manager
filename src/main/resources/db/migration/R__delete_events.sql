@@ -18,6 +18,6 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM job_status WHERE job_name = v_job_name_events_cleanup) THEN
-        CALL events_cleanup(2, v_job_name_events_cleanup, 10000);
+        CALL events_cleanup(2, v_job_name_events_cleanup, 100000);
     END IF;
 END $$;
