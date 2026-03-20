@@ -1,9 +1,11 @@
 package no.nav.emottak.eventmanager.route
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
+import io.ktor.util.logging.error
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
@@ -15,15 +17,25 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
+import no.nav.emottak.eventmanager.constants.QueryConstants.STATUSES
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
+import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.route.validation.Validation
+import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import org.slf4j.LoggerFactory
+import java.time.Instant
+import java.time.format.DateTimeParseException
 
 private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.EventManagerRoutes")
 
-fun Route.eventManagerRoutes(eventService: EventService, ebmsMessageDetailService: EbmsMessageDetailService) {
+fun Route.eventManagerRoutes(
+    eventService: EventService,
+    ebmsMessageDetailService: EbmsMessageDetailService,
+    conversationStatusService: ConversationStatusService
+) {
     get("/filter-values") {
         val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
         log.debug("Got filter-values (last refreshed at: {})", filterValues.refreshedAt)
@@ -102,6 +114,25 @@ fun Route.eventManagerRoutes(eventService: EventService, ebmsMessageDetailServic
 
         call.respond(readableIdInfoList)
     }
+
+    get("/conversation-status") {
+        var fromDate: Instant? = null
+        if (!call.request.queryParameters[FROM_DATE].isNullOrBlank()) {
+            fromDate = getInputDate(call, FROM_DATE) ?: return@get
+        }
+        var toDate: Instant? = null
+        if (!call.request.queryParameters[TO_DATE].isNullOrBlank()) {
+            toDate = getInputDate(call, TO_DATE) ?: return@get
+        }
+        val cpaIdPattern = call.request.queryParameters[CPA_ID] ?: ""
+        val service = call.request.queryParameters[SERVICE] ?: ""
+        val statuses = parseStatuses(call) ?: return@get
+        val pageable = getPagableParameters(call) ?: return@get
+        debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
+        val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
+        log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
+        call.respond(conversationPage)
+    }
 }
 
 private fun getRoleServiceActionParameters(call: RoutingCall): Triple<String, String, String> {
@@ -119,3 +150,41 @@ private suspend fun getPagableParameters(call: RoutingCall, defaultSize: Int = 5
         call.request.queryParameters[SORT],
         defaultSize
     )
+
+private suspend fun getInputDate(call: RoutingCall, param: String) =
+    try {
+        Validation.parseDate(call.request.queryParameters[param]!!)
+    } catch (_: DateTimeParseException) {
+        val errorMessage = "Invalid date: $param"
+        log.error(IllegalArgumentException(errorMessage))
+        call.respond(HttpStatusCode.BadRequest, errorMessage)
+        null
+    }
+
+private suspend fun parseStatuses(call: RoutingCall): List<EventStatusEnum>? {
+    val statuses = call.request.queryParameters[STATUSES]
+    if (statuses.isNullOrBlank()) return emptyList()
+    log.debug("Parsing statuses: {}", statuses)
+    try {
+        return statuses.split(",").map { EventStatusEnum.fromDbValue(it) }
+    } catch (e: IllegalArgumentException) {
+        log.error(e)
+        call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid status code")
+        return null
+    }
+}
+
+private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>, pageable: Pageable?) {
+    var msg = "Retrieving conversation statuses with filters: "
+    if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && statuses.isEmpty()) {
+        log.debug("Retrieving conversation statuses without filters")
+        return
+    }
+    if (fromDate != null) msg += "fromDate: '$fromDate', "
+    if (toDate != null) msg += "toDate: '$toDate', "
+    if (cpaIdPattern != "") msg += "cpaIdPattern: '$cpaIdPattern', "
+    if (service != "") msg += "service: '$service', "
+    if (statuses.isNotEmpty()) msg += "statuses: '$statuses', "
+    if (pageable != null) msg += "page: '${pageable.pageNumber}', pageSize: '${pageable.pageSize}', sort: '${pageable.sort}', "
+    log.debug(msg.dropLast(2))
+}

@@ -1,16 +1,17 @@
-package no.nav.emottak.eventmanager.model
+package no.nav.emottak.eventmanager.model.dto
 
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ReadableIdInfo(
+data class MessageDto(
     val receivedDate: String,
-    val readableId: String,
+    val readableIdList: String,
     val role: String? = null,
     val service: String? = null,
     val action: String? = null,
     val referenceParameter: String? = null,
     val senderName: String? = null,
     val cpaId: String? = null,
+    val count: Int,
     val status: String? = null
 )

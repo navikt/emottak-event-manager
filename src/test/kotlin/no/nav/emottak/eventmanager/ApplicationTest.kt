@@ -6,6 +6,7 @@ import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -14,6 +15,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -24,7 +26,6 @@ import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
-import no.nav.emottak.eventmanager.constants.Constants.ZONE_ID_OSLO
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
@@ -33,34 +34,43 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
-import no.nav.emottak.eventmanager.model.DistinctRolesServicesActions
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
-import no.nav.emottak.eventmanager.model.EventInfo
-import no.nav.emottak.eventmanager.model.MessageInfo
-import no.nav.emottak.eventmanager.model.MessageLogInfo
-import no.nav.emottak.eventmanager.model.Page
-import no.nav.emottak.eventmanager.model.ReadableIdInfo
+import no.nav.emottak.eventmanager.model.dto.ConversationStatusDto
+import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
+import no.nav.emottak.eventmanager.model.dto.EventDto
+import no.nav.emottak.eventmanager.model.dto.MessageDto
+import no.nav.emottak.eventmanager.model.dto.MessageLogDto
+import no.nav.emottak.eventmanager.model.dto.PageDto
+import no.nav.emottak.eventmanager.model.dto.ReadableIdDto
 import no.nav.emottak.eventmanager.persistence.Database
+import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFilterData
 import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailFindData
+import no.nav.emottak.eventmanager.repository.buildAndInsertTestEbmsMessageDetailsForConversation
 import no.nav.emottak.eventmanager.repository.buildDatabaseContainer
 import no.nav.emottak.eventmanager.repository.buildTestEbmsMessageDetail
 import no.nav.emottak.eventmanager.repository.buildTestEvent
 import no.nav.emottak.eventmanager.repository.testConfiguration
+import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.model.DuplicateCheckResponse
+import no.nav.emottak.utils.common.toOsloZone
+import no.nav.emottak.utils.common.zoneOslo
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Clock
 import java.time.Instant
-import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 
@@ -75,9 +85,11 @@ class ApplicationTest : StringSpec({
     lateinit var ebmsMessageDetailRepository: EbmsMessageDetailRepository
     lateinit var eventTypeRepository: EventTypeRepository
     lateinit var distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository
+    lateinit var conversationStatusRepository: ConversationStatusRepository
 
     lateinit var eventService: EventService
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
+    lateinit var conversationStatusService: ConversationStatusService
 
     val getToken: (String) -> SignedJWT = { audience: String ->
         mockOAuth2Server.issueToken(
@@ -93,7 +105,7 @@ class ApplicationTest : StringSpec({
             val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
             application(
-                eventManagerModule(eventService, ebmsMessageDetailService, meterRegistry)
+                eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, meterRegistry)
             )
 
             val httpClient = createClient {
@@ -110,9 +122,11 @@ class ApplicationTest : StringSpec({
         dbContainer = buildDatabaseContainer()
         dbContainer.start()
 
+        // Creating db as emottak-event-manager-db-admin:
         val migrationDb = Database(dbContainer.testConfiguration())
         migrationDb.migrate(migrationDb.dataSource)
         migrationDb.dataSource.close()
+        // Connecting to db with emottak-event-manager-db-user:
         db = Database(dbContainer.testConfiguration(user = "user"))
 
         mockOAuth2Server = MockOAuth2Server().also { it.start(port = 3344) }
@@ -121,14 +135,17 @@ class ApplicationTest : StringSpec({
         ebmsMessageDetailRepository = EbmsMessageDetailRepository(db)
         eventTypeRepository = EventTypeRepository(db)
         distinctRolesServicesActionsRepository = DistinctRolesServicesActionsRepository(db)
+        conversationStatusRepository = ConversationStatusRepository(db)
 
-        eventService = EventService(eventRepository, ebmsMessageDetailRepository)
+        eventService = EventService(eventRepository, ebmsMessageDetailRepository, conversationStatusRepository)
         ebmsMessageDetailService = EbmsMessageDetailService(
             eventRepository,
             ebmsMessageDetailRepository,
             eventTypeRepository,
-            distinctRolesServicesActionsRepository
+            distinctRolesServicesActionsRepository,
+            conversationStatusRepository
         )
+        conversationStatusService = ConversationStatusService(conversationStatusRepository)
     }
 
     afterSpec {
@@ -140,6 +157,7 @@ class ApplicationTest : StringSpec({
         db.dataSource.connection.use { conn ->
             conn.createStatement().execute("DELETE FROM events")
             conn.createStatement().execute("DELETE FROM ebms_message_details")
+            conn.createStatement().execute("DELETE FROM conversation_status")
         }
     }
 
@@ -154,7 +172,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return list of events" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -164,9 +182,9 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val eventsPage: Page<EventInfo> = httpResponse.body()
-            val events: List<EventInfo> = eventsPage.content
-            events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
+            events[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
             events[0].readableId shouldBe testMessageDetails.generateReadableId()
@@ -197,12 +215,12 @@ class ApplicationTest : StringSpec({
             // default should be descending, try both with explicit sorting and without
             var httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&page=1&size=3&$SORT=desc", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
-            var eventsPage: Page<EventInfo> = httpResponse.body()
+            var eventsPage: PageDto<EventDto> = httpResponse.body()
             eventsPage.page shouldBe 1
             eventsPage.content.size shouldBe 3
             eventsPage.totalPages shouldBe 3
             eventsPage.totalElements shouldBe 9
-            var eventList: List<EventInfo> = eventsPage.content
+            var eventList: List<EventDto> = eventsPage.content
             eventList[0].senderName shouldBe details[8].senderName
             eventList[1].senderName shouldBe details[7].senderName
             eventList[2].senderName shouldBe details[6].senderName
@@ -241,9 +259,9 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val eventsPage: Page<EventInfo> = httpResponse.body()
-            val events: List<EventInfo> = eventsPage.content
-            events[0].eventDate shouldBe testEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
+            events[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
             events[0].readableId shouldBe ""
@@ -258,7 +276,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return empty list if no events found" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -267,8 +285,8 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val eventsPage: Page<EventInfo> = httpResponse.body()
-            val events: List<EventInfo> = eventsPage.content
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
             events.size shouldBe 0
         }
     }
@@ -292,7 +310,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return Unauthorized if access token is missing" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -307,7 +325,7 @@ class ApplicationTest : StringSpec({
     "events endpoint should return Unauthorized if access token is invalid" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
-            val testEvent = buildTestEvent().copy(requestId = commonRequestId)
+            val testEvent = buildTestEvent(requestId = commonRequestId)
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
@@ -322,47 +340,47 @@ class ApplicationTest : StringSpec({
     "message-details endpoint should return list of message details" {
         withTestApplication { httpClient ->
             val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
-            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
-            messageInfoList[0].readableIdList shouldBe messageDetails.generateReadableId()
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
-            messageInfoList[0].role shouldBe messageDetails.fromRole
-            messageInfoList[0].service shouldBe messageDetails.service
-            messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
-            messageInfoList[0].cpaId shouldBe messageDetails.cpaId
-            messageInfoList[0].count shouldBe 1
-            messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList[0].readableIdList shouldBe messageDetails.generateReadableId()
+            messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
+            messageDtoList[0].role shouldBe messageDetails.fromRole
+            messageDtoList[0].service shouldBe messageDetails.service
+            messageDtoList[0].action shouldBe messageDetails.action
+            messageDtoList[0].referenceParameter shouldBe UNKNOWN
+            messageDtoList[0].senderName shouldBe UNKNOWN
+            messageDtoList[0].cpaId shouldBe messageDetails.cpaId
+            messageDtoList[0].count shouldBe 1
+            messageDtoList[0].status shouldBe "Meldingen er under behandling"
         }
     }
 
     "message-details endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
             val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
-            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
-            messageInfoList.size shouldBe 0
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList.size shouldBe 0
         }
     }
 
     "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
         withTestApplication { httpClient ->
             val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
             val readableId = messageDetails.generateReadableId()
@@ -371,19 +389,19 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageDetailsPage: Page<MessageInfo> = httpResponse.body()
-            val messageInfoList: List<MessageInfo> = messageDetailsPage.content
-            messageInfoList.size shouldBe 1
-            messageInfoList[0].readableIdList shouldBe readableId
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
-            messageInfoList[0].role shouldBe messageDetails.fromRole
-            messageInfoList[0].service shouldBe messageDetails.service
-            messageInfoList[0].action shouldBe messageDetails.action
-            messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
-            messageInfoList[0].cpaId shouldBe messageDetails.cpaId
-            messageInfoList[0].count shouldBe 1
-            messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList.size shouldBe 1
+            messageDtoList[0].readableIdList shouldBe readableId
+            messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
+            messageDtoList[0].role shouldBe messageDetails.fromRole
+            messageDtoList[0].service shouldBe messageDetails.service
+            messageDtoList[0].action shouldBe messageDetails.action
+            messageDtoList[0].referenceParameter shouldBe UNKNOWN
+            messageDtoList[0].senderName shouldBe UNKNOWN
+            messageDtoList[0].cpaId shouldBe messageDetails.cpaId
+            messageDtoList[0].count shouldBe 1
+            messageDtoList[0].status shouldBe "Meldingen er under behandling"
         }
     }
 
@@ -435,7 +453,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id>/events endpoint should return list of related events info by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val relatedEvent = buildTestEvent(requestId = messageDetails.requestId)
             val unrelatedEvent = buildTestEvent()
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -446,9 +464,9 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageLogInfo> = httpResponse.body()
+            val messageInfoList: List<MessageLogDto> = httpResponse.body()
             messageInfoList.size shouldBe 1
-            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
         }
@@ -457,7 +475,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id>/events endpoint should return list of related events info by Readable ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val relatedEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val relatedEvent = buildTestEvent(requestId = messageDetails.requestId)
             val unrelatedEvent = buildTestEvent()
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -468,9 +486,9 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageLogInfo> = httpResponse.body()
+            val messageInfoList: List<MessageLogDto> = httpResponse.body()
             messageInfoList.size shouldBe 1
-            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
         }
@@ -488,7 +506,7 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<MessageLogInfo> = httpResponse.body()
+            val messageInfoList: List<MessageLogDto> = httpResponse.body()
             messageInfoList.size shouldBe 0
         }
     }
@@ -665,7 +683,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return list of message details by Request ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
@@ -674,9 +692,9 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<ReadableIdInfo> = httpResponse.body()
+            val messageInfoList: List<ReadableIdDto> = httpResponse.body()
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
@@ -690,7 +708,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return list of message details by Readable ID" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
@@ -699,9 +717,9 @@ class ApplicationTest : StringSpec({
 
             httpResponse.status shouldBe HttpStatusCode.OK
 
-            val messageInfoList: List<ReadableIdInfo> = httpResponse.body()
+            val messageInfoList: List<ReadableIdDto> = httpResponse.body()
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
-            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.atZone(ZoneId.of(ZONE_ID_OSLO)).toString()
+            messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
@@ -715,7 +733,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return list of message details by Readable ID pattern" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            val testEvent = buildTestEvent().copy(requestId = messageDetails.requestId)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
             eventRepository.insert(testEvent)
@@ -731,7 +749,7 @@ class ApplicationTest : StringSpec({
 
                 httpResponse.status shouldBe HttpStatusCode.OK
 
-                val messageInfoList: List<ReadableIdInfo> = httpResponse.body()
+                val messageInfoList: List<ReadableIdDto> = httpResponse.body()
                 messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
             }
         }
@@ -745,7 +763,7 @@ class ApplicationTest : StringSpec({
             val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken)
 
             httpResponse.status shouldBe HttpStatusCode.OK
-            val events: List<MessageInfo> = httpResponse.body()
+            val events: List<MessageDto> = httpResponse.body()
             events.size shouldBe 0
         }
     }
@@ -786,7 +804,7 @@ class ApplicationTest : StringSpec({
 
             val httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
-            val filters: DistinctRolesServicesActions = httpResponse.body()
+            val filters: DistinctRolesServicesActionsDto = httpResponse.body()
             filters.roles.size shouldBe 2
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 2
@@ -799,7 +817,7 @@ class ApplicationTest : StringSpec({
 
             var httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
-            var filters: DistinctRolesServicesActions = httpResponse.body()
+            var filters: DistinctRolesServicesActionsDto = httpResponse.body()
             filters.roles.size shouldBe 2
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 2
@@ -813,7 +831,7 @@ class ApplicationTest : StringSpec({
             filters.actions.size shouldBe 2
 
             ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(action = "new2"))
-            val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), ZoneId.of(ZONE_ID_OSLO))
+            val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), zoneOslo())
             ebmsMessageDetailService.setClockForTests(tomorrow)
 
             httpResponse = httpClient.getWithAuth("/filter-values", getToken)
@@ -836,6 +854,123 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }
     }
+
+    "conversation-status endpoint should return Unauthorized if access token is missing" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.get("/conversation-status")
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "conversation-status endpoint should return Unauthorized if access token is invalid" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.getWithAuth("/conversation-status", getToken, invalidAudience)
+            httpResponse.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    "conversation-status endpoint should return list of conversation statuses" {
+        withTestApplication { httpClient ->
+            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+            val httpResponse = httpClient.getWithAuth("/conversation-status", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
+            conversationsPage.size shouldBe 50 // Default value when size not set
+            conversationsPage.totalElements shouldBe 3
+
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 3
+            assertConversationStatus(conversations[0], c3md1, c3md1EventsList.last().createdAt, PROCESSING_COMPLETED)
+            conversations[0].readableIdList shouldBe c3md1.generateReadableId()
+            assertConversationStatus(conversations[1], c2md1, c2md1.savedAt, INFORMATION)
+            conversations[1].readableIdList shouldBe c2md1.generateReadableId()
+            assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
+            conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
+
+    "conversation-status endpoint should not fail when fromDate or toDate is blank" {
+        withTestApplication { httpClient ->
+            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+            val httpResponse = httpClient.getWithAuth("/conversation-status?fromDate=&toDate=", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
+            conversationsPage.size shouldBe 50 // Default value when size not set
+            conversationsPage.totalElements shouldBe 3
+
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 3
+            assertConversationStatus(conversations[0], c3md1, c3md1EventsList.last().createdAt, PROCESSING_COMPLETED)
+            conversations[0].readableIdList shouldBe c3md1.generateReadableId()
+            assertConversationStatus(conversations[1], c2md1, c2md1.savedAt, INFORMATION)
+            conversations[1].readableIdList shouldBe c2md1.generateReadableId()
+            assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
+            conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
+
+    "conversation-status endpoint should fail when fromDate is unparsable datetime" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.getWithAuth("/conversation-status?fromDate=17.05.2026", getToken)
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
+            httpResponse.bodyAsText() shouldContain "Invalid date: fromDate"
+        }
+    }
+
+    "conversation-status endpoint should parse statuses into enum values" {
+        withTestApplication { httpClient ->
+            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
+            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
+
+            val httpResponse = httpClient.getWithAuth("/conversation-status?statuses=Feil,Informasjon,Ferdigbehandlet", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
+            conversationsPage.size shouldBe 50 // Default value when size not set
+            conversationsPage.totalElements shouldBe 3
+
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 3
+            assertConversationStatus(conversations[0], c3md1, c3md1EventsList.last().createdAt, PROCESSING_COMPLETED)
+            conversations[0].readableIdList shouldBe c3md1.generateReadableId()
+            assertConversationStatus(conversations[1], c2md1, c2md1.savedAt, INFORMATION)
+            conversations[1].readableIdList shouldBe c2md1.generateReadableId()
+            assertConversationStatus(conversations[2], c1md1, c1md3EventsList.last().createdAt, ERROR)
+            conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
+        }
+    }
+
+    "conversation-status endpoint should return HTTP 400 Bad Request if unknown status" {
+        withTestApplication { httpClient ->
+            val httpResponse = httpClient.getWithAuth("/conversation-status?statuses=Error", getToken)
+            httpResponse.status shouldBe HttpStatusCode.BadRequest
+            httpResponse.bodyAsText() shouldContain "Unknown event status: Error"
+        }
+    }
+
+    "conversation-status endpoint should limit results when size is set" {
+        withTestApplication { httpClient ->
+            buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
+            val httpResponse = httpClient.getWithAuth("/conversation-status?page=1&size=1", getToken)
+            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
+            conversationsPage.size shouldBe 1
+            conversationsPage.totalElements shouldBe 3
+            val conversations = conversationsPage.content
+            conversations.size shouldBe 1
+        }
+    }
 })
 
 suspend fun HttpClient.getWithAuth(
@@ -849,4 +984,17 @@ suspend fun HttpClient.getWithAuth(
             "Bearer ${getToken(audience).serialize()}"
         )
     }
+}
+
+private fun assertConversationStatus(
+    actualConversationStatusDto: ConversationStatusDto,
+    expectedMessageDetail: EbmsMessageDetail,
+    expectedStatusAt: Instant,
+    expectedStatus: EventStatusEnum
+) {
+    actualConversationStatusDto.createdAt shouldBe expectedMessageDetail.savedAt.toOsloZone().toString()
+    actualConversationStatusDto.cpaId shouldBe expectedMessageDetail.cpaId
+    actualConversationStatusDto.service shouldBe expectedMessageDetail.service
+    actualConversationStatusDto.statusAt shouldBe expectedStatusAt.toOsloZone().toString()
+    actualConversationStatusDto.latestStatus shouldBe expectedStatus.dbValue
 }
