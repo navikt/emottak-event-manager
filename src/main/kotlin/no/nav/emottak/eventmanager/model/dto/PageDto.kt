@@ -1,10 +1,10 @@
-package no.nav.emottak.eventmanager.model
+package no.nav.emottak.eventmanager.model.dto
 
 import kotlinx.serialization.Serializable
 
 // Based on Spring Data's Page implementation
 @Serializable
-data class Page<T> (
+data class PageDto<T> (
     val page: Int,
     val size: Int,
     val sort: String? = null,

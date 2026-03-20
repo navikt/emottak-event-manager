@@ -4,12 +4,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.Event
-import no.nav.emottak.eventmanager.model.Page
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable.contentId
+import no.nav.emottak.eventmanager.persistence.table.EventTable.conversationId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
@@ -34,11 +35,12 @@ class EventRepository(private val database: Database) {
             EventTable.insert {
                 it[eventId] = newEventId
                 it[eventTypeId] = event.eventType.value
-                it[requestId] = event.requestId.toJavaUuid()
+                it[requestIdColumn] = event.requestId.toJavaUuid()
                 it[contentId] = event.contentId
                 it[messageId] = event.messageId
                 it[eventData] = Json.decodeFromString<Map<String, String>>(event.eventData)
                 it[createdAt] = event.createdAt.truncatedTo(ChronoUnit.MICROS)
+                it[conversationId] = event.conversationId
             }
         }
         newEventId.toKotlinUuid()
@@ -55,7 +57,8 @@ class EventRepository(private val database: Database) {
                         contentId = it[contentId],
                         messageId = it[messageId],
                         eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt]
+                        createdAt = it[createdAt],
+                        conversationId = it[conversationId]
                     )
                 }
                 .singleOrNull()
@@ -65,7 +68,7 @@ class EventRepository(private val database: Database) {
     suspend fun findByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
-                .where { EventTable.requestId eq requestId.toJavaUuid() }
+                .where { requestIdColumn eq requestId.toJavaUuid() }
                 .mapNotNull {
                     Event(
                         eventType = EventType.fromInt(it[eventTypeId]),
@@ -73,7 +76,8 @@ class EventRepository(private val database: Database) {
                         contentId = it[contentId],
                         messageId = it[messageId],
                         eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt]
+                        createdAt = it[createdAt],
+                        conversationId = it[conversationId]
                     )
                 }
                 .toList()
@@ -91,14 +95,15 @@ class EventRepository(private val database: Database) {
                         contentId = it[contentId],
                         messageId = it[messageId],
                         eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt]
+                        createdAt = it[createdAt],
+                        conversationId = it[conversationId]
                     )
                 }
                 .toList()
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant, pageable: Pageable? = null): Page<Event> = withContext(Dispatchers.IO) {
+    suspend fun findByTimeInterval(from: Instant, to: Instant, pageable: Pageable? = null): PageDto<Event> = withContext(Dispatchers.IO) {
         transaction {
             val totalCount = EventTable.select(createdAt).where { createdAt.between(from, to) }.count()
             val list =
@@ -106,7 +111,7 @@ class EventRepository(private val database: Database) {
                     .where { createdAt.between(from, to) }
                     .apply {
                         if (pageable != null) {
-                            this.limit(pageable.pageSize, pageable.offset)
+                            this.limit(pageable.pageSize).offset(pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())
                         }
                     }
@@ -117,13 +122,14 @@ class EventRepository(private val database: Database) {
                             contentId = it[contentId],
                             messageId = it[messageId],
                             eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt]
+                            createdAt = it[createdAt],
+                            conversationId = it[conversationId]
                         )
                     }
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 
@@ -134,7 +140,7 @@ class EventRepository(private val database: Database) {
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
-    ): Page<Event> = withContext(Dispatchers.IO) {
+    ): PageDto<Event> = withContext(Dispatchers.IO) {
         transaction {
             val totalCount = EventTable.join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
                 .select(createdAt).where { createdAt.between(from, to) }
@@ -150,7 +156,7 @@ class EventRepository(private val database: Database) {
                     .apply {
                         this.applyRoleServiceActionFilters(role, service, action)
                         if (pageable != null) {
-                            this.limit(pageable.pageSize, pageable.offset)
+                            this.limit(pageable.pageSize).offset(pageable.offset)
                             this.orderBy(createdAt, pageable.getSortOrder())
                         }
                     }
@@ -161,13 +167,14 @@ class EventRepository(private val database: Database) {
                             contentId = it[contentId],
                             messageId = it[messageId],
                             eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt]
+                            createdAt = it[createdAt],
+                            conversationId = it[conversationId]
                         )
                     }
                     .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            Page(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
 }
