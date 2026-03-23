@@ -40,6 +40,7 @@ BEGIN
              SELECT request_id, conversation_id
              FROM ebms_message_details
              WHERE service = p_service
+             ORDER BY saved_at
              LIMIT p_batch_size
          ) sub;
 

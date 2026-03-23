@@ -27,7 +27,7 @@ BEGIN
             SELECT e.event_id
             FROM events e
             WHERE e.created_at < v_hours_ago
-            AND e.request_id <> ALL(v_request_ids) -- <> er det samme som NOT IN, men er explisitt designet for arrays.
+            AND e.request_id <> ALL(v_request_ids) -- <> er det samme som NOT IN, men er eksplisitt designet for arrays.
             LIMIT p_batch_size
         )
         DELETE FROM events WHERE event_id IN (SELECT event_id FROM to_delete);
