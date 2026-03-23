@@ -83,7 +83,7 @@ BEGIN
     END LOOP;
 
     v_result_text := FORMAT('Deleted %s rows from ebms_message_details, %s rows from events, and %s rows from conversation_status',
-                 p_service, v_total_deleted_message_details, v_total_deleted_events, v_total_deleted_conversations);
+                 v_total_deleted_message_details, v_total_deleted_events, v_total_deleted_conversations);
 
     UPDATE job_status
     SET completed_at = NOW(), result_text = v_result_text
