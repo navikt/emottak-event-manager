@@ -148,8 +148,14 @@ class EventService(
     private suspend fun updateConversationStatus(event: Event) {
         val eventStatus = event.getEventStatusChangeEnum()
         if (eventStatus != null) {
-            val conversationId =
-                event.conversationId ?: ebmsMessageDetailRepository.findByRequestId(event.requestId)!!.conversationId
+            val conversationId = event.conversationId ?: ebmsMessageDetailRepository.findByRequestId(event.requestId)?.conversationId
+            if (conversationId == null) {
+                log.warn(
+                    event.marker,
+                    "Cannot update conversation status! EbmsMessageDetail for requestId: ${event.requestId} not found"
+                )
+                return
+            }
             val success = conversationStatusRepository.update(
                 id = conversationId,
                 status = eventStatus

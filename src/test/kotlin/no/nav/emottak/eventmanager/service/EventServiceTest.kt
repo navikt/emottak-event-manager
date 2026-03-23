@@ -169,6 +169,26 @@ class EventServiceTest : StringSpec({
         coVerify { eventRepository.insert(testEvent) }
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
         coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
+    }
+
+    "Should continue inserting event even if ebmsMessageDetailRepository.findByRequestId does not find the corresponding message detail" {
+        val testTransportEvent = buildTestTransportEvent().copy(
+            eventType = EventType.MESSAGEFLOW_COMPLETED,
+            conversationId = null
+        )
+        val testEvent = Event.fromTransportModel(testTransportEvent)
+
+        coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
+        coEvery { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) } returns null
+        coEvery { conversationStatusRepository.update(any(), EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
+
+        eventService.process(testTransportEvent.toByteArray())
+
+        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
+        coVerify(exactly = 0) { conversationStatusRepository.update(any(), EventStatusEnum.PROCESSING_COMPLETED, any()) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
     }
 
     "Should not update conversation status on event types of status INFORMATION" {
