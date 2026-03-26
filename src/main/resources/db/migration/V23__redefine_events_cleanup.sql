@@ -7,7 +7,6 @@ CREATE OR REPLACE PROCEDURE events_cleanup(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_request_ids UUID[];
     v_hours_ago TIMESTAMP := NOW() - (p_hours || ' hours')::INTERVAL;
     v_deleted_count int;
     v_deleted_count_total BIGINT := 0;
@@ -17,19 +16,15 @@ BEGIN
     COMMIT;
     RAISE NOTICE 'EVENTS CLEANUP: Started';
 
-    SELECT ARRAY_AGG(request_id) INTO v_request_ids FROM ebms_message_details;
-    v_result_text := FORMAT('Loaded %s request ids into memory', array_length(v_request_ids, 1));
-    UPDATE job_status SET updated_at = NOW(), result_text = v_result_text WHERE job_name = p_job_name;
-    RAISE NOTICE 'EVENTS CLEANUP: %', v_result_text;
-    COMMIT;
-
     LOOP
         RAISE NOTICE 'EVENTS CLEANUP: Executing deletion from table events...';
         WITH to_delete AS (
             SELECT e.event_id
             FROM events e
             WHERE e.created_at < v_hours_ago
-            AND e.request_id <> ALL(v_request_ids) -- <> er det samme som NOT IN, men er eksplisitt designet for arrays.
+            AND NOT EXISTS (
+                SELECT 1 FROM ebms_message_details m WHERE m.request_id = e.request_id
+            )
             LIMIT p_batch_size
         )
         DELETE FROM events WHERE event_id IN (SELECT event_id FROM to_delete);
