@@ -16,6 +16,10 @@
     <logger name="no.nav" level="INFO"/>
     <logger name="no.nav.emottak" level="${EMOTTAK_LOGGING_LEVEL:-INFO}"/>
 
+    <!-- Debugging av databaserelaterte komponenter -->
+    <logger name="org.flywaydb" level="DEBUG"/>
+    <logger name="com.zaxxer" level="DEBUG"/>
+
     <root level="INFO">
         <appender-ref ref="stdout_json"/>
     </root>
