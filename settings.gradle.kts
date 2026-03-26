@@ -3,8 +3,8 @@ rootProject.name = "emottak-event-manager"
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
-            version("flyway", "12.1.1")
-            version("hikari", "7.0.2")
+            version("flyway", "9.16.3")
+            version("hikari", "5.0.1")
             version("postgres", "42.7.4")
             version("exposed", "0.61.0")
             version("ktor", "3.3.1")
@@ -20,7 +20,7 @@ dependencyResolutionManagement {
             version("token-validation-ktor", "5.0.30")
 
             library("hikari", "com.zaxxer", "HikariCP").versionRef("hikari")
-            library("flyway-postgresql", "org.flywaydb", "flyway-database-postgresql").versionRef("flyway")
+            library("flyway-core", "org.flywaydb", "flyway-core").versionRef("flyway")
             library("postgresql", "org.postgresql", "postgresql").versionRef("postgres")
 
             library("exposed-core", "org.jetbrains.exposed", "exposed-core").versionRef("exposed")
