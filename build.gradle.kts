@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.hikari)
     implementation(libs.flyway.postgresql)
+    implementation(libs.postgresql)
     implementation(libs.vault.jdbc)
     implementation(libs.kotlin.kafka)
     implementation(libs.token.validation.ktor.v3)
