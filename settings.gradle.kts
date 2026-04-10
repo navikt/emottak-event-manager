@@ -3,12 +3,15 @@ rootProject.name = "emottak-event-manager"
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
+            version("flyway", "9.16.3")
+            version("hikari", "5.0.1")
+            version("postgres", "42.7.4")
             version("exposed", "0.61.0")
             version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
             version("arrow", "2.0.1")
-            version("emottak-utils", "0.3.6")
+            version("emottak-utils", "0.3.9")
             version("kotlin-kafka", "0.4.1")
             version("logback", "1.5.18")
             version("logstash", "8.0")
@@ -16,9 +19,9 @@ dependencyResolutionManagement {
             version("vault-jdbc", "1.3.10")
             version("token-validation-ktor", "5.0.30")
 
-            library("hikari", "com.zaxxer:HikariCP:5.0.1")
-
-            library("flyway-core", "org.flywaydb:flyway-core:9.16.3")
+            library("hikari", "com.zaxxer", "HikariCP").versionRef("hikari")
+            library("flyway-core", "org.flywaydb", "flyway-core").versionRef("flyway")
+            library("postgresql", "org.postgresql", "postgresql").versionRef("postgres")
 
             library("exposed-core", "org.jetbrains.exposed", "exposed-core").versionRef("exposed")
             library("exposed-dao", "org.jetbrains.exposed", "exposed-dao").versionRef("exposed")
