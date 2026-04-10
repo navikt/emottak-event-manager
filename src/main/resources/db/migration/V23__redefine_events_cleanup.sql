@@ -1,7 +1,9 @@
+DROP PROCEDURE IF EXISTS events_cleanup(int, text, int);
+
 CREATE OR REPLACE PROCEDURE events_cleanup(
     p_hours int,                    -- Angir hvor mange timer en event må være "foreldreløs" for at event'en kan slettes.
                                     -- 2 betyr "foreldreløse events opprettet for mer enn 2 timer siden slettes".
-    p_job_name text,                -- Navn på batch-jobben, for å ha et unikt innslag i job_status-tabellen
+    p_job_name text,                -- Navn på batch-jobben, må ha et unikt navn for job_status-tabellen for å kunne starte.
     p_batch_size int DEFAULT 100000 -- Hvor mange events som skal slettes om gangen.
 )
 LANGUAGE plpgsql

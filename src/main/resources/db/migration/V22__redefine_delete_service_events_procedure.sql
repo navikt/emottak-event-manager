@@ -1,3 +1,6 @@
+DROP PROCEDURE IF EXISTS delete_service_events(text, int);
+DROP PROCEDURE IF EXISTS delete_service_events(text, text, int);
+
 CREATE OR REPLACE PROCEDURE delete_service_events(
     p_service text,
     p_job_name text,
