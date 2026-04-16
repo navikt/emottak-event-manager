@@ -16,7 +16,6 @@ import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.eventDbConfig
-import no.nav.emottak.eventmanager.persistence.eventMigrationConfig
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
