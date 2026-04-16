@@ -50,7 +50,7 @@ suspend fun ResourceScope.runServer() {
     val prometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
     val database = Database(eventDbConfig.value)
-    database.migrate(eventMigrationConfig.value)
+    // database.migrate(eventMigrationConfig.value)
 
     val eventRepository = EventRepository(database)
     val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
