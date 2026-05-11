@@ -16,7 +16,8 @@ data class Config(
     val database: Database,
     val kafka: Kafka,
     val eventConsumer: EventConsumer,
-    val server: Server
+    val server: Server,
+    val delayedJobs: DelayedJobs
 )
 
 data class Environment(
@@ -36,6 +37,10 @@ data class EventConsumer(
     val eventTopic: String,
     val messageDetailsTopic: String,
     val consumerGroupId: String
+)
+
+data class DelayedJobs(
+    val delayInMinutes: Int
 )
 
 @JvmInline

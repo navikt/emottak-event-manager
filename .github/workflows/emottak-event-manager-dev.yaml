@@ -1,4 +1,4 @@
-name: Deploy eMottak Event Manager to dev
+name: Deploy eMottak Event Manager to DEV
 
 on:
   workflow_dispatch:

@@ -2,6 +2,8 @@ package no.nav.emottak.eventmanager.persistence
 
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
 
@@ -13,7 +15,7 @@ class Database(
         else -> HikariDataSource(dbConfig)
     }
     val db = Database.connect(dataSource)
-    fun migrate(migrationConfig: HikariConfig) {
+    suspend fun migrate(migrationConfig: HikariConfig) = withContext(Dispatchers.IO) {
         Flyway.configure()
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
             .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
