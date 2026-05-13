@@ -33,7 +33,7 @@ fun VaultConfig.configure(role: String): HikariConfig {
     val maxPoolSizeForAdmin = config.database.maxConnectionPoolSizeForAdmin.value
 
     val hikariConfig = HikariConfig().apply {
-        jdbcUrl = this@configure.jdbcUrl + databaseName
+        jdbcUrl = this@configure.jdbcUrl + databaseName + "?socketTimeout=30"
         driverClassName = "org.postgresql.Driver"
         this.maximumPoolSize = maxPoolSizeForUser
         if (role == "admin") {
