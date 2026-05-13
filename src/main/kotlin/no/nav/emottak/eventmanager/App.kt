@@ -56,8 +56,11 @@ suspend fun ResourceScope.runServer() {
     val config = config()
     val prometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
+    log.info("Creating database connection pool")
     val database = Database(eventDbConfig.value)
+    log.info("Database pool created, starting Flyway migration")
     database.migrate(eventMigrationConfig.value)
+    log.info("Migration complete, initializing repositories")
 
     val eventRepository = EventRepository(database)
     val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
@@ -72,12 +75,14 @@ suspend fun ResourceScope.runServer() {
     val conversationStatusService = ConversationStatusService(conversationStatusRepository)
 
     val serverConfig = config.server
+    log.info("Starting Ktor/Netty server on port ${serverConfig.port.value}")
     server(
         factory = Netty,
         port = serverConfig.port.value,
         preWait = serverConfig.preWait,
         module = eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, prometheusMeterRegistry)
     )
+    log.info("Server started")
 
     log.debug("Configuration: {}", config)
     if (config.eventConsumer.active) {

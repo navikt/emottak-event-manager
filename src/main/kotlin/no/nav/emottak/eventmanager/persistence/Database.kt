@@ -6,6 +6,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
+import org.slf4j.LoggerFactory
+
+private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.persistence.Database")
 
 class Database(
     dbConfig: HikariConfig
@@ -16,13 +19,14 @@ class Database(
     }
     val db = Database.connect(dataSource)
     suspend fun migrate(migrationConfig: HikariConfig) = withContext(Dispatchers.IO) {
-        Flyway.configure()
+        log.info("Flyway: configuring with URL ${migrationConfig.jdbcUrl}")
+        val flyway = Flyway.configure()
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
             .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
             .lockRetryCount(10)
             .load()
-            .apply {
-                migrate()
-            }
+        log.info("Flyway: configuration loaded, starting migrate()")
+        flyway.migrate()
+        log.info("Flyway: migrate() completed successfully")
     }
 }

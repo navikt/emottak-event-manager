@@ -15,6 +15,7 @@ dependencyResolutionManagement {
             version("logback", "1.5.18")
             version("logstash", "8.0")
             version("prometheus", "1.12.4")
+            version("postgresql-jdbc", "42.7.3")
             version("vault-jdbc", "1.3.10")
             version("token-validation-ktor", "5.0.30")
 
@@ -54,6 +55,8 @@ dependencyResolutionManagement {
 
             library("logback", "ch.qos.logback", "logback-classic").versionRef("logback")
             library("logstash", "net.logstash.logback", "logstash-logback-encoder").versionRef("logstash")
+
+            library("postgresql-jdbc", "org.postgresql", "postgresql").versionRef("postgresql-jdbc")
 
             library("vault-jdbc", "no.nav", "vault-jdbc").versionRef("vault-jdbc")
 
