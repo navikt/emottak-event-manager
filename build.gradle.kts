@@ -64,7 +64,6 @@ dependencies {
     implementation(libs.micrometer.registry.prometheus)
     implementation(libs.hikari)
     implementation(libs.flyway.core)
-    implementation(libs.flyway.database.postgresql)
     implementation(libs.postgresql.jdbc)
     implementation(libs.vault.jdbc)
     implementation(libs.kotlin.kafka)

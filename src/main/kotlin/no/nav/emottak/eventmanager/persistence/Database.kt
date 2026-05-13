@@ -24,39 +24,15 @@ class Database(
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
             .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
             .lockRetryCount(10)
-            .ignoreMigrationPatterns("repeatable:missing")
+            .ignoreMigrationPatterns("*:missing")
             .load()
-        log.info("Flyway: configuration loaded, starting migrate() with WATCHDOG")
-
-        val watchdog = Thread {
-            try {
-                Thread.sleep(20_000)
-                log.warn("=== WATCHDOG: Flyway migrate() still running after 20s — dumping ALL threads ===")
-                Thread.getAllStackTraces().forEach { (thread, stack) ->
-                    log.warn(
-                        "Thread [${thread.name}] state=${thread.state}:\n  " +
-                            stack.take(20).joinToString("\n  ")
-                    )
-                }
-                log.warn("=== WATCHDOG END ===")
-            } catch (_: InterruptedException) {
-                // migrate() finished before watchdog fired — normal path
-            }
-        }.apply {
-            name = "flyway-migrate-watchdog"
-            isDaemon = true
-            start()
-        }
-
+        log.info("Flyway: configuration loaded, starting migrate()")
         try {
             flyway.migrate()
             log.info("Flyway: migrate() completed successfully")
         } catch (e: Exception) {
-            log.info("Flyway: migrate() failed: ${e.message}")
-            e.printStackTrace()
+            log.error("Flyway: migrate() failed: ${e.message}")
             throw e
-        } finally {
-            watchdog.interrupt()
         }
     }
 }

@@ -4,7 +4,7 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             version("hikari", "5.0.1")
-            version("flyway", "10.17.0")
+            version("flyway", "9.16.3")
             version("exposed", "0.61.0")
             version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
