@@ -26,12 +26,14 @@ class Database(
             .lockRetryCount(10)
             .ignoreMigrationPatterns("*:missing")
             .load()
-        log.info("Flyway: configuration loaded, starting migrate()")
+        log.info("Flyway: configuration loaded, starting repair() then migrate()")
         try {
+            flyway.repair()
+            log.info("Flyway: repair() completed")
             flyway.migrate()
             log.info("Flyway: migrate() completed successfully")
         } catch (e: Exception) {
-            log.error("Flyway: migrate() failed: ${e.message}")
+            log.error("Flyway: failed: ${e.message}")
             throw e
         }
     }
