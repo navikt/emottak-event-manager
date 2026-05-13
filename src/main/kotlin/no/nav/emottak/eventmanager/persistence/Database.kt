@@ -24,6 +24,7 @@ class Database(
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
             .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
             .lockRetryCount(10)
+            .ignoreMigrationPatterns("repeatable:missing")
             .load()
         log.info("Flyway: configuration loaded, starting migrate() with WATCHDOG")
 
@@ -53,6 +54,7 @@ class Database(
         } catch (e: Exception) {
             log.info("Flyway: migrate() failed: ${e.message}")
             e.printStackTrace()
+            throw e
         } finally {
             watchdog.interrupt()
         }
