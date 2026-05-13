@@ -4,7 +4,7 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             version("hikari", "5.0.1")
-            version("flyway", "9.16.3")
+            version("flyway", "10.17.0")
             version("exposed", "0.61.0")
             version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
@@ -20,6 +20,7 @@ dependencyResolutionManagement {
 
             library("hikari", "com.zaxxer", "HikariCP").versionRef("hikari")
             library("flyway-core", "org.flywaydb", "flyway-core").versionRef("flyway")
+            library("flyway-database-postgresql", "org.flywaydb", "flyway-database-postgresql").versionRef("flyway")
 
             library("exposed-core", "org.jetbrains.exposed", "exposed-core").versionRef("exposed")
             library("exposed-dao", "org.jetbrains.exposed", "exposed-dao").versionRef("exposed")
