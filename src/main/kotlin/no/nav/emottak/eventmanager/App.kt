@@ -58,7 +58,6 @@ suspend fun ResourceScope.runServer() {
 
     val database = Database(eventDbConfig.value)
     database.migrate(eventMigrationConfig.value)
-    log.info("Migration complete, initializing repositories")
 
     val eventRepository = EventRepository(database)
     val ebmsMessageDetailRepository = EbmsMessageDetailRepository(database)
@@ -79,7 +78,6 @@ suspend fun ResourceScope.runServer() {
         preWait = serverConfig.preWait,
         module = eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, prometheusMeterRegistry)
     )
-    log.info("Server started")
 
     log.debug("Configuration: {}", config)
     if (config.eventConsumer.active) {
