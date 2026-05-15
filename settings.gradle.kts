@@ -5,6 +5,7 @@ dependencyResolutionManagement {
         create("libs") {
             version("hikari", "5.0.1")
             version("flyway", "9.16.3")
+            version("postgresql-jdbc", "42.7.3")
             version("exposed", "0.61.0")
             version("ktor", "3.3.1")
             version("hoplite", "2.8.2")
@@ -15,13 +16,13 @@ dependencyResolutionManagement {
             version("logback", "1.5.18")
             version("logstash", "8.0")
             version("prometheus", "1.12.4")
-            version("postgresql-jdbc", "42.7.3")
             version("vault-jdbc", "1.3.10")
             version("token-validation-ktor", "5.0.30")
 
             library("hikari", "com.zaxxer", "HikariCP").versionRef("hikari")
             library("flyway-core", "org.flywaydb", "flyway-core").versionRef("flyway")
             library("flyway-database-postgresql", "org.flywaydb", "flyway-database-postgresql").versionRef("flyway")
+            library("postgresql-jdbc", "org.postgresql", "postgresql").versionRef("postgresql-jdbc")
 
             library("exposed-core", "org.jetbrains.exposed", "exposed-core").versionRef("exposed")
             library("exposed-dao", "org.jetbrains.exposed", "exposed-dao").versionRef("exposed")
@@ -55,8 +56,6 @@ dependencyResolutionManagement {
 
             library("logback", "ch.qos.logback", "logback-classic").versionRef("logback")
             library("logstash", "net.logstash.logback", "logstash-logback-encoder").versionRef("logstash")
-
-            library("postgresql-jdbc", "org.postgresql", "postgresql").versionRef("postgresql-jdbc")
 
             library("vault-jdbc", "no.nav", "vault-jdbc").versionRef("vault-jdbc")
 

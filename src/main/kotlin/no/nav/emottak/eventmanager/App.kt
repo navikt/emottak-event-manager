@@ -56,9 +56,7 @@ suspend fun ResourceScope.runServer() {
     val config = config()
     val prometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
-    log.info("Creating database connection pool")
     val database = Database(eventDbConfig.value)
-    log.info("Database pool created, starting Flyway migration")
     database.migrate(eventMigrationConfig.value)
     log.info("Migration complete, initializing repositories")
 
@@ -75,7 +73,6 @@ suspend fun ResourceScope.runServer() {
     val conversationStatusService = ConversationStatusService(conversationStatusRepository)
 
     val serverConfig = config.server
-    log.info("Starting Ktor/Netty server on port ${serverConfig.port.value}")
     server(
         factory = Netty,
         port = serverConfig.port.value,
@@ -146,7 +143,7 @@ suspend fun runSequentialDelayedTasks(
                 }
                 log.info("Task completed: '$jobName'")
             } catch (e: Exception) {
-                log.error("Task '$jobName' failed", e)
+                log.error("Task failed: '$jobName'", e)
             }
         }
         log.info("All sequential tasks finished.")

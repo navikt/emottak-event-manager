@@ -15,15 +15,31 @@ class JobStatusRepository(private val database: Database) {
         }
     }
 
+    // These procedures use explicit COMMIT statements for batch processing, so they must be
+    // called outside any client-managed transaction (autoCommit=true). Wrapping in transaction {}
+    // would cause PostgreSQL to throw "invalid transaction termination" on the internal COMMITs.
+
     suspend fun callDeleteServiceEventsProcedure(service: String, jobName: String) = withContext(Dispatchers.IO) {
-        transaction(database.db) {
-            exec("CALL delete_service_events('$service', '$jobName', 10000)")
+        database.dataSource.connection.use { connection ->
+            connection.autoCommit = true
+            connection.prepareCall("CALL delete_service_events(?, ?, ?)").use { stmt ->
+                stmt.setString(1, service)
+                stmt.setString(2, jobName)
+                stmt.setInt(3, 10000)
+                stmt.execute()
+            }
         }
     }
 
     suspend fun callEventsCleanupProcedure(hours: Int, jobName: String) = withContext(Dispatchers.IO) {
-        transaction(database.db) {
-            exec("CALL events_cleanup($hours, '$jobName', 100000)")
+        database.dataSource.connection.use { connection ->
+            connection.autoCommit = true
+            connection.prepareCall("CALL events_cleanup(?, ?, ?)").use { stmt ->
+                stmt.setInt(1, hours)
+                stmt.setString(2, jobName)
+                stmt.setInt(3, 100000)
+                stmt.execute()
+            }
         }
     }
 }

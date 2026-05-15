@@ -33,7 +33,7 @@ class Database(
             flyway.migrate()
             log.info("Flyway: migrate() completed successfully")
         } catch (e: Exception) {
-            log.error("Flyway: failed: ${e.message}")
+            log.error("Flyway failed: ${e.message}")
             throw e
         }
     }
