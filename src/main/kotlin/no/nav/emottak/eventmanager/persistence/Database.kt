@@ -24,11 +24,11 @@ class Database(
             .dataSource(migrationConfig.jdbcUrl, migrationConfig.username, migrationConfig.password)
             .initSql("SET ROLE \"$EVENT_DB_NAME-admin\"")
             .lockRetryCount(10)
-            .ignoreMigrationPatterns("*:missing")
+            .ignoreMigrationPatterns("*:missing") // Kan slettes etter at deploy til PROD er utført
             .load()
         log.info("Flyway: configuration loaded, starting repair() then migrate()")
         try {
-            flyway.repair()
+            flyway.repair() // Kan slettes etter at deploy til PROD er utført
             log.info("Flyway: repair() completed")
             flyway.migrate()
             log.info("Flyway: migrate() completed successfully")
