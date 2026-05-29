@@ -28,8 +28,6 @@ class Database(
             .load()
         log.info("Flyway: configuration loaded, starting repair() then migrate()")
         try {
-            flyway.repair() // Kan slettes etter at deploy til PROD er utført
-            log.info("Flyway: repair() completed")
             flyway.migrate()
             log.info("Flyway: migrate() completed successfully")
         } catch (e: Exception) {
