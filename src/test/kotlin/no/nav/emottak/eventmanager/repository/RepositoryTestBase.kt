@@ -65,9 +65,10 @@ abstract class RepositoryTestBase(
         db.dataSource.connection.use { conn ->
             conn.createStatement().execute("DELETE FROM events")
             conn.createStatement().execute("DELETE FROM ebms_message_details")
-            conn.createStatement().execute("DELETE FROM distict_roles_services_actions")
+            conn.createStatement().execute("DELETE FROM distinct_roles_services_actions")
             conn.createStatement().execute("DELETE FROM conversation_status")
         }
+        distinctRolesServicesActionsRepository.initialize()
     }
 
     init {
@@ -168,7 +169,10 @@ suspend fun buildAndInsertTestEbmsMessageDetailFindData(repository: EbmsMessageD
     return listOf(messageDetailsInInterval1, messageDetailsInInterval2, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2)
 }
 
-suspend fun buildAndInsertTestEbmsMessageDetailFilterData(repository: EbmsMessageDetailRepository) {
+suspend fun buildAndInsertTestEbmsMessageDetailFilterData(
+    repository: EbmsMessageDetailRepository,
+    distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository? = null
+) {
     val messageDetails1 = buildTestEbmsMessageDetail()
     val messageDetails2 = buildTestEbmsMessageDetail().copy(
         fromRole = "different-role"
@@ -184,6 +188,12 @@ suspend fun buildAndInsertTestEbmsMessageDetailFilterData(repository: EbmsMessag
     repository.insert(messageDetails2)
     repository.insert(messageDetails3)
     repository.insert(messageDetails4)
+
+    if (distinctRolesServicesActionsRepository != null) {
+        listOf(messageDetails1, messageDetails2, messageDetails3, messageDetails4).forEach { md ->
+            distinctRolesServicesActionsRepository.addIfAbsent(md.fromRole, md.service, md.action)
+        }
+    }
 }
 
 suspend fun buildAndInsertTestEbmsMessageDetailsForConversation(

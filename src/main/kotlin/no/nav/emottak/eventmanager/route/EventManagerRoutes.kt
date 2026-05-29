@@ -38,7 +38,6 @@ fun Route.eventManagerRoutes(
 ) {
     get("/filter-values") {
         val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
-        log.debug("Got filter-values (last refreshed at: {})", filterValues.refreshedAt)
         call.respond(filterValues)
     }
 

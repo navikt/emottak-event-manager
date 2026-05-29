@@ -5,109 +5,64 @@ import kotlinx.coroutines.withContext
 import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.DistinctRolesServicesActionsTable
-import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.CustomFunction
-import org.jetbrains.exposed.sql.Expression
-import org.jetbrains.exposed.sql.QueryBuilder
-import org.jetbrains.exposed.sql.TextColumnType
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.javatime.CurrentTimestamp
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.stringLiteral
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
-import kotlin.collections.sorted
 
 class DistinctRolesServicesActionsRepository(private val database: Database) {
 
-    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActionsDto? = withContext(Dispatchers.IO) {
-        transaction(database.db) {
-            DistinctRolesServicesActionsTable
-                .selectAll()
-                .singleOrNull()
-                ?.let { row ->
-                    val roles = nullableStringToList(row[DistinctRolesServicesActionsTable.roles])
-                    val services = nullableStringToList(row[DistinctRolesServicesActionsTable.services])
-                    val actions = nullableStringToList(row[DistinctRolesServicesActionsTable.actions])
-                    if (roles == null || services == null || actions == null) {
-                        null
-                    } else {
-                        DistinctRolesServicesActionsDto(
-                            roles = roles.sorted(),
-                            services = services.sorted(),
-                            actions = actions.sorted(),
-                            refreshedAt = row[DistinctRolesServicesActionsTable.refreshedAt]
-                        )
+    @Volatile private var roles: Set<String> = emptySet()
+
+    @Volatile private var services: Set<String> = emptySet()
+
+    @Volatile private var actions: Set<String> = emptySet()
+
+    suspend fun initialize() = loadFromDb()
+
+    fun getAll(): DistinctRolesServicesActionsDto = DistinctRolesServicesActionsDto(
+        roles = roles.sortedWith(String.CASE_INSENSITIVE_ORDER),
+        services = services.sortedWith(String.CASE_INSENSITIVE_ORDER),
+        actions = actions.sortedWith(String.CASE_INSENSITIVE_ORDER)
+    )
+
+    suspend fun addIfAbsent(role: String?, service: String, action: String) = withContext(Dispatchers.IO) {
+        val isNew = (role != null && role !in roles) || service !in services || action !in actions
+        if (isNew) {
+            transaction(database.db) {
+                role?.let { r ->
+                    DistinctRolesServicesActionsTable.insertIgnore {
+                        it[type] = "role"
+                        it[value] = r
                     }
                 }
-        }
-    }
-
-    suspend fun refreshDistinctRolesServicesActions(): DistinctRolesServicesActionsDto = withContext(Dispatchers.IO) {
-        transaction(database.db) {
-            /*
-            SELECT string_agg(distinct from_role::text, ',') AS roles,
-                   string_agg(distinct service::text, ',') AS services,
-                   string_agg(distinct action::text, ',') AS actions,
-                   now() AS refreshed_at
-            FROM (SELECT "from_role", "service", "action" FROM "ebms_message_details") sub;
-             */
-            val rolesAlias = StringAggDistinct(EbmsMessageDetailTable.fromRole).alias("roles")
-            val servicesAlias = StringAggDistinct(EbmsMessageDetailTable.service).alias("services")
-            val actionsAlias = StringAggDistinct(EbmsMessageDetailTable.action).alias("actions")
-            val refreshedAlias = CurrentTimestamp.alias("refreshed_at")
-
-            val distinctValues = EbmsMessageDetailTable
-                .select(
-                    rolesAlias,
-                    servicesAlias,
-                    actionsAlias,
-                    refreshedAlias
-                ).single()
-
-            val roles = distinctValues[rolesAlias]
-            val services = distinctValues[servicesAlias]
-            val actions = distinctValues[actionsAlias]
-            val refreshedAt = distinctValues[refreshedAlias]
-
-            // Insert or update the existing row in the table:
-            DistinctRolesServicesActionsTable.upsert {
-                it[DistinctRolesServicesActionsTable.id] = 1
-                it[DistinctRolesServicesActionsTable.roles] = roles
-                it[DistinctRolesServicesActionsTable.services] = services
-                it[DistinctRolesServicesActionsTable.actions] = actions
-                it[DistinctRolesServicesActionsTable.refreshedAt] = refreshedAt
+                DistinctRolesServicesActionsTable.insertIgnore {
+                    it[type] = "service"
+                    it[value] = service
+                }
+                DistinctRolesServicesActionsTable.insertIgnore {
+                    it[type] = "action"
+                    it[value] = action
+                }
             }
-
-            DistinctRolesServicesActionsDto(
-                roles = roles.split(",").sorted(),
-                services = services.split(",").sorted(),
-                actions = actions.split(",").sorted(),
-                refreshedAt = refreshedAt
-            )
+            loadFromDb()
         }
     }
 
-    private fun nullableStringToList(value: String?, delimeters: String = ",") = value
-        ?.split(delimeters)
-        ?.filter { it.isNotBlank() }
-}
-
-// Wrapper that renders: string_agg(distinct <expr>::text, ',')
-class StringAggDistinct(column: Column<*>) :
-    CustomFunction<String>(
-        functionName = "string_agg",
-        columnType = TextColumnType(),
-        column,
-        stringLiteral(",")
-    ) {
-    private val colExpr: Expression<*> = column
-
-    // Override the rendering so we can inject the `DISTINCT …::text` part.
-    override fun toQueryBuilder(queryBuilder: QueryBuilder) {
-        queryBuilder.append("string_agg(distinct ")
-        colExpr.toQueryBuilder(queryBuilder)
-        queryBuilder.append("::text, ',')")
+    private suspend fun loadFromDb() = withContext(Dispatchers.IO) {
+        val newRoles = mutableSetOf<String>()
+        val newServices = mutableSetOf<String>()
+        val newActions = mutableSetOf<String>()
+        transaction(database.db) {
+            DistinctRolesServicesActionsTable.selectAll().forEach { row ->
+                when (row[DistinctRolesServicesActionsTable.type]) {
+                    "role" -> newRoles.add(row[DistinctRolesServicesActionsTable.value])
+                    "service" -> newServices.add(row[DistinctRolesServicesActionsTable.value])
+                    "action" -> newActions.add(row[DistinctRolesServicesActionsTable.value])
+                }
+            }
+        }
+        roles = newRoles
+        services = newServices
+        actions = newActions
     }
 }

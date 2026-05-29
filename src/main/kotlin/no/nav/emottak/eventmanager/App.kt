@@ -66,6 +66,7 @@ suspend fun ResourceScope.runServer() {
     val conversationStatusRepository = ConversationStatusRepository(database)
     val jobStatusRepository = JobStatusRepository(database)
 
+    distinctRolesServicesActionsRepository.initialize()
     val eventService = EventService(eventRepository, ebmsMessageDetailRepository, conversationStatusRepository)
     val ebmsMessageDetailService =
         EbmsMessageDetailService(eventRepository, ebmsMessageDetailRepository, eventTypeRepository, distinctRolesServicesActionsRepository, conversationStatusRepository)
