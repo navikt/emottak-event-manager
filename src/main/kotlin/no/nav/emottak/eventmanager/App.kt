@@ -137,8 +137,8 @@ suspend fun runSequentialDelayedTasks(
             log.info("Launching task: '$jobName'")
             try {
                 when (val args = procedure.args) {
-                    is ProcedureArgs.DeleteServiceArgs -> jobStatusRepository.callDeleteServiceEventsProcedure(args.service, jobName)
-                    is ProcedureArgs.CleanupArgs -> jobStatusRepository.callEventsCleanupProcedure(args.hours, jobName)
+                    is ProcedureArgs.DeleteServiceArgs -> jobStatusRepository.callDeleteServiceEventsProcedure(jobName, args)
+                    is ProcedureArgs.CleanupArgs -> jobStatusRepository.callEventsCleanupProcedure(jobName, args)
                 }
                 log.info("Task completed: '$jobName'")
             } catch (e: Exception) {
