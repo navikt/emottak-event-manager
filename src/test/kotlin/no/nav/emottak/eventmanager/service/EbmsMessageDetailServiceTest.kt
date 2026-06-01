@@ -2,10 +2,14 @@ package no.nav.emottak.eventmanager.service
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.EventType
@@ -32,7 +36,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
     val eventRepository = mockk<EventRepository>()
     val ebmsMessageDetailRepository = mockk<EbmsMessageDetailRepository>()
     val eventTypeRepository = mockk<EventTypeRepository>(relaxed = true)
-    val distinctRolesServicesActionsRepository = mockk<DistinctRolesServicesActionsRepository>()
+    val distinctRolesServicesActionsRepository = mockk<DistinctRolesServicesActionsRepository>(relaxed = true)
     val conversationStatusRepository = mockk<ConversationStatusRepository>()
     val ebmsMessageDetailService = EbmsMessageDetailService(
         eventRepository,
@@ -428,30 +432,39 @@ class EbmsMessageDetailServiceTest : StringSpec({
         result[2].readableIdList shouldBe testDetails3.generateReadableId()
     }
 
-    "Should retrieve filter-values" {
+    "Should retrieve filter-values via getAll()" {
         val filters = DistinctRolesServicesActionsDto(
             roles = listOf("roleA", "roleB"),
             services = listOf("servicesA", "servicesB"),
-            actions = listOf("actionA", "actionB"),
-            refreshedAt = Instant.now()
+            actions = listOf("actionA", "actionB")
         )
-        coEvery { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() } returns filters
+        every { distinctRolesServicesActionsRepository.getAll() } returns filters
         val reply = ebmsMessageDetailService.getDistinctRolesServicesActions()
-        coVerify(exactly = 1) { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() }
+        verify(exactly = 1) { distinctRolesServicesActionsRepository.getAll() }
         reply shouldBe filters
     }
 
-    "Should call refreshDistinctRolesServicesActions() if getDistinctRolesServicesActions() returns null" {
-        val filters = DistinctRolesServicesActionsDto(
-            roles = listOf("roleA", "roleB"),
-            services = listOf("servicesA", "servicesB"),
-            actions = listOf("actionA", "actionB"),
-            refreshedAt = Instant.now()
+    "Should call addIfAbsent during process()" {
+        val testTransportMessageDetail = buildTestTransportMessageDetail()
+        val testDetailsJson = Json.encodeToString(
+            no.nav.emottak.utils.kafka.model.EbmsMessageDetail.serializer(),
+            testTransportMessageDetail
         )
-        coEvery { distinctRolesServicesActionsRepository.getDistinctRolesServicesActions() } returns null
-        coEvery { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() } returns filters
-        ebmsMessageDetailService.getDistinctRolesServicesActions()
-        coVerify(exactly = 1) { distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions() }
+        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
+
+        coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
+        coEvery { distinctRolesServicesActionsRepository.addIfAbsent(any(), any(), any()) } just Runs
+        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
+
+        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+
+        coVerify(exactly = 1) {
+            distinctRolesServicesActionsRepository.addIfAbsent(
+                testDetails.fromRole,
+                testDetails.service,
+                testDetails.action
+            )
+        }
     }
 
     "isDuplicate should return true when message is a duplicate" {

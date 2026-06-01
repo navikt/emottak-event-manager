@@ -1,7 +1,6 @@
 package no.nav.emottak.eventmanager.service
 
 import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.constants.Constants
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
@@ -20,14 +19,10 @@ import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.utils.common.toOsloZone
-import no.nav.emottak.utils.common.zoneOslo
 import no.nav.emottak.utils.kafka.model.EventDataType
 import no.nav.emottak.utils.kafka.model.EventType
-import org.jetbrains.annotations.TestOnly
 import org.slf4j.LoggerFactory
-import java.time.Clock
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
@@ -36,8 +31,7 @@ class EbmsMessageDetailService(
     private val ebmsMessageDetailRepository: EbmsMessageDetailRepository,
     private val eventTypeRepository: EventTypeRepository,
     private val distinctRolesServicesActionsRepository: DistinctRolesServicesActionsRepository,
-    private val conversationStatusRepository: ConversationStatusRepository,
-    private var clock: Clock = Clock.system(zoneOslo())
+    private val conversationStatusRepository: ConversationStatusRepository
 ) {
     private val log = LoggerFactory.getLogger(EbmsMessageDetailService::class.java)
 
@@ -49,6 +43,15 @@ class EbmsMessageDetailService(
             val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
             ebmsMessageDetailRepository.insert(ebmsMessageDetail)
             log.info(ebmsMessageDetail.marker, "EBMS message details processed successfully: $ebmsMessageDetail")
+            try {
+                distinctRolesServicesActionsRepository.addIfAbsent(
+                    ebmsMessageDetail.fromRole,
+                    ebmsMessageDetail.service,
+                    ebmsMessageDetail.action
+                )
+            } catch (e: Exception) {
+                log.warn("Failed to update distinct roles/services/actions cache", e)
+            }
             if (ebmsMessageDetail.refToMessageId != null) return
             if (conversationStatusRepository.insert(ebmsMessageDetail.conversationId)) {
                 log.info(ebmsMessageDetail.marker, "Conversation status inserted successfully: {}", ebmsMessageDetail.conversationId)
@@ -152,14 +155,8 @@ class EbmsMessageDetailService(
             .isNotEmpty()
     }
 
-    suspend fun getDistinctRolesServicesActions(): DistinctRolesServicesActionsDto {
-        val filterValues = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-        val refreshRate = Instant.now(clock).minus(config().database.distinctValuesRefreshRateInHours.value, ChronoUnit.HOURS)
-        if (filterValues == null || refreshRate.isAfter(filterValues.refreshedAt)) {
-            log.info("Requesting refresh of distict_roles_services_actions")
-            return distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        }
-        return filterValues
+    fun getDistinctRolesServicesActions(): DistinctRolesServicesActionsDto {
+        return distinctRolesServicesActionsRepository.getAll()
     }
 
     private fun findSenderName(requestId: Uuid, events: List<Event>): String {
@@ -242,10 +239,5 @@ class EbmsMessageDetailService(
             filters.add("pageNumber:'${pageable.pageNumber}'")
         }
         return filters.joinToString(", ")
-    }
-
-    @TestOnly
-    fun setClockForTests(testClock: Clock) {
-        clock = testClock
     }
 }

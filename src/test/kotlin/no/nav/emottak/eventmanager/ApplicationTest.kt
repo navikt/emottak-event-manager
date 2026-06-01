@@ -66,12 +66,9 @@ import no.nav.emottak.eventmanager.service.EventService
 import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.model.DuplicateCheckResponse
 import no.nav.emottak.utils.common.toOsloZone
-import no.nav.emottak.utils.common.zoneOslo
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
-import java.time.Clock
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 
 class ApplicationTest : StringSpec({
@@ -157,8 +154,10 @@ class ApplicationTest : StringSpec({
         db.dataSource.connection.use { conn ->
             conn.createStatement().execute("DELETE FROM events")
             conn.createStatement().execute("DELETE FROM ebms_message_details")
+            conn.createStatement().execute("DELETE FROM distinct_roles_services_actions")
             conn.createStatement().execute("DELETE FROM conversation_status")
         }
+        distinctRolesServicesActionsRepository.initialize()
     }
 
     "Root endpoint should return OK" {
@@ -800,7 +799,7 @@ class ApplicationTest : StringSpec({
 
     "filter-values endpoint should return list of distinct roles, services and actions" {
         withTestApplication { httpClient ->
-            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository, distinctRolesServicesActionsRepository)
 
             val httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
@@ -811,9 +810,9 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "filter-values endpoint should retrieve refreshed filters and handle filter-values as-is (case-sensitive)" {
+    "filter-values endpoint should reflect new values immediately and preserve case" {
         withTestApplication { httpClient ->
-            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository, distinctRolesServicesActionsRepository)
 
             var httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
@@ -822,24 +821,14 @@ class ApplicationTest : StringSpec({
             filters.services.size shouldBe 2
             filters.actions.size shouldBe 2
 
-            ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "different-ROLE", action = "new1"))
+            // New distinct values added via addIfAbsent are reflected immediately (no delay needed)
+            distinctRolesServicesActionsRepository.addIfAbsent("different-ROLE", "test-service", "new-action")
 
             httpResponse = httpClient.getWithAuth("/filter-values", getToken)
             httpResponse.status shouldBe HttpStatusCode.OK
             filters = httpResponse.body()
-            filters.roles.size shouldBe 2 // Still 2 since its less than 24h since we refreshed last time
-            filters.actions.size shouldBe 2
-
-            ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(action = "new2"))
-            val tomorrow = Clock.fixed(Instant.now().plus(24, ChronoUnit.HOURS), zoneOslo())
-            ebmsMessageDetailService.setClockForTests(tomorrow)
-
-            httpResponse = httpClient.getWithAuth("/filter-values", getToken)
-            httpResponse.status shouldBe HttpStatusCode.OK
-            filters = httpResponse.body()
-            filters.roles.size shouldBe 3 // Now it should be 3
-            filters.services.size shouldBe 2
-            filters.actions.size shouldBe 4 // new1 and new2 are also added
+            filters.roles.size shouldBe 3
+            filters.actions.size shouldBe 3
 
             filters.roles shouldContain "different-role"
             filters.roles shouldContain "different-ROLE"
@@ -848,8 +837,6 @@ class ApplicationTest : StringSpec({
 
     "filter-values endpoint should return Unauthorized if access token is missing" {
         withTestApplication { httpClient ->
-            buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
-
             val httpResponse = httpClient.get("/filter-values")
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
         }

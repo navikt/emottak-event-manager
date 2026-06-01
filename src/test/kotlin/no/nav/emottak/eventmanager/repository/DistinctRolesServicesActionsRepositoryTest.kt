@@ -3,25 +3,36 @@ package no.nav.emottak.eventmanager.repository
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainInOrder
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 
 class DistinctRolesServicesActionsRepositoryTest : RepositoryTestBase({
 
-    "Should retrieve null when calling getDistinctRolesServicesActions() for the first time" {
-        buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
-        var result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-        result shouldBe null
+    "Should return empty lists when no values have been added" {
+        distinctRolesServicesActionsRepository.initialize()
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles shouldBe emptyList()
+        result.services shouldBe emptyList()
+        result.actions shouldBe emptyList()
     }
 
-    "Should retrieve filter-values" {
-        buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
-        var result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-        result shouldBe null
-        distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
+    "Should return values after addIfAbsent" {
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "test-action")
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles.size shouldBe 1
+        result.services.size shouldBe 1
+        result.actions.size shouldBe 1
+        result.roles shouldContain "test-role"
+        result.services shouldContain "test-service"
+        result.actions shouldContain "test-action"
+    }
 
-        result shouldNotBe null
-        result!!.roles.size shouldBe 2
+    "Should accumulate distinct values across multiple addIfAbsent calls" {
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "test-action")
+        distinctRolesServicesActionsRepository.addIfAbsent("different-role", "test-service", "test-action")
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "different-service", "test-action")
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "different-action")
+
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles.size shouldBe 2
         result.services.size shouldBe 2
         result.actions.size shouldBe 2
         result.roles shouldContain "different-role"
@@ -29,74 +40,44 @@ class DistinctRolesServicesActionsRepositoryTest : RepositoryTestBase({
         result.actions shouldContain "different-action"
     }
 
-    "Should contain new role" {
-        buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+    "Should not duplicate values on repeated addIfAbsent calls" {
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "test-action")
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "test-action")
 
-        var result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-        result shouldBe null
-
-        distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-
-        result shouldNotBe null
-        result!!.roles.size shouldBe 2
-        result.services.size shouldBe 2
-        result.actions.size shouldBe 2
-        result.roles shouldContain "different-role"
-        result.services shouldContain "different-service"
-        result.actions shouldContain "different-action"
-
-        ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "another-role"))
-        distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-
-        result shouldNotBe null
-        result!!.roles.size shouldBe 3
-        result.services.size shouldBe 2
-        result.actions.size shouldBe 2
-        result.roles shouldContain "another-role"
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles.size shouldBe 1
+        result.services.size shouldBe 1
+        result.actions.size shouldBe 1
     }
 
-    "Should contain roles, services and actions in alphabetical order" {
-        buildAndInsertTestEbmsMessageDetailFilterData(ebmsMessageDetailRepository)
+    "Should handle null role in addIfAbsent" {
+        distinctRolesServicesActionsRepository.addIfAbsent(null, "test-service", "test-action")
 
-        var result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-        result shouldBe null
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles shouldBe emptyList()
+        result.services shouldContain "test-service"
+        result.actions shouldContain "test-action"
+    }
 
-        distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
+    "Should return values sorted alphabetically ignoring case" {
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "Test-action")
+        distinctRolesServicesActionsRepository.addIfAbsent("another-role", "Another-service", "another-action")
+        distinctRolesServicesActionsRepository.addIfAbsent("Beta-role", "beta-service", "beta-action")
 
-        result shouldNotBe null
-        result!!.roles.size shouldBe 2
-        result.services.size shouldBe 2
-        result.actions.size shouldBe 2
-        result.roles shouldContain "different-role"
-        result.services shouldContain "different-service"
-        result.actions shouldContain "different-action"
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles.size shouldBe 3
+        result.roles shouldContainInOrder listOf("another-role", "Beta-role", "test-role")
+        result.services shouldContainInOrder listOf("Another-service", "beta-service", "test-service")
+        result.actions shouldContainInOrder listOf("another-action", "beta-action", "Test-action")
+    }
 
-        ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(fromRole = "another-role"))
-        distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-
-        result shouldNotBe null
-        result!!.roles.size shouldBe 3
-        result.services.size shouldBe 2
-        result.actions.size shouldBe 2
-        result.roles shouldContain "another-role"
-
-        ebmsMessageDetailRepository.insert(buildTestEbmsMessageDetail().copy(service = "another-service", action = "another-action"))
-        distinctRolesServicesActionsRepository.refreshDistinctRolesServicesActions()
-        result = distinctRolesServicesActionsRepository.getDistinctRolesServicesActions()
-
-        result shouldNotBe null
-        result!!.roles.size shouldBe 3
-        result.services.size shouldBe 3
-        result.actions.size shouldBe 3
-        result.services shouldContain "another-service"
-        result.actions shouldContain "another-action"
-
-        result.roles shouldContainInOrder listOf("another-role", "different-role", "test-from-role")
-        result.services shouldContainInOrder listOf("another-service", "different-service", "test-service")
-        result.actions shouldContainInOrder listOf("another-action", "different-action", "test-action")
+    "initialize() should reload values from DB into the in-memory cache" {
+        distinctRolesServicesActionsRepository.addIfAbsent("test-role", "test-service", "test-action")
+        // Calling initialize() again should re-load from DB without losing values
+        distinctRolesServicesActionsRepository.initialize()
+        val result = distinctRolesServicesActionsRepository.getAll()
+        result.roles shouldContain "test-role"
+        result.services shouldContain "test-service"
+        result.actions shouldContain "test-action"
     }
 })
