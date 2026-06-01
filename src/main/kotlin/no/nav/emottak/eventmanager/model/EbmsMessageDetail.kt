@@ -5,6 +5,7 @@ import net.logstash.logback.marker.Markers
 import no.nav.emottak.eventmanager.constants.Constants.ACKNOWLEDGMENT_ACTION
 import no.nav.emottak.eventmanager.constants.Constants.MESSAGEERROR_ACTION
 import no.nav.emottak.eventmanager.constants.Constants.NOT_APPLICABLE_ROLE
+import no.nav.emottak.eventmanager.constants.Constants.SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.utils.common.constants.LogFields.ACTION
 import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
 import no.nav.emottak.utils.common.constants.LogFields.CPA_ID
@@ -19,7 +20,6 @@ import no.nav.emottak.utils.common.toOsloZone
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
-import no.nav.emottak.eventmanager.constants.Constants.SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 data class EbmsMessageDetail(
