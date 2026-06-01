@@ -2,6 +2,9 @@ package no.nav.emottak.eventmanager.model
 
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers
+import no.nav.emottak.eventmanager.constants.Constants.ACKNOWLEDGMENT_ACTION
+import no.nav.emottak.eventmanager.constants.Constants.MESSAGEERROR_ACTION
+import no.nav.emottak.eventmanager.constants.Constants.NOT_APPLICABLE_ROLE
 import no.nav.emottak.utils.common.constants.LogFields.ACTION
 import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
 import no.nav.emottak.utils.common.constants.LogFields.CPA_ID
@@ -16,6 +19,7 @@ import no.nav.emottak.utils.common.toOsloZone
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
+import no.nav.emottak.eventmanager.constants.Constants.SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 
 data class EbmsMessageDetail(
@@ -82,7 +86,7 @@ data class EbmsMessageDetail(
         val savedAtString: String = this.savedAt.toOsloZone()
             .format(formatter)
 
-        val senderName = if (getReadableSenderName() == "NAV Mottak") {
+        val senderName = if (getReadableSenderName() == SENDER_NAME_NAV_MOTTAK) {
             "NAVM"
         } else {
             this.senderName?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "UNKN"
@@ -93,11 +97,15 @@ data class EbmsMessageDetail(
         return "$direction.$savedAtString.$senderName.$id"
     }
 
-    fun getDirection() = if (this.refToMessageId == null) "IN" else "OUT"
+    fun getDirection() = if (isIncomingMessage()) "IN" else "OUT"
 
-    fun getReadableSenderName() = if (this.refToMessageId != null) {
-        "NAV Mottak"
+    fun getReadableSenderName() = if (isIncomingMessage()) SENDER_NAME_NAV_MOTTAK else this.senderName
+
+    private fun isIncomingMessage() = if (this.refToMessageId == null) {
+        true
     } else {
-        this.senderName
+        this.toRole == NOT_APPLICABLE_ROLE && this.action in status_actions
     }
 }
+
+private val status_actions = listOf(ACKNOWLEDGMENT_ACTION, MESSAGEERROR_ACTION)

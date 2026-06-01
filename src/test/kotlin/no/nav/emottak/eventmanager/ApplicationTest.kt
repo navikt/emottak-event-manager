@@ -25,6 +25,7 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
+import no.nav.emottak.eventmanager.constants.Constants.SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
@@ -354,7 +355,7 @@ class ApplicationTest : StringSpec({
             messageDtoList[0].service shouldBe messageDetails.service
             messageDtoList[0].action shouldBe messageDetails.action
             messageDtoList[0].referenceParameter shouldBe UNKNOWN
-            messageDtoList[0].senderName shouldBe UNKNOWN
+            messageDtoList[0].senderName shouldBe SENDER_NAME_NAV_MOTTAK
             messageDtoList[0].cpaId shouldBe messageDetails.cpaId
             messageDtoList[0].count shouldBe 1
             messageDtoList[0].status shouldBe "Meldingen er under behandling"
@@ -378,7 +379,7 @@ class ApplicationTest : StringSpec({
 
     "message-details endpoint should return list of message details with time-, readable- and cpa-filter" {
         withTestApplication { httpClient ->
-            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).last()
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
             eventRepository.insert(testEvent)
 
@@ -698,7 +699,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
             messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe SENDER_NAME_NAV_MOTTAK
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
@@ -706,7 +707,10 @@ class ApplicationTest : StringSpec({
 
     "message-details/<id> endpoint should return list of message details by Readable ID" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail()
+            val messageDetails = buildTestEbmsMessageDetail().copy(
+                refToMessageId = "Some reference",
+                senderName = "OSLO KOMMUNE"
+            )
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -723,7 +727,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
             messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe "OSLO KOMMUNE"
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
