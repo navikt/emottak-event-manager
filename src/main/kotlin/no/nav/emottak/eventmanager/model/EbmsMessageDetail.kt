@@ -101,7 +101,7 @@ data class EbmsMessageDetail(
 
     fun getReadableSenderName() = if (isIncomingMessage()) SENDER_NAME_NAV_MOTTAK else this.senderName
 
-    private fun isIncomingMessage() = if (this.refToMessageId == null) {
+    private fun isIncomingMessage() = if (this.refToMessageId == null && this.toRole !in dialog_actions) {
         true
     } else {
         this.toRole == NOT_APPLICABLE_ROLE && this.action in status_actions
@@ -109,3 +109,4 @@ data class EbmsMessageDetail(
 }
 
 private val status_actions = listOf(ACKNOWLEDGMENT_ACTION, MESSAGEERROR_ACTION)
+private val dialog_actions = listOf<String>()
