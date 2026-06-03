@@ -17,7 +17,10 @@ data class Config(
     val kafka: Kafka,
     val eventConsumer: EventConsumer,
     val server: Server,
-    val delayedJobs: DelayedJobs
+    val delayedJobs: DelayedJobs,
+    // HopLite leser miljøvariablene NAV_PARTY_IDS_0, NAV_PARTY_IDS_1, osv og gjenkjenner dette som en liste: NAV_PARTY_IDS.
+    // Disse er definert i nais-console => configs => emottak-event-manager-config.
+    val navPartyIds: List<String> = emptyList()
 )
 
 data class Environment(

@@ -151,14 +151,16 @@ suspend fun buildAndInsertTestEbmsMessageDetailFindData(repository: EbmsMessageD
     val messageDetailsOutOfInterval1 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-C",
         savedAt = Instant.parse("2025-04-30T12:56:47.386Z"),
-        refToMessageId = "message-id-reference-C"
+        refToMessageId = "message-id-reference-C",
+        fromPartyId = "commonname:ARBEIDS OG VELFERDSETATEN"
     )
     val messageDetailsOutOfInterval2 = buildTestEbmsMessageDetail().copy(
         conversationId = "conversation-id-D",
         cpaId = "another-cpa-id",
         messageId = "another-message-id2",
         savedAt = Instant.parse("2025-04-30T12:58:48.386Z"),
-        refToMessageId = "message-id-reference-D"
+        refToMessageId = "message-id-reference-D",
+        fromPartyId = "commonname:ARBEIDS OG VELFERDSETATEN"
     )
 
     repository.insert(messageDetailsInInterval1)

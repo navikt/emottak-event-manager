@@ -2,10 +2,8 @@ package no.nav.emottak.eventmanager.model
 
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers
-import no.nav.emottak.eventmanager.constants.Constants.ACKNOWLEDGMENT_ACTION
-import no.nav.emottak.eventmanager.constants.Constants.MESSAGEERROR_ACTION
-import no.nav.emottak.eventmanager.constants.Constants.NOT_APPLICABLE_ROLE
-import no.nav.emottak.eventmanager.constants.Constants.SENDER_NAME_NAV_MOTTAK
+import no.nav.emottak.eventmanager.configuration.config
+import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.utils.common.constants.LogFields.ACTION
 import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
 import no.nav.emottak.utils.common.constants.LogFields.CPA_ID
@@ -86,7 +84,7 @@ data class EbmsMessageDetail(
         val savedAtString: String = this.savedAt.toOsloZone()
             .format(formatter)
 
-        val senderName = if (getReadableSenderName() == SENDER_NAME_NAV_MOTTAK) {
+        val senderName = if (getReadableSenderName() == READABLE_SENDER_NAME_NAV_MOTTAK) {
             "NAVM"
         } else {
             this.senderName?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "UNKN"
@@ -97,16 +95,9 @@ data class EbmsMessageDetail(
         return "$direction.$savedAtString.$senderName.$id"
     }
 
-    fun getDirection() = if (isIncomingMessage()) "IN" else "OUT"
+    fun getDirection() = if (isOutgoingMessage()) "OUT" else "IN"
 
-    fun getReadableSenderName() = if (isIncomingMessage()) SENDER_NAME_NAV_MOTTAK else this.senderName
+    fun getReadableSenderName() = if (isOutgoingMessage()) READABLE_SENDER_NAME_NAV_MOTTAK else this.senderName
 
-    private fun isIncomingMessage() = if (this.refToMessageId == null && this.toRole !in dialog_actions) {
-        true
-    } else {
-        this.toRole == NOT_APPLICABLE_ROLE && this.action in status_actions
-    }
+    private fun isOutgoingMessage() = this.fromPartyId in config().navPartyIds
 }
-
-private val status_actions = listOf(ACKNOWLEDGMENT_ACTION, MESSAGEERROR_ACTION)
-private val dialog_actions = listOf<String>()
