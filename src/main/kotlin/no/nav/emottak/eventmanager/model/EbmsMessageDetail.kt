@@ -87,7 +87,7 @@ data class EbmsMessageDetail(
         val senderName = if (getReadableSenderName() == READABLE_SENDER_NAME_NAV_MOTTAK) {
             "NAVM"
         } else {
-            this.senderName?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "UNKN"
+            this.senderName?.lowercase()?.replace("[^a-z0-9]".toRegex(), "")?.take(4) ?: "UNKN"
         }
 
         val id = this.requestId.toString().takeLast(6)

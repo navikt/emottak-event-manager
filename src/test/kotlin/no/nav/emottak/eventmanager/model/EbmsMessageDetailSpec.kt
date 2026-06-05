@@ -88,5 +88,10 @@ class EbmsMessageDetailSpec : DescribeSpec({
             val messageDetail = buildTestEbmsMessageDetail(requestId = reqId.parseOrGenerateUuid())
             messageDetail.generateReadableId() shouldEndWith "6ecd52"
         }
+
+        it("Should return a readable id containing 'vabl' (lowercase stripped of spaces and commas) when fromPartyId is not Nav and senderName is 'VA, Blindern TEST'") {
+            val messageDetail = buildTestEbmsMessageDetail().copy(senderName = "VA, Blindern TEST")
+            messageDetail.generateReadableId() shouldContain ".vabl."
+        }
     }
 })
