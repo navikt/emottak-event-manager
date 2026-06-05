@@ -99,5 +99,5 @@ data class EbmsMessageDetail(
 
     fun getReadableSenderName() = if (isOutgoingMessage()) READABLE_SENDER_NAME_NAV_MOTTAK else this.senderName
 
-    private fun isOutgoingMessage() = this.fromPartyId in config().navPartyIds
+    private fun isOutgoingMessage() = this.fromPartyId in config().navPartyIdsList
 }
