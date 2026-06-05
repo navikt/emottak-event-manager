@@ -17,8 +17,11 @@ data class Config(
     val kafka: Kafka,
     val eventConsumer: EventConsumer,
     val server: Server,
-    val delayedJobs: DelayedJobs
-)
+    val delayedJobs: DelayedJobs,
+    private val navPartyIds: String
+) {
+    val navPartyIdsList: List<String> = navPartyIds.split("|")
+}
 
 data class Environment(
     val naisClusterName: NaisClusterName
