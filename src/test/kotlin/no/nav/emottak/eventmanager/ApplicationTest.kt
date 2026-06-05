@@ -682,7 +682,7 @@ class ApplicationTest : StringSpec({
 
     "message-details/<id> endpoint should return list of message details by Request ID" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail().copy(fromPartyId = "orgnummer:990983291")
+            val messageDetails = buildTestEbmsMessageDetail().copy(fromPartyId = "commonname:ARBEIDS OG VELFERDSETATEN")
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
