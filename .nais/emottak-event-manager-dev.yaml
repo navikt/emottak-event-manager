@@ -53,6 +53,8 @@ spec:
     enabled: true
   kafka:
     pool: nav-dev
+  envFrom:
+    - configmap: emottak-event-manager-config
   accessPolicy:
     inbound:
       rules:

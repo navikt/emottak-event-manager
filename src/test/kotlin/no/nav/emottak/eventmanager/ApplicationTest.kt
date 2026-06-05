@@ -25,6 +25,7 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
+import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
@@ -681,7 +682,7 @@ class ApplicationTest : StringSpec({
 
     "message-details/<id> endpoint should return list of message details by Request ID" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail()
+            val messageDetails = buildTestEbmsMessageDetail().copy(fromPartyId = "ENH:990983291")
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -698,7 +699,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
             messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe READABLE_SENDER_NAME_NAV_MOTTAK
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }
@@ -706,7 +707,7 @@ class ApplicationTest : StringSpec({
 
     "message-details/<id> endpoint should return list of message details by Readable ID" {
         withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail()
+            val messageDetails = buildTestEbmsMessageDetail().copy(senderName = "OSLO KOMMUNE")
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
             ebmsMessageDetailRepository.insert(messageDetails)
@@ -723,7 +724,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].service shouldBe messageDetails.service
             messageInfoList[0].action shouldBe messageDetails.action
             messageInfoList[0].referenceParameter shouldBe UNKNOWN
-            messageInfoList[0].senderName shouldBe UNKNOWN
+            messageInfoList[0].senderName shouldBe "OSLO KOMMUNE"
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
         }

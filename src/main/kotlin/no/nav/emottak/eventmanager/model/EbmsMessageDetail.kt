@@ -2,6 +2,8 @@ package no.nav.emottak.eventmanager.model
 
 import net.logstash.logback.marker.LogstashMarker
 import net.logstash.logback.marker.Markers
+import no.nav.emottak.eventmanager.configuration.config
+import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.utils.common.constants.LogFields.ACTION
 import no.nav.emottak.utils.common.constants.LogFields.CONVERSATION_ID
 import no.nav.emottak.utils.common.constants.LogFields.CPA_ID
@@ -82,10 +84,10 @@ data class EbmsMessageDetail(
         val savedAtString: String = this.savedAt.toOsloZone()
             .format(formatter)
 
-        val senderName = if (getReadableSenderName() == "NAV Mottak") {
+        val senderName = if (getReadableSenderName() == READABLE_SENDER_NAME_NAV_MOTTAK) {
             "NAVM"
         } else {
-            this.senderName?.replace("\\s".toRegex(), "")?.take(4)?.lowercase() ?: "UNKN"
+            this.senderName?.lowercase()?.replace("[^a-z0-9]".toRegex(), "")?.take(4) ?: "UNKN"
         }
 
         val id = this.requestId.toString().takeLast(6)
@@ -93,11 +95,9 @@ data class EbmsMessageDetail(
         return "$direction.$savedAtString.$senderName.$id"
     }
 
-    fun getDirection() = if (this.refToMessageId == null) "IN" else "OUT"
+    fun getDirection() = if (isOutgoingMessage()) "OUT" else "IN"
 
-    fun getReadableSenderName() = if (this.refToMessageId != null) {
-        "NAV Mottak"
-    } else {
-        this.senderName
-    }
+    fun getReadableSenderName() = if (isOutgoingMessage()) READABLE_SENDER_NAME_NAV_MOTTAK else this.senderName
+
+    private fun isOutgoingMessage() = this.fromPartyId in config().navPartyIdsList
 }
