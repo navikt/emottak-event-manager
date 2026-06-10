@@ -100,7 +100,7 @@ suspend fun ResourceScope.runServer() {
         // Increase jobNr if a job need to be rerun
         ProcedureJob("delete_service_events", ProcedureArgs.DeleteServiceArgs("HarBorgerEgenandelFritak"), jobNr = 3),
         ProcedureJob("delete_service_events", ProcedureArgs.DeleteServiceArgs("HarBorgerFrikort"), jobNr = 3),
-        ProcedureJob("events_cleanup", ProcedureArgs.CleanupArgs(2), jobNr = 4)
+        ProcedureJob("events_cleanup", ProcedureArgs.CleanupArgs(2), jobNr = 5)
     )
     coroutineScope(currentCoroutineContext()).launch {
         runSequentialDelayedTasks(jobStatusRepository, config.delayedJobs.delayInMinutes.minutes, procedures)
