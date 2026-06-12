@@ -58,7 +58,6 @@ spec:
     inbound:
       rules:
         - application: emottak-monitor
-        - application: ebms-async
   env:
     - name: JDBC_URL
       value: jdbc:postgresql://A01DBVL009.adeo.no:5432/
