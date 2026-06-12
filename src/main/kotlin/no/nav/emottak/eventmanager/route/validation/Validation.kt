@@ -5,16 +5,10 @@ import io.ktor.http.Parameters
 import io.ktor.server.response.respond
 import io.ktor.server.routing.RoutingCall
 import io.ktor.util.logging.error
-import kotlinx.serialization.json.Json
-import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
-import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
-import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
-import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.Pageable
-import no.nav.emottak.utils.common.model.DuplicateCheckRequest
 import no.nav.emottak.utils.common.zoneOslo
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -48,39 +42,6 @@ object Validation {
         val parameters = call.pathParameters
         log.info("Validating Message log info request parameters: $parameters")
         return validateIsNotNullOrEmpty(call, parameters, ID)
-    }
-
-    suspend fun validateDuplicateCheckRequest(
-        call: RoutingCall,
-        duplicateCheckRequestJson: String
-    ): Boolean {
-        log.info("Validating duplicate check request: $duplicateCheckRequestJson")
-
-        val duplicateCheckRequest: DuplicateCheckRequest = try {
-            Json.decodeFromString<DuplicateCheckRequest>(duplicateCheckRequestJson)
-        } catch (e: Exception) {
-            val errorMessage = "DuplicateCheckRequest is not valid: $duplicateCheckRequestJson"
-            log.error(errorMessage, e)
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-
-        val requiredFieldMissing = when {
-            duplicateCheckRequest.requestId.isBlank() -> REQUEST_ID
-            duplicateCheckRequest.messageId.isBlank() -> MESSAGE_ID
-            duplicateCheckRequest.conversationId.isBlank() -> CONVERSATION_ID
-            duplicateCheckRequest.cpaId.isBlank() -> CPA_ID
-            else -> ""
-        }
-
-        if (requiredFieldMissing.isNotEmpty()) {
-            val errorMessage = "Required request parameter is missing: $requiredFieldMissing"
-            log.error(IllegalArgumentException(errorMessage))
-            call.respond(HttpStatusCode.BadRequest, errorMessage)
-            return false
-        }
-
-        return true
     }
 
     suspend fun validateReadableIdInfoRequest(call: RoutingCall): Boolean {
