@@ -7,7 +7,6 @@ import io.kotest.data.row
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldStartWith
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -27,12 +26,9 @@ import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
 import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
-import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
-import no.nav.emottak.eventmanager.constants.QueryConstants.MESSAGE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
-import no.nav.emottak.eventmanager.constants.QueryConstants.REQUEST_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
@@ -64,8 +60,6 @@ import no.nav.emottak.eventmanager.repository.testConfiguration
 import no.nav.emottak.eventmanager.service.ConversationStatusService
 import no.nav.emottak.eventmanager.service.EbmsMessageDetailService
 import no.nav.emottak.eventmanager.service.EventService
-import no.nav.emottak.utils.common.model.DuplicateCheckRequest
-import no.nav.emottak.utils.common.model.DuplicateCheckResponse
 import no.nav.emottak.utils.common.toOsloZone
 import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
@@ -538,103 +532,7 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "duplicate-check endpoint should return DuplicateCheckResponse if message is duplicated" {
-        withTestApplication { httpClient ->
-            val messageDetails = buildTestEbmsMessageDetail()
-
-            ebmsMessageDetailRepository.insert(messageDetails)
-
-            val duplicateCheckRequest = DuplicateCheckRequest(
-                requestId = Uuid.random().toString(),
-                messageId = messageDetails.messageId,
-                conversationId = messageDetails.conversationId,
-                cpaId = messageDetails.cpaId
-            )
-
-            val httpResponse = httpClient.post("/message-details/duplicate-check") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-                contentType(ContentType.Application.Json)
-                setBody(duplicateCheckRequest)
-            }
-
-            httpResponse.status shouldBe HttpStatusCode.OK
-
-            val duplicateCheckResponse: DuplicateCheckResponse = httpResponse.body()
-            duplicateCheckResponse.requestId shouldBe duplicateCheckRequest.requestId
-            duplicateCheckResponse.isDuplicate shouldBe true
-        }
-    }
-
-    "duplicate-check endpoint should return DuplicateCheckResponse if message is not duplicated" {
-        withTestApplication { httpClient ->
-            val duplicateCheckRequest = DuplicateCheckRequest(
-                requestId = Uuid.random().toString(),
-                messageId = "test-message-id",
-                conversationId = "test-conversation-id",
-                cpaId = "test-cpa-id"
-            )
-
-            val httpResponse = httpClient.post("/message-details/duplicate-check") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                )
-                contentType(ContentType.Application.Json)
-                setBody(duplicateCheckRequest)
-            }
-
-            httpResponse.status shouldBe HttpStatusCode.OK
-
-            val duplicateCheckResponse: DuplicateCheckResponse = httpResponse.body()
-            duplicateCheckResponse.requestId shouldBe duplicateCheckRequest.requestId
-            duplicateCheckResponse.isDuplicate shouldBe false
-        }
-    }
-
-    "duplicate-check endpoint should return Unauthorized if access token is invalid" {
-        withTestApplication { httpClient ->
-            val duplicateCheckRequest = DuplicateCheckRequest(
-                requestId = Uuid.random().toString(),
-                messageId = "test-message-id",
-                conversationId = "test-conversation-id",
-                cpaId = "test-cpa-id"
-            )
-
-            val httpResponse = httpClient.post("/message-details/duplicate-check") {
-                header(
-                    "Authorization",
-                    "Bearer ${getToken(invalidAudience).serialize()}"
-                )
-                contentType(ContentType.Application.Json)
-                setBody(duplicateCheckRequest)
-            }
-
-            httpResponse.status shouldBe HttpStatusCode.Unauthorized
-        }
-    }
-
-    "duplicate-check endpoint should return Unauthorized if access token is missing" {
-        withTestApplication { httpClient ->
-            val duplicateCheckRequest = DuplicateCheckRequest(
-                requestId = Uuid.random().toString(),
-                messageId = "test-message-id",
-                conversationId = "test-conversation-id",
-                cpaId = "test-cpa-id"
-            )
-
-            val httpResponse = httpClient.post("/message-details/duplicate-check") {
-                contentType(ContentType.Application.Json)
-                setBody(duplicateCheckRequest)
-            }
-
-            httpResponse.status shouldBe HttpStatusCode.Unauthorized
-        }
-    }
-
-    "duplicate-check endpoint should return BadRequest if DuplicateCheckRequest is invalid" {
+    "duplicate-check endpoint should return 404 Not Found (endpoint is removed)" {
         withTestApplication { httpClient ->
             val invalidJson = "{\"invalid\":\"request\"}"
 
@@ -647,36 +545,7 @@ class ApplicationTest : StringSpec({
                 setBody(invalidJson)
             }
 
-            httpResponse.status shouldBe HttpStatusCode.BadRequest
-
-            val errorResponse = httpResponse.body<String>()
-            errorResponse shouldStartWith "DuplicateCheckRequest is not valid"
-        }
-    }
-
-    "duplicate-check endpoint should return BadRequest if required fields are missing" {
-        withTestApplication { httpClient ->
-            forAll(
-                row(mapOf(REQUEST_ID to "", MESSAGE_ID to "test-message-id", CONVERSATION_ID to "test-conversation-id", CPA_ID to "test-cpa-id")),
-                row(mapOf(REQUEST_ID to "test-request-id", MESSAGE_ID to "", CONVERSATION_ID to "test-conversation-id", CPA_ID to "test-cpa-id")),
-                row(mapOf(REQUEST_ID to "test-request-id", MESSAGE_ID to "test-message-id", CONVERSATION_ID to "", CPA_ID to "test-cpa-id")),
-                row(mapOf(REQUEST_ID to "test-request-id", MESSAGE_ID to "test-message-id", CONVERSATION_ID to "test-conversation-id", CPA_ID to "")),
-                row(mapOf(REQUEST_ID to "test-request-id", MESSAGE_ID to "test-message-id", CONVERSATION_ID to "test-conversation-id", CPA_ID to "    "))
-            ) { duplicateCheckRequest ->
-                val httpResponse = httpClient.post("/message-details/duplicate-check") {
-                    header(
-                        "Authorization",
-                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
-                    )
-                    contentType(ContentType.Application.Json)
-                    setBody(duplicateCheckRequest)
-                }
-
-                httpResponse.status shouldBe HttpStatusCode.BadRequest
-
-                val errorResponse = httpResponse.body<String>()
-                errorResponse shouldStartWith "Required request parameter is missing"
-            }
+            httpResponse.status shouldBe HttpStatusCode.NotFound
         }
     }
 
