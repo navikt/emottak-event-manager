@@ -7,7 +7,7 @@ dependencyResolutionManagement {
             version("flyway", "9.16.3")
             version("postgresql-jdbc", "42.7.3")
             version("exposed", "0.61.0")
-            version("ktor", "3.3.1")
+            version("ktor", "3.4.3")
             version("hoplite", "2.8.2")
             version("suspendapp", "0.5.0")
             version("arrow", "2.0.1")
@@ -70,7 +70,7 @@ dependencyResolutionManagement {
 
         create("testLibs") {
             version("kotest", "5.9.1")
-            version("ktor-test", "3.3.1")
+            version("ktor-test", "3.4.3")
             version("testcontainers", "1.21.4")
             version("mockk", "1.13.17")
 
