@@ -22,7 +22,7 @@ data class Event(
 
     val marker: LogstashMarker = Markers.appendEntries(
         mapOf(
-            X_REQUEST_ID to this.requestId,
+            X_REQUEST_ID to this.requestId.toString(),
             MESSAGE_ID to this.messageId,
             CONVERSATION_ID to this.conversationId
         )
