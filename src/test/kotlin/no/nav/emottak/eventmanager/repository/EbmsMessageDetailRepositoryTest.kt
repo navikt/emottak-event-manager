@@ -13,9 +13,86 @@ import java.time.temporal.ChronoUnit
 
 class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
 
+    "Should insert message details when requestId is unknown" {
+        val messageDetails = buildTestEbmsMessageDetail()
+
+        ebmsMessageDetailRepository.upsert(messageDetails) shouldBe true
+
+        val retrievedDetails = ebmsMessageDetailRepository.findByRequestId(messageDetails.requestId)
+        retrievedDetails?.requestId shouldBe messageDetails.requestId
+    }
+
+    "Should update instead of failing when message details are upserted twice" {
+        val messageDetails = buildTestEbmsMessageDetail()
+
+        ebmsMessageDetailRepository.upsert(messageDetails) shouldBe true
+        ebmsMessageDetailRepository.upsert(messageDetails) shouldBe false
+
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
+            messageDetails.savedAt.minusSeconds(1),
+            messageDetails.savedAt.plusSeconds(1)
+        )
+        retrievedDetails.totalElements shouldBe 1
+    }
+
+    "Should enrich existing message details on upsert" {
+        val messageDetails = buildTestEbmsMessageDetail()
+        ebmsMessageDetailRepository.upsert(messageDetails)
+
+        val enrichedMessageDetail = messageDetails.copy(
+            cpaId = "updated-cpa-id",
+            service = "updated-service",
+            refParam = "updated-ref-param",
+            senderName = "updated-sender-name",
+            refToMessageId = "updated-ref-to-message-id",
+            sentAt = Instant.parse("2025-05-26T14:54:45.386Z"),
+            savedAt = Instant.parse("2025-05-26T15:54:50.386Z")
+        )
+        ebmsMessageDetailRepository.upsert(enrichedMessageDetail) shouldBe false
+
+        val retrievedDetails = ebmsMessageDetailRepository.findByRequestId(messageDetails.requestId)
+
+        retrievedDetails?.cpaId shouldBe enrichedMessageDetail.cpaId
+        retrievedDetails?.service shouldBe enrichedMessageDetail.service
+        retrievedDetails?.refParam shouldBe enrichedMessageDetail.refParam
+        retrievedDetails?.senderName shouldBe enrichedMessageDetail.senderName
+        retrievedDetails?.refToMessageId shouldBe enrichedMessageDetail.refToMessageId
+        retrievedDetails?.sentAt shouldBe enrichedMessageDetail.sentAt?.truncatedTo(ChronoUnit.MICROS)
+        retrievedDetails?.savedAt shouldBe enrichedMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
+        retrievedDetails?.readableId shouldBe enrichedMessageDetail.generateReadableId()
+    }
+
+    "Should keep already stored values when upserted values are null" {
+        val messageDetails = buildTestEbmsMessageDetail().copy(
+            refParam = "test-ref-param",
+            senderName = "test-sender-name",
+            refToMessageId = "test-ref-to-message-id",
+            toRole = "test-to-role",
+            sentAt = Instant.parse("2025-05-26T14:54:45.386Z")
+        )
+        ebmsMessageDetailRepository.upsert(messageDetails)
+
+        val incompleteMessageDetail = messageDetails.copy(
+            refParam = null,
+            senderName = null,
+            refToMessageId = null,
+            toRole = null,
+            sentAt = null
+        )
+        ebmsMessageDetailRepository.upsert(incompleteMessageDetail) shouldBe false
+
+        val retrievedDetails = ebmsMessageDetailRepository.findByRequestId(messageDetails.requestId)
+
+        retrievedDetails?.refParam shouldBe messageDetails.refParam
+        retrievedDetails?.senderName shouldBe messageDetails.senderName
+        retrievedDetails?.refToMessageId shouldBe messageDetails.refToMessageId
+        retrievedDetails?.toRole shouldBe messageDetails.toRole
+        retrievedDetails?.sentAt shouldBe messageDetails.sentAt?.truncatedTo(ChronoUnit.MICROS)
+    }
+
     "Should update message details by requestId" {
         val messageDetails = buildTestEbmsMessageDetail()
-        ebmsMessageDetailRepository.insert(messageDetails)
+        ebmsMessageDetailRepository.upsert(messageDetails)
 
         val updatedMessageDetail = messageDetails.copy(
             cpaId = "updated-cpa-id",
@@ -51,7 +128,7 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
     "Should retrieve message details by Readable ID" {
         val messageDetails = buildTestEbmsMessageDetail()
 
-        ebmsMessageDetailRepository.insert(messageDetails)
+        ebmsMessageDetailRepository.upsert(messageDetails)
         val retrievedDetails = ebmsMessageDetailRepository.findByReadableId(messageDetails.generateReadableId())
 
         retrievedDetails?.requestId shouldBe messageDetails.requestId
@@ -60,7 +137,7 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
     "Should retrieve message details by Readable ID pattern" {
         val messageDetails = buildTestEbmsMessageDetail()
 
-        ebmsMessageDetailRepository.insert(messageDetails)
+        ebmsMessageDetailRepository.upsert(messageDetails)
 
         forAll(
             row(messageDetails.generateReadableId().substring(0, 6)),
@@ -179,7 +256,7 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             val id = "no$i"
             val ts = "2025-04-01T14:0$i:00.000Z"
             val detail = buildTestEbmsMessageDetail().copy(messageId = id, savedAt = Instant.parse(ts))
-            ebmsMessageDetailRepository.insert(detail)
+            ebmsMessageDetailRepository.upsert(detail)
             details.add(detail)
         }
 
@@ -222,7 +299,7 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             val id = "no$i"
             val ts = "2025-04-01T14:0$i:00.000Z"
             val detail = buildTestEbmsMessageDetail().copy(messageId = id, savedAt = Instant.parse(ts))
-            ebmsMessageDetailRepository.insert(detail)
+            ebmsMessageDetailRepository.upsert(detail)
             details.add(detail)
         }
 
@@ -304,8 +381,8 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(fromRole = roleFilter)
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
 
         val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             from = Instant.parse("2025-05-08T12:00:00Z"),
@@ -322,8 +399,8 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(service = serviceFilter)
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
 
         val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             from = Instant.parse("2025-05-08T12:00:00Z"),
@@ -340,8 +417,8 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         val messageDetails1 = buildTestEbmsMessageDetail()
         val messageDetails2 = buildTestEbmsMessageDetail().copy(action = actionFilter)
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
 
         val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
             from = Instant.parse("2025-05-08T12:00:00Z"),
@@ -364,9 +441,9 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             conversationId = "conversationId-2"
         )
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
-        ebmsMessageDetailRepository.insert(messageDetails3)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails3)
 
         val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
         val relatedRequestIds = ebmsMessageDetailRepository.findRelatedRequestIds(requestIds)
@@ -391,9 +468,9 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             conversationId = "conversationId-2"
         )
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
-        ebmsMessageDetailRepository.insert(messageDetails3)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails3)
 
         val conversationIds = listOf(messageDetails1.conversationId, messageDetails2.conversationId, messageDetails3.conversationId)
         val requestIds = listOf(messageDetails1.requestId, messageDetails2.requestId, messageDetails3.requestId)
@@ -417,10 +494,10 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
             cpaId = "different-cpa-id"
         )
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
-        ebmsMessageDetailRepository.insert(messageDetails3)
-        ebmsMessageDetailRepository.insert(messageDetails4)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails3)
+        ebmsMessageDetailRepository.upsert(messageDetails4)
 
         val retrievedDetails = ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
             messageId = messageDetails1.messageId,

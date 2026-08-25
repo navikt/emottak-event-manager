@@ -170,7 +170,7 @@ class ApplicationTest : StringSpec({
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-            ebmsMessageDetailRepository.insert(testMessageDetails)
+            ebmsMessageDetailRepository.upsert(testMessageDetails)
 
             val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
 
@@ -201,7 +201,7 @@ class ApplicationTest : StringSpec({
                 val event = buildTestEvent().copy(requestId = commonRequestId, createdAt = Instant.parse(ts))
                 val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId, senderName = id)
                 eventRepository.insert(event)
-                ebmsMessageDetailRepository.insert(testMessageDetails)
+                ebmsMessageDetailRepository.upsert(testMessageDetails)
                 events.add(event)
                 details.add(testMessageDetails)
             }
@@ -274,7 +274,7 @@ class ApplicationTest : StringSpec({
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-            ebmsMessageDetailRepository.insert(testMessageDetails)
+            ebmsMessageDetailRepository.upsert(testMessageDetails)
 
             val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken)
 
@@ -308,7 +308,7 @@ class ApplicationTest : StringSpec({
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-            ebmsMessageDetailRepository.insert(testMessageDetails)
+            ebmsMessageDetailRepository.upsert(testMessageDetails)
 
             val httpResponse = httpClient.get("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00")
 
@@ -323,7 +323,7 @@ class ApplicationTest : StringSpec({
             val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = commonRequestId)
 
             eventRepository.insert(testEvent)
-            ebmsMessageDetailRepository.insert(testMessageDetails)
+            ebmsMessageDetailRepository.upsert(testMessageDetails)
 
             val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00", getToken, invalidAudience)
 
@@ -427,7 +427,7 @@ class ApplicationTest : StringSpec({
     "message-details endpoint should return Unauthorized if access token is missing" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
 
             val httpResponse = httpClient.get("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00")
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
@@ -437,7 +437,7 @@ class ApplicationTest : StringSpec({
     "message-details endpoint should return Unauthorized if access token is invalid" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
 
             val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-05-09T14:00&$TO_DATE=2025-05-09T15:00", getToken, invalidAudience)
             httpResponse.status shouldBe HttpStatusCode.Unauthorized
@@ -450,7 +450,7 @@ class ApplicationTest : StringSpec({
             val relatedEvent = buildTestEvent(requestId = messageDetails.requestId)
             val unrelatedEvent = buildTestEvent()
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
@@ -472,7 +472,7 @@ class ApplicationTest : StringSpec({
             val relatedEvent = buildTestEvent(requestId = messageDetails.requestId)
             val unrelatedEvent = buildTestEvent()
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(relatedEvent)
             eventRepository.insert(unrelatedEvent)
 
@@ -493,7 +493,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             val unrelatedEvent = buildTestEvent()
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken)
@@ -510,7 +510,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             val unrelatedEvent = buildTestEvent()
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
             val httpResponse = httpClient.get("/message-details/${messageDetails.requestId}/events")
@@ -524,7 +524,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             val unrelatedEvent = buildTestEvent()
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(unrelatedEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}/events", getToken, invalidAudience)
@@ -554,7 +554,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail().copy(fromPartyId = "ENH:990983291")
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.requestId}", getToken)
@@ -579,7 +579,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail().copy(senderName = "OSLO KOMMUNE")
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(testEvent)
 
             val httpResponse = httpClient.getWithAuth("/message-details/${messageDetails.generateReadableId()}", getToken)
@@ -604,7 +604,7 @@ class ApplicationTest : StringSpec({
             val messageDetails = buildTestEbmsMessageDetail()
             val testEvent = buildTestEvent(requestId = messageDetails.requestId)
 
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(testEvent)
 
             forAll(
@@ -627,7 +627,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return empty list if no message details found" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
 
             val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken)
 
@@ -648,7 +648,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return Unauthorized if access token is missing" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
 
             val httpResponse = httpClient.get("/message-details/${Uuid.random()}")
 
@@ -659,7 +659,7 @@ class ApplicationTest : StringSpec({
     "message-details/<id> endpoint should return Unauthorized if access token is invalid" {
         withTestApplication { httpClient ->
             val messageDetails = buildTestEbmsMessageDetail()
-            ebmsMessageDetailRepository.insert(messageDetails)
+            ebmsMessageDetailRepository.upsert(messageDetails)
 
             val httpResponse = httpClient.getWithAuth("/message-details/${Uuid.random()}", getToken, invalidAudience)
 

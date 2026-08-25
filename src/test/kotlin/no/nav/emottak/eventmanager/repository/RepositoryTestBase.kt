@@ -163,10 +163,10 @@ suspend fun buildAndInsertTestEbmsMessageDetailFindData(repository: EbmsMessageD
         fromPartyId = "ENH:990983291"
     )
 
-    repository.insert(messageDetailsInInterval1)
-    repository.insert(messageDetailsInInterval2)
-    repository.insert(messageDetailsOutOfInterval1)
-    repository.insert(messageDetailsOutOfInterval2)
+    repository.upsert(messageDetailsInInterval1)
+    repository.upsert(messageDetailsInInterval2)
+    repository.upsert(messageDetailsOutOfInterval1)
+    repository.upsert(messageDetailsOutOfInterval2)
 
     return listOf(messageDetailsInInterval1, messageDetailsInInterval2, messageDetailsOutOfInterval1, messageDetailsOutOfInterval2)
 }
@@ -186,10 +186,10 @@ suspend fun buildAndInsertTestEbmsMessageDetailFilterData(
         action = "different-action"
     )
 
-    repository.insert(messageDetails1)
-    repository.insert(messageDetails2)
-    repository.insert(messageDetails3)
-    repository.insert(messageDetails4)
+    repository.upsert(messageDetails1)
+    repository.upsert(messageDetails2)
+    repository.upsert(messageDetails3)
+    repository.upsert(messageDetails4)
 
     if (distinctRolesServicesActionsRepository != null) {
         listOf(messageDetails1, messageDetails2, messageDetails3, messageDetails4).forEach { md ->
@@ -205,11 +205,11 @@ suspend fun buildAndInsertTestEbmsMessageDetailsForConversation(
 ): Pair<List<EbmsMessageDetail>, List<List<Event>>> {
     val (c1md1, c1md2, c2md1, c1md3, c3md1) = buildTestEbmsMessageDetailsForConversationStatus()
 
-    ebmsMessageDetailRepository.insert(c1md1)
-    ebmsMessageDetailRepository.insert(c1md2)
-    ebmsMessageDetailRepository.insert(c2md1)
-    ebmsMessageDetailRepository.insert(c1md3)
-    ebmsMessageDetailRepository.insert(c3md1)
+    ebmsMessageDetailRepository.upsert(c1md1)
+    ebmsMessageDetailRepository.upsert(c1md2)
+    ebmsMessageDetailRepository.upsert(c2md1)
+    ebmsMessageDetailRepository.upsert(c1md3)
+    ebmsMessageDetailRepository.upsert(c3md1)
 
     conversationStatusRepository.insert(c1md1.conversationId, c1md1.savedAt)
     conversationStatusRepository.insert(c2md1.conversationId, c2md1.savedAt)
