@@ -56,13 +56,29 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
+        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
         coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
 
         ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.upsert(testDetails) }
         coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
+    }
+
+    "Should upsert and tolerate duplicate EBMS message details" {
+        val testTransportMessageDetail = buildTestTransportMessageDetail()
+        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+
+        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
+
+        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returnsMany listOf(true, false)
+        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returnsMany listOf(true, false)
+
+        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+
+        coVerify(exactly = 2) { ebmsMessageDetailRepository.upsert(testDetails) }
+        coVerify(exactly = 2) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
     }
 
     "Should not insert conversation status when refToMessageId is set" {
@@ -71,11 +87,11 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
+        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
 
         ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.insert(testDetails) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.upsert(testDetails) }
         coVerify(exactly = 0) { conversationStatusRepository.insert(any()) }
     }
 
@@ -452,7 +468,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         )
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        coEvery { ebmsMessageDetailRepository.insert(testDetails) } returns testDetails.requestId
+        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
         coEvery { distinctRolesServicesActionsRepository.addIfAbsent(any(), any(), any()) } just Runs
         coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
 

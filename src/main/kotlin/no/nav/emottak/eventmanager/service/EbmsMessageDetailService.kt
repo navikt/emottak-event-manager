@@ -41,8 +41,11 @@ class EbmsMessageDetailService(
 
             val transportEbmsMessageDetail: TransportEbmsMessageDetail = Json.decodeFromString(String(value))
             val ebmsMessageDetail: EbmsMessageDetail = EbmsMessageDetail.fromTransportModel(transportEbmsMessageDetail)
-            ebmsMessageDetailRepository.insert(ebmsMessageDetail)
-            log.info(ebmsMessageDetail.marker, "EBMS message details processed successfully: $ebmsMessageDetail")
+            val inserted = ebmsMessageDetailRepository.upsert(ebmsMessageDetail)
+            log.info(
+                ebmsMessageDetail.marker,
+                "EBMS message details processed successfully (${if (inserted) "inserted" else "updated"}): $ebmsMessageDetail"
+            )
             try {
                 distinctRolesServicesActionsRepository.addIfAbsent(
                     ebmsMessageDetail.fromRole,
@@ -56,7 +59,7 @@ class EbmsMessageDetailService(
             if (conversationStatusRepository.insert(ebmsMessageDetail.conversationId)) {
                 log.info(ebmsMessageDetail.marker, "Conversation status inserted successfully: {}", ebmsMessageDetail.conversationId)
             } else {
-                log.warn(ebmsMessageDetail.marker, "Conversation status NOT inserted: {}", ebmsMessageDetail.conversationId)
+                log.debug(ebmsMessageDetail.marker, "Conversation status already exists: {}", ebmsMessageDetail.conversationId)
             }
         } catch (e: Exception) {
             log.error("Exception while processing EBMS message details:${String(value)}", e)

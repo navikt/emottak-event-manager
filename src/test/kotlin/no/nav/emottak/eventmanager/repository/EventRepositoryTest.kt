@@ -169,8 +169,8 @@ class EventRepositoryTest : RepositoryTestBase({
         val event1 = buildTestEvent(requestId = messageDetails1.requestId)
         val event2 = buildTestEvent(requestId = messageDetails2.requestId)
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
@@ -192,8 +192,8 @@ class EventRepositoryTest : RepositoryTestBase({
         val event1 = buildTestEvent(requestId = messageDetails1.requestId)
         val event2 = buildTestEvent(requestId = messageDetails2.requestId)
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
@@ -215,8 +215,8 @@ class EventRepositoryTest : RepositoryTestBase({
         val event1 = buildTestEvent(requestId = messageDetails1.requestId)
         val event2 = buildTestEvent(requestId = messageDetails2.requestId)
 
-        ebmsMessageDetailRepository.insert(messageDetails1)
-        ebmsMessageDetailRepository.insert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 

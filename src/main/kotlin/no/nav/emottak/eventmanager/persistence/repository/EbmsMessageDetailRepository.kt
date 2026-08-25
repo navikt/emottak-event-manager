@@ -33,11 +33,11 @@ import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
-import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.upsert
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
@@ -46,14 +46,24 @@ import kotlin.uuid.toKotlinUuid
 
 class EbmsMessageDetailRepository(private val database: Database) {
 
-    suspend fun insert(ebmsMessageDetail: EbmsMessageDetail): Uuid = withContext(Dispatchers.IO) {
+    suspend fun upsert(ebmsMessageDetail: EbmsMessageDetail): Boolean = withContext(Dispatchers.IO) {
         transaction(database.db) {
-            EbmsMessageDetailTable.insert {
-                it[requestId] = ebmsMessageDetail.requestId.toJavaUuid()
-                it.populateFrom(ebmsMessageDetail)
+            val existing = EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where { requestId eq ebmsMessageDetail.requestId.toJavaUuid() }
+                .forUpdate()
+                .map { toEbmsMessageDetail(it) }
+                .singleOrNull()
+
+            val toStore = if (existing == null) ebmsMessageDetail else ebmsMessageDetail.withFallbacksFrom(existing)
+
+            EbmsMessageDetailTable.upsert(requestId) {
+                it[requestId] = toStore.requestId.toJavaUuid()
+                it.populateFrom(toStore)
             }
+
+            existing == null
         }
-        ebmsMessageDetail.requestId
     }
 
     suspend fun update(ebmsMessageDetail: EbmsMessageDetail): Boolean = withContext(Dispatchers.IO) {
@@ -284,6 +294,15 @@ private fun UpdateBuilder<*>.populateFrom(ebmsMessageDetail: EbmsMessageDetail) 
     this[sentAt] = ebmsMessageDetail.sentAt?.truncatedTo(ChronoUnit.MICROS)
     this[savedAt] = ebmsMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
 }
+
+private fun EbmsMessageDetail.withFallbacksFrom(existing: EbmsMessageDetail) = this.copy(
+    refToMessageId = this.refToMessageId ?: existing.refToMessageId,
+    fromRole = this.fromRole ?: existing.fromRole,
+    toRole = this.toRole ?: existing.toRole,
+    refParam = this.refParam ?: existing.refParam,
+    senderName = this.senderName ?: existing.senderName,
+    sentAt = this.sentAt ?: existing.sentAt
+)
 
 private fun Query.applyReadableIdCpaIdMessageIdFilters(readableIdPattern: String = "", cpaIdPattern: String = "", messageIdPattern: String = "") {
     this.applyPatternFilter(readableIdPattern, readableId)
