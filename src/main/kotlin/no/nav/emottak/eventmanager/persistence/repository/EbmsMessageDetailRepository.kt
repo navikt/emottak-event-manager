@@ -46,14 +46,6 @@ import kotlin.uuid.toKotlinUuid
 
 class EbmsMessageDetailRepository(private val database: Database) {
 
-    /**
-     * Stores the given message details, updating the row if it already exists.
-     * Mandatory fields are always overwritten by the incoming values, while nullable fields fall
-     * back to the already stored value when the incoming value is null, so that an existing row is
-     * never stripped of details it already has.
-     *
-     * @return true if a new row was inserted, false if an existing row was updated.
-     */
     suspend fun upsert(ebmsMessageDetail: EbmsMessageDetail): Boolean = withContext(Dispatchers.IO) {
         transaction(database.db) {
             val existing = EbmsMessageDetailTable
@@ -303,10 +295,6 @@ private fun UpdateBuilder<*>.populateFrom(ebmsMessageDetail: EbmsMessageDetail) 
     this[savedAt] = ebmsMessageDetail.savedAt.truncatedTo(ChronoUnit.MICROS)
 }
 
-/**
- * Values applied when an upsert hits an existing row. Nullable fields fall back to the already
- * stored value when the incoming value is null.
- */
 private fun EbmsMessageDetail.withFallbacksFrom(existing: EbmsMessageDetail) = this.copy(
     refToMessageId = this.refToMessageId ?: existing.refToMessageId,
     fromRole = this.fromRole ?: existing.fromRole,
