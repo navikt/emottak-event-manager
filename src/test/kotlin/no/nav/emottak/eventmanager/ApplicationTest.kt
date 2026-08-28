@@ -46,7 +46,6 @@ import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesA
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
-import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
@@ -65,6 +64,7 @@ import no.nav.security.mock.oauth2.MockOAuth2Server
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
 import kotlin.uuid.Uuid
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 
 class ApplicationTest : StringSpec({
 
@@ -463,6 +463,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
+            messageInfoList[0].eventData shouldBe relatedEvent.eventData
+            messageInfoList[0].eventStatus shouldBe INFORMATION.dbValue
         }
     }
 
@@ -485,6 +487,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
+            messageInfoList[0].eventData shouldBe relatedEvent.eventData
+            messageInfoList[0].eventStatus shouldBe INFORMATION.dbValue
         }
     }
 

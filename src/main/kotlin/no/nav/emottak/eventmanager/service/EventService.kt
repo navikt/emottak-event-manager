@@ -102,7 +102,9 @@ class EventService(
                 MessageLogDto(
                     eventDate = it.createdAt.toOsloZone().toString(),
                     eventDescription = it.eventType.description,
-                    eventId = it.eventType.value.toString()
+                    eventId = it.eventType.value.toString(),
+                    eventData = it.eventData,
+                    eventStatus = if (it.getEventStatusChangeEnum() != null) it.getEventStatusChangeEnum()!!.dbValue else EventStatusEnum.INFORMATION.dbValue
                 )
             }.toList()
     }
