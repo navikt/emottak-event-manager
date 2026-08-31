@@ -463,6 +463,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
+            messageInfoList[0].eventData shouldBe relatedEvent.eventData
+            messageInfoList[0].eventStatus shouldBe INFORMATION.dbValue
         }
     }
 
@@ -485,6 +487,8 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].eventDate shouldBe relatedEvent.createdAt.toOsloZone().toString()
             messageInfoList[0].eventDescription shouldBe relatedEvent.eventType.description
             messageInfoList[0].eventId shouldBe relatedEvent.eventType.value.toString()
+            messageInfoList[0].eventData shouldBe relatedEvent.eventData
+            messageInfoList[0].eventStatus shouldBe INFORMATION.dbValue
         }
     }
 
