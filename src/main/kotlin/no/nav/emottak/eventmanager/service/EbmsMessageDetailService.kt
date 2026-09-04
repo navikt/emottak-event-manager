@@ -97,7 +97,7 @@ class EbmsMessageDetailService(
         val relatedReadableIds = if (conversationId.isNotBlank()) {
             // Ikke behov for å gjøre et nytt DB-kall for å hente relaterte meldinger hvis man har filtrert på conversationId
             messageDetailsPage.content.associate { md ->
-                Pair(md.requestId, messageDetailsPage.content.joinToString(separator = ",") { it.generateReadableId() })
+                Pair(md.requestId, messageDetailsPage.content.sortedBy { it.savedAt }.joinToString(separator = ",") { it.readableId ?: it.generateReadableId() })
             }
         } else {
             log.debug("Finding related readable id's for corresponding conversation id's...")
@@ -114,9 +114,10 @@ class EbmsMessageDetailService(
         val eventTypes = getRelatedEventTypes(relatedEvents)
 
         val resultList = messageDetailsList.map { msgDetail ->
-            val senderName = msgDetail.getReadableSenderName() ?: findSenderName(msgDetail.requestId, relatedEvents)
-            val refParam = msgDetail.refParam ?: findRefParam(msgDetail.requestId, relatedEvents)
-            val messageStatus = getMessageStatus(msgDetail.requestId, relatedEvents, eventTypes)
+            val events = relatedEvents.filter { it.requestId == msgDetail.requestId }
+            val senderName = msgDetail.getReadableSenderName() ?: findSenderName(events)
+            val refParam = msgDetail.refParam ?: findRefParam(events)
+            val messageStatus = getMessageStatus(events, eventTypes)
 
             MessageDto(
                 receivedDate = msgDetail.savedAt.toOsloZone().toString(),
@@ -127,8 +128,9 @@ class EbmsMessageDetailService(
                 referenceParameter = refParam,
                 senderName = senderName,
                 cpaId = msgDetail.cpaId,
-                count = relatedEvents.count(),
-                status = messageStatus
+                count = events.count(),
+                status = messageStatus,
+                readableId = msgDetail.readableId ?: msgDetail.generateReadableId()
             )
         }
         log.debug("Returning ${messageDetailsPage.size} message details")
@@ -149,11 +151,11 @@ class EbmsMessageDetailService(
             return emptyList()
         }
 
-        val relatedEvents = eventRepository.findByRequestId(messageDetails.requestId)
+        val events = eventRepository.findByRequestId(messageDetails.requestId)
 
-        val senderName = messageDetails.getReadableSenderName() ?: findSenderName(messageDetails.requestId, relatedEvents)
-        val refParam = messageDetails.refParam ?: findRefParam(messageDetails.requestId, relatedEvents)
-        val messageStatus = getMessageStatus(messageDetails.requestId, relatedEvents)
+        val senderName = messageDetails.getReadableSenderName() ?: findSenderName(events)
+        val refParam = messageDetails.refParam ?: findRefParam(events)
+        val messageStatus = getMessageStatus(events)
 
         return listOf(
             ReadableIdDto(
@@ -185,9 +187,9 @@ class EbmsMessageDetailService(
         return distinctRolesServicesActionsRepository.getAll()
     }
 
-    private fun findSenderName(requestId: Uuid, events: List<Event>): String {
+    private fun findSenderName(events: List<Event>): String {
         events.firstOrNull {
-            it.requestId == requestId && it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
+            it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData[EventDataType.SENDER_NAME.value]
@@ -197,9 +199,9 @@ class EbmsMessageDetailService(
         return Constants.UNKNOWN
     }
 
-    private fun findRefParam(requestId: Uuid, events: List<Event>): String {
+    private fun findRefParam(events: List<Event>): String {
         events.firstOrNull {
-            it.requestId == requestId && it.eventType == EventType.REFERENCE_RETRIEVED
+            it.eventType == EventType.REFERENCE_RETRIEVED
         }?.let { event ->
             val eventData = Json.decodeFromString<Map<String, String>>(event.eventData)
             eventData[EventDataType.REFERENCE_PARAMETER.value]
@@ -216,12 +218,8 @@ class EbmsMessageDetailService(
         return eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)
     }
 
-    private suspend fun getMessageStatus(requestId: Uuid, relatedEvents: List<Event>, eventTypes: List<no.nav.emottak.eventmanager.model.EventType>? = null): String {
-        val relatedEventTypeIds = relatedEvents.filter { event ->
-            event.requestId == requestId
-        }.map { event ->
-            event.eventType.value
-        }
+    private suspend fun getMessageStatus(events: List<Event>, eventTypes: List<no.nav.emottak.eventmanager.model.EventType>? = null): String {
+        val relatedEventTypeIds = events.map { it.eventType.value }
         val relatedEventTypes = eventTypes?.filter { eventType ->
             eventType.eventTypeId in relatedEventTypeIds
         } ?: eventTypeRepository.findEventTypesByIds(relatedEventTypeIds)

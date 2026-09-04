@@ -13,5 +13,6 @@ data class MessageDto(
     val senderName: String? = null,
     val cpaId: String? = null,
     val count: Int,
-    val status: String? = null
+    val status: String? = null,
+    val readableId: String
 )
