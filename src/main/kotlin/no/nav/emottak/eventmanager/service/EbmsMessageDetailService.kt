@@ -72,18 +72,40 @@ class EbmsMessageDetailService(
         readableId: String = "",
         cpaId: String = "",
         messageId: String = "",
+        conversationId: String = "",
         role: String = "",
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
     ): PageDto<MessageDto> {
-        val filterMsg = createFilterLogMessage(from, to, readableId, cpaId, messageId, role, service, action, pageable)
+        val filterMsg = createFilterLogMessage(from, to, readableId, cpaId, messageId, conversationId, role, service, action, pageable)
         log.info("Fetching message details by time and filter: $filterMsg")
-        val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(from, to, readableId, cpaId, messageId, role, service, action, pageable)
+        val messageDetailsPage = ebmsMessageDetailRepository.findByTimeInterval(
+            from = from,
+            to = to,
+            readableIdPattern = readableId,
+            cpaIdPattern = cpaId,
+            messageIdPattern = messageId,
+            conversationId = conversationId,
+            role = role,
+            service = service,
+            action = action,
+            pageable = pageable
+        )
         val messageDetailsList = messageDetailsPage.content
 
-        log.debug("Finding related readable id's for corresponding conversation id's...")
-        val relatedReadableIds = ebmsMessageDetailRepository.findRelatedReadableIds(messageDetailsList.map { it.conversationId }, messageDetailsList.map { it.requestId })
+        val relatedReadableIds = if (conversationId.isNotBlank()) {
+            // Ikke behov for å gjøre et nytt DB-kall for å hente relaterte meldinger hvis man har filtrert på conversationId
+            messageDetailsPage.content.associate { md ->
+                Pair(md.requestId, messageDetailsPage.content.joinToString(separator = ",") { it.generateReadableId() })
+            }
+        } else {
+            log.debug("Finding related readable id's for corresponding conversation id's...")
+            ebmsMessageDetailRepository.findRelatedReadableIds(
+                messageDetailsList.map { it.conversationId },
+                messageDetailsList.map { it.requestId }
+            )
+        }
 
         log.debug("Finding events for related readable id's...")
         val relatedEvents = eventRepository.findByRequestIds(messageDetailsList.map { it.requestId })
@@ -223,6 +245,7 @@ class EbmsMessageDetailService(
         readableId: String = "",
         cpaId: String = "",
         messageId: String = "",
+        conversationId: String = "",
         role: String = "",
         service: String = "",
         action: String = "",
@@ -234,6 +257,7 @@ class EbmsMessageDetailService(
         if (readableId.isNotBlank()) filters.add("readableId:'$readableId'")
         if (cpaId.isNotBlank()) filters.add("cpaId:'$cpaId'")
         if (messageId.isNotBlank()) filters.add("messageId:'$messageId'")
+        if (conversationId.isNotBlank()) filters.add("conversationId:'$conversationId'")
         if (role.isNotBlank()) filters.add("role:'$role'")
         if (service.isNotBlank()) filters.add("service:'$service'")
         if (action.isNotBlank()) filters.add("action:'$action'")

@@ -26,6 +26,7 @@ import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
 import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
+import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
@@ -387,6 +388,33 @@ class ApplicationTest : StringSpec({
             val messageDtoList: List<MessageDto> = messageDetailsPage.content
             messageDtoList.size shouldBe 1
             messageDtoList[0].readableIdList shouldBe readableId
+            messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
+            messageDtoList[0].role shouldBe messageDetails.fromRole
+            messageDtoList[0].service shouldBe messageDetails.service
+            messageDtoList[0].action shouldBe messageDetails.action
+            messageDtoList[0].referenceParameter shouldBe UNKNOWN
+            messageDtoList[0].senderName shouldBe UNKNOWN
+            messageDtoList[0].cpaId shouldBe messageDetails.cpaId
+            messageDtoList[0].count shouldBe 1
+            messageDtoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "message-details endpoint should return list of message details with time- and conversationId-filter" {
+        withTestApplication { httpClient ->
+            val messageDetails = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
+            eventRepository.insert(testEvent)
+
+            val url = "/message-details?$FROM_DATE=1970-01-01T00:00&$TO_DATE=2099-12-31T23:59&$CONVERSATION_ID=${messageDetails.conversationId}"
+            val httpResponse = httpClient.getWithAuth(url, getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList.size shouldBe 1
+            messageDtoList[0].readableIdList shouldBe messageDetails.generateReadableId()
             messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageDtoList[0].role shouldBe messageDetails.fromRole
             messageDtoList[0].service shouldBe messageDetails.service
