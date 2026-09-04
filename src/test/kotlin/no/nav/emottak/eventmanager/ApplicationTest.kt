@@ -603,6 +603,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].senderName shouldBe READABLE_SENDER_NAME_NAV_MOTTAK
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            messageInfoList[0].conversationId shouldBe messageDetails.conversationId
         }
     }
 
@@ -628,6 +629,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].senderName shouldBe "OSLO KOMMUNE"
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            messageInfoList[0].conversationId shouldBe messageDetails.conversationId
         }
     }
 
@@ -652,6 +654,7 @@ class ApplicationTest : StringSpec({
 
                 val messageInfoList: List<ReadableIdDto> = httpResponse.body()
                 messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
+                messageInfoList[0].conversationId shouldBe messageDetails.conversationId
             }
         }
     }

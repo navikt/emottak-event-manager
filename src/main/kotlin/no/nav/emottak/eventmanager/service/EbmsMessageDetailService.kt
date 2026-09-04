@@ -165,7 +165,8 @@ class EbmsMessageDetailService(
                 action = messageDetails.action,
                 referenceParameter = refParam,
                 senderName = senderName,
-                status = messageStatus
+                status = messageStatus,
+                conversationId = messageDetails.conversationId
             )
         )
     }
