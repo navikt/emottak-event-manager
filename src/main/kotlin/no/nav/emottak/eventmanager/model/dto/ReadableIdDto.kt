@@ -12,5 +12,6 @@ data class ReadableIdDto(
     val referenceParameter: String? = null,
     val senderName: String? = null,
     val cpaId: String? = null,
-    val status: String? = null
+    val status: String? = null,
+    val conversationId: String
 )

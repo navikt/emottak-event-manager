@@ -26,6 +26,7 @@ import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
 import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
+import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
@@ -344,6 +345,7 @@ class ApplicationTest : StringSpec({
             val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
             val messageDtoList: List<MessageDto> = messageDetailsPage.content
             messageDtoList[0].readableIdList shouldBe messageDetails.generateReadableId()
+            messageDtoList[0].readableId shouldBe messageDetails.generateReadableId()
             messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageDtoList[0].role shouldBe messageDetails.fromRole
             messageDtoList[0].service shouldBe messageDetails.service
@@ -396,6 +398,56 @@ class ApplicationTest : StringSpec({
             messageDtoList[0].cpaId shouldBe messageDetails.cpaId
             messageDtoList[0].count shouldBe 1
             messageDtoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "message-details endpoint should return list of message details with time- and conversationId-filter" {
+        withTestApplication { httpClient ->
+            val messageDetails1 = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository).first()
+            eventRepository.insert(buildTestEvent(requestId = messageDetails1.requestId))
+
+            val messageDetails2 = messageDetails1.copy(
+                requestId = Uuid.random(),
+                savedAt = Instant.parse("2025-04-30T13:00:00.000Z"),
+                action = "Something else"
+            )
+            ebmsMessageDetailRepository.upsert(messageDetails2)
+            eventRepository.insert(buildTestEvent(requestId = messageDetails2.requestId))
+            eventRepository.insert(buildTestEvent(requestId = messageDetails2.requestId))
+            eventRepository.insert(buildTestEvent(requestId = messageDetails2.requestId))
+
+            val url = "/message-details?$FROM_DATE=1970-01-01T00:00&$TO_DATE=2099-12-31T23:59&$CONVERSATION_ID=${messageDetails1.conversationId}"
+            val httpResponse = httpClient.getWithAuth(url, getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList.size shouldBe 2
+
+            messageDtoList[0].readableIdList shouldBe "${messageDetails1.generateReadableId()},${messageDetails2.generateReadableId()}"
+            messageDtoList[0].readableId shouldBe messageDetails2.generateReadableId()
+            messageDtoList[0].receivedDate shouldBe messageDetails2.savedAt.toOsloZone().toString()
+            messageDtoList[0].role shouldBe messageDetails2.fromRole
+            messageDtoList[0].service shouldBe messageDetails2.service
+            messageDtoList[0].action shouldBe messageDetails2.action
+            messageDtoList[0].referenceParameter shouldBe UNKNOWN
+            messageDtoList[0].senderName shouldBe UNKNOWN
+            messageDtoList[0].cpaId shouldBe messageDetails2.cpaId
+            messageDtoList[0].count shouldBe 3
+            messageDtoList[0].status shouldBe "Meldingen er under behandling"
+
+            messageDtoList[1].readableIdList shouldBe "${messageDetails1.generateReadableId()},${messageDetails2.generateReadableId()}"
+            messageDtoList[1].readableId shouldBe messageDetails1.generateReadableId()
+            messageDtoList[1].receivedDate shouldBe messageDetails1.savedAt.toOsloZone().toString()
+            messageDtoList[1].role shouldBe messageDetails1.fromRole
+            messageDtoList[1].service shouldBe messageDetails1.service
+            messageDtoList[1].action shouldBe messageDetails1.action
+            messageDtoList[1].referenceParameter shouldBe UNKNOWN
+            messageDtoList[1].senderName shouldBe UNKNOWN
+            messageDtoList[1].cpaId shouldBe messageDetails1.cpaId
+            messageDtoList[1].count shouldBe 1
+            messageDtoList[1].status shouldBe "Meldingen er under behandling"
         }
     }
 
@@ -575,6 +627,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].senderName shouldBe READABLE_SENDER_NAME_NAV_MOTTAK
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            messageInfoList[0].conversationId shouldBe messageDetails.conversationId
         }
     }
 
@@ -600,6 +653,7 @@ class ApplicationTest : StringSpec({
             messageInfoList[0].senderName shouldBe "OSLO KOMMUNE"
             messageInfoList[0].cpaId shouldBe messageDetails.cpaId
             messageInfoList[0].status shouldBe "Meldingen er under behandling"
+            messageInfoList[0].conversationId shouldBe messageDetails.conversationId
         }
     }
 
@@ -624,6 +678,7 @@ class ApplicationTest : StringSpec({
 
                 val messageInfoList: List<ReadableIdDto> = httpResponse.body()
                 messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
+                messageInfoList[0].conversationId shouldBe messageDetails.conversationId
             }
         }
     }

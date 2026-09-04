@@ -508,4 +508,33 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         retrievedDetails.size shouldBe 1
         retrievedDetails[0].requestId shouldBe messageDetails1.requestId
     }
+
+    "Should retrieve records by time interval and filtered on conversationId" {
+        val (_, md1, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val md2 = buildTestEbmsMessageDetail().copy(
+            conversationId = "conversation-id-B",
+            cpaId = "another-cpa-id",
+            messageId = "another-message-id2",
+            savedAt = Instant.parse("2025-05-01T00:54:46.386Z")
+        )
+        ebmsMessageDetailRepository.upsert(md2)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
+            Instant.parse("1970-01-01T00:00:00Z"),
+            Instant.parse("2099-12-31T23:59:59Z"),
+            conversationId = "conversation-id-B"
+        ).content
+        retrievedDetails.size shouldBe 2
+        retrievedDetails[0].requestId shouldBe md2.requestId
+        retrievedDetails[1].requestId shouldBe md1.requestId
+    }
+
+    "Should not retrieve records by time interval when filtered on non-existing conversationId" {
+        val (_, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
+            Instant.parse("1970-01-01T00:00:00Z"),
+            Instant.parse("2099-12-31T23:59:59Z"),
+            conversationId = "conversation-id"
+        ).content
+        retrievedDetails.size shouldBe 0
+    }
 })

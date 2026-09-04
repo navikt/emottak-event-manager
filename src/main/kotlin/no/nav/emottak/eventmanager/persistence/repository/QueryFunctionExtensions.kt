@@ -22,6 +22,13 @@ internal fun Query.applyFilter(
     if (column != null && value.isNotBlank()) this.andWhere { column.lowerCase() like "%$value%".lowercase() }
 }
 
+internal fun Query.applyEquals(
+    value: String = "",
+    column: Column<String?>? = null
+) {
+    if (column != null && value.isNotBlank()) this.andWhere { column.lowerCase() eq value.lowercase() }
+}
+
 internal fun Query.applyPagableLimitAndOrderBy(pageable: Pageable?, orderByColumn: Column<Instant>, defaultSortOrder: SortOrder = SortOrder.DESC) {
     if (pageable != null) {
         this.limit(pageable.pageSize)

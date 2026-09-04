@@ -136,6 +136,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         readableIdPattern: String = "",
         cpaIdPattern: String = "",
         messageIdPattern: String = "",
+        conversationId: String = "",
         role: String = "",
         service: String = "",
         action: String = "",
@@ -144,6 +145,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
         transaction {
             val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
                 .apply {
+                    this.applyEquals(conversationId, EbmsMessageDetailTable.conversationId.nullable())
                     this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
                     this.applyRoleServiceActionFilters(role, service, action)
                 }.count()
@@ -152,6 +154,7 @@ class EbmsMessageDetailRepository(private val database: Database) {
                     .select(EbmsMessageDetailTable.columns)
                     .where { savedAt.between(from, to) }
                     .apply {
+                        this.applyEquals(conversationId, EbmsMessageDetailTable.conversationId.nullable())
                         this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
                         this.applyRoleServiceActionFilters(role, service, action)
                         this.applyPagableLimitAndOrderBy(pageable, savedAt)

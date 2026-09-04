@@ -207,6 +207,55 @@ class EbmsMessageDetailServiceTest : StringSpec({
         messageInfoList[0].cpaId shouldBe testDetails.cpaId
     }
 
+    "Should call database repository on fetching EBMS message details by time interval and filtered by conversationId" {
+        val testDetails1 = buildTestEbmsMessageDetail()
+        val testEvent1 = buildTestEvent(testDetails1.requestId)
+        val testEventType1 = EventType(
+            eventTypeId = 19,
+            description = "Melding lagret i juridisk logg",
+            status = EventStatusEnum.INFORMATION
+        )
+        val testDetails2 = buildTestEbmsMessageDetail().copy(service = "another-service")
+        val testEvent2 = buildTestEvent(testDetails2.requestId)
+        val testEventType2 = EventType(
+            eventTypeId = 20,
+            description = "Feil ved lagring melding i juridisk logg",
+            status = EventStatusEnum.ERROR
+        )
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+
+        val list = listOf(testDetails1, testDetails2)
+        val pageable = Pageable(1, list.size)
+        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, conversationId = testDetails1.conversationId) } returns PageDto(
+            pageable.pageNumber,
+            pageable.pageSize,
+            "ASC",
+            list.size.toLong(),
+            list
+        )
+        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent1.eventType.value)) } returns listOf(testEventType1)
+        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent2.eventType.value)) } returns listOf(testEventType2)
+
+        coEvery { eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId)) } returns listOf(testEvent1, testEvent2)
+
+        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, conversationId = testDetails1.conversationId)
+        val messageInfoList = messageInfoPage.content
+
+        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, conversationId = testDetails1.conversationId) }
+        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent1.eventType.value)) }
+        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent2.eventType.value)) }
+        coVerify(exactly = 0) { ebmsMessageDetailRepository.findRelatedReadableIds(any(), any()) }
+
+        messageInfoList.size shouldBe 2
+        messageInfoList[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
+        messageInfoList[0].cpaId shouldBe testDetails1.cpaId
+        messageInfoList[0].service shouldBe testDetails1.service
+        messageInfoList[1].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
+        messageInfoList[1].cpaId shouldBe testDetails2.cpaId
+        messageInfoList[1].service shouldBe testDetails2.service
+    }
+
     "Should call database repository on fetching EBMS message details by Request ID" {
         var testDetails = buildTestEbmsMessageDetail()
         testDetails = testDetails.copy(

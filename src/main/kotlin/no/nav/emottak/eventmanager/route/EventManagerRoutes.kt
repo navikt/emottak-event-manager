@@ -7,6 +7,7 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.util.logging.error
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
+import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.ID
@@ -79,6 +80,7 @@ fun Route.eventManagerRoutes(
         val readableId = call.request.queryParameters[READABLE_ID] ?: ""
         val cpaId = call.request.queryParameters[CPA_ID] ?: ""
         val messageId = call.request.queryParameters[MESSAGE_ID] ?: ""
+        val conversationId = call.request.queryParameters[CONVERSATION_ID] ?: ""
 
         val (role, service, action) = getRoleServiceActionParameters(call)
         val pageable = getPagableParameters(call) ?: return@get
@@ -90,6 +92,7 @@ fun Route.eventManagerRoutes(
             readableId,
             cpaId,
             messageId,
+            conversationId,
             role,
             service,
             action,
