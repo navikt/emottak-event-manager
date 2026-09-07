@@ -179,6 +179,7 @@ class ApplicationTest : StringSpec({
 
             val eventsPage: PageDto<EventDto> = httpResponse.body()
             val events: List<EventDto> = eventsPage.content
+            events.size shouldBe 1
             events[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
             events[0].description shouldBe testEvent.eventType.description
             events[0].eventData shouldBe testEvent.eventData
@@ -188,6 +189,42 @@ class ApplicationTest : StringSpec({
             events[0].action shouldBe testMessageDetails.action
             events[0].referenceParameter shouldBe testMessageDetails.refParam
             events[0].senderName shouldBe testMessageDetails.senderName
+        }
+    }
+
+    "events endpoint should return list of events, and exclude events with blank or null conversationId" {
+        withTestApplication { httpClient ->
+            val requestId = Uuid.random()
+            val testEvent = buildTestEvent(requestId = requestId)
+            val testMessageDetails = buildTestEbmsMessageDetail().copy(requestId = requestId)
+
+            val requestIdBlank = Uuid.random()
+            val testEventBlank = testEvent.copy(requestId = requestIdBlank, conversationId = "")
+            val testMessageDetailsBlank = testMessageDetails.copy(requestId = requestIdBlank, conversationId = "", senderName = "Blank string")
+
+            val requestIdEmpty = Uuid.random()
+            val testEventEmpty = testEvent.copy(requestId = requestIdEmpty, conversationId = "  ")
+            val testMessageDetailsEmpty = testMessageDetails.copy(requestId = requestIdEmpty, conversationId = "  ", senderName = "Tom string")
+
+            val testEventNull = testEvent.copy(requestId = Uuid.random(), conversationId = null)
+
+            eventRepository.insert(testEvent)
+            ebmsMessageDetailRepository.upsert(testMessageDetails)
+            eventRepository.insert(testEventBlank)
+            ebmsMessageDetailRepository.upsert(testMessageDetailsBlank)
+            eventRepository.insert(testEventEmpty)
+            ebmsMessageDetailRepository.upsert(testMessageDetailsEmpty)
+            eventRepository.insert(testEventNull)
+
+            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val eventsPage: PageDto<EventDto> = httpResponse.body()
+            val events: List<EventDto> = eventsPage.content
+            events.size shouldBe 2
+            events[0].senderName shouldBe testMessageDetailsEmpty.senderName
+            events[1].senderName shouldBe testMessageDetails.senderName
         }
     }
 
@@ -344,6 +381,7 @@ class ApplicationTest : StringSpec({
 
             val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
             val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList.size shouldBe 4
             messageDtoList[0].readableIdList shouldBe messageDetails.generateReadableId()
             messageDtoList[0].readableId shouldBe messageDetails.generateReadableId()
             messageDtoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
@@ -355,6 +393,53 @@ class ApplicationTest : StringSpec({
             messageDtoList[0].cpaId shouldBe messageDetails.cpaId
             messageDtoList[0].count shouldBe 1
             messageDtoList[0].status shouldBe "Meldingen er under behandling"
+        }
+    }
+
+    "message-details endpoint should return list of message details, and exclude events with blank conversationId" {
+        withTestApplication { httpClient ->
+            val (messageDetails, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+            val testEvent = buildTestEvent(requestId = messageDetails.requestId)
+            eventRepository.insert(testEvent)
+
+            val requestIdBlank = Uuid.random()
+            val testEventBlank = testEvent.copy(requestId = requestIdBlank, conversationId = "")
+            val testMessageDetailsBlank = messageDetails.copy(
+                requestId = requestIdBlank,
+                savedAt = Instant.parse("2025-04-30T12:00:01.386Z"),
+                conversationId = "",
+                senderName = "Blank string"
+            )
+
+            val requestIdEmpty = Uuid.random()
+            val testEventEmpty = testEvent.copy(requestId = requestIdEmpty, conversationId = "  ")
+            val testMessageDetailsEmpty = messageDetails.copy(
+                requestId = requestIdEmpty,
+                savedAt = Instant.parse("2025-04-30T12:00:02.386Z"),
+                conversationId = "  ",
+                senderName = "Tom string"
+            )
+
+            val testEventNull = testEvent.copy(requestId = Uuid.random(), conversationId = null)
+
+            eventRepository.insert(testEventBlank)
+            ebmsMessageDetailRepository.upsert(testMessageDetailsBlank)
+            eventRepository.insert(testEventEmpty)
+            ebmsMessageDetailRepository.upsert(testMessageDetailsEmpty)
+            eventRepository.insert(testEventNull)
+
+            val httpResponse = httpClient.getWithAuth("/message-details?$FROM_DATE=2025-04-30T14:00&$TO_DATE=2025-04-30T15:00&$SORT=asc", getToken)
+
+            httpResponse.status shouldBe HttpStatusCode.OK
+
+            val messageDetailsPage: PageDto<MessageDto> = httpResponse.body()
+            val messageDtoList: List<MessageDto> = messageDetailsPage.content
+            messageDtoList.size shouldBe 5
+            messageDtoList[0].senderName shouldBe testMessageDetailsEmpty.senderName
+            messageDtoList[1].senderName shouldBe UNKNOWN
+            messageDtoList[2].senderName shouldBe UNKNOWN
+            messageDtoList[3].senderName shouldBe READABLE_SENDER_NAME_NAV_MOTTAK
+            messageDtoList[4].senderName shouldBe READABLE_SENDER_NAME_NAV_MOTTAK
         }
     }
 
