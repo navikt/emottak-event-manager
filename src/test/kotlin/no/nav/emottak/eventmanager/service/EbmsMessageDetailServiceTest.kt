@@ -303,8 +303,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.generateReadableId())
 
-        coVerify (exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), 2) }
-        coVerify (exactly = 1) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
+        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), 2) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
         coVerify { eventRepository.findByRequestId(testDetails.requestId) }
 
         readableIdInfoList.size shouldBe 1
@@ -337,8 +337,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
         readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
 
-        coVerify (exactly = 1) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
-        coVerify (exactly = 0) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
+        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
         coVerify { eventRepository.findByRequestId(testDetails.requestId) }
     }
 
