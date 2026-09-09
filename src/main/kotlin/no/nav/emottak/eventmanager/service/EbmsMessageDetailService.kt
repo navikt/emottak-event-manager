@@ -143,7 +143,10 @@ class EbmsMessageDetailService(
             Pair("Request ID", ebmsMessageDetailRepository.findByRequestId(Uuid.parse(id)))
         } else {
             log.info("Fetching message details by Readable ID: $id")
-            Pair("Readable ID", ebmsMessageDetailRepository.findByReadableIdPattern(id, 1000))
+            // Kjør spørring med = hvis id er 25 tegn, som er hele lengden på readableId:
+            if (id.length == 25) Pair("Readable ID", ebmsMessageDetailRepository.findByReadableId(id))
+            // Ellers kjører vi med like, som er MYE tregere:
+            else Pair("Readable ID", ebmsMessageDetailRepository.findByReadableIdPattern(id, 2))
         }
 
         if (messageDetails == null) {
