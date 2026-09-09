@@ -8,14 +8,7 @@ import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.lowerCase
 import java.time.Instant
 
-internal fun Query.applyPatternFilter(
-    pattern: String = "",
-    patternColumn: Column<String?>? = null
-) {
-    if (patternColumn != null && pattern.isNotBlank()) this.andWhere { patternColumn.lowerCase() like "%$pattern%".lowercase() }
-}
-
-internal fun Query.applyFilter(
+internal fun Query.applyLike(
     value: String = "",
     column: Column<String?>? = null
 ) {

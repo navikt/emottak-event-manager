@@ -308,13 +308,13 @@ private fun EbmsMessageDetail.withFallbacksFrom(existing: EbmsMessageDetail) = t
 )
 
 private fun Query.applyReadableIdCpaIdMessageIdFilters(readableIdPattern: String = "", cpaIdPattern: String = "", messageIdPattern: String = "") {
-    this.applyPatternFilter(readableIdPattern, readableId)
-    this.applyPatternFilter(cpaIdPattern, cpaId.nullable())
-    this.applyPatternFilter(messageIdPattern, messageId.nullable())
+    this.applyLike(readableIdPattern, readableId)
+    this.applyLike(cpaIdPattern, cpaId.nullable())
+    this.applyLike(messageIdPattern, messageId.nullable())
 }
 
 internal fun Query.applyRoleServiceActionFilters(role: String = "", service: String = "", action: String = "") {
-    this.applyFilter(role, EbmsMessageDetailTable.fromRole)
-    this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
-    this.applyFilter(action, EbmsMessageDetailTable.action.nullable())
+    this.applyLike(role, EbmsMessageDetailTable.fromRole)
+    this.applyLike(service, EbmsMessageDetailTable.service.nullable())
+    this.applyLike(action, EbmsMessageDetailTable.action.nullable())
 }
