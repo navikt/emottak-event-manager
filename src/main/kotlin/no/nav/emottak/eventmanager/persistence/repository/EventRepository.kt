@@ -17,6 +17,7 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.not
@@ -111,28 +112,7 @@ class EventRepository(private val database: Database) {
                 .select(EventTable.columns)
                 .where { createdAt.between(from, to) }
                 .andWhere { not(conversationId.isNullOrEmpty()) }
-            val totalCount = query.count()
-            val list = query.apply {
-                if (pageable != null) {
-                    this.limit(pageable.pageSize).offset(pageable.offset)
-                    this.orderBy(createdAt, pageable.getSortOrder())
-                }
-            }
-                .mapNotNull {
-                    Event(
-                        eventType = EventType.fromInt(it[eventTypeId]),
-                        requestId = it[requestIdColumn].toKotlinUuid(),
-                        contentId = it[contentId],
-                        messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
-                    )
-                }
-                .toList()
-            var returnPageable = pageable
-            if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            findByTimeIntervalQuery(query, pageable)
         }
     }
 
@@ -150,32 +130,35 @@ class EventRepository(private val database: Database) {
                 .select(EventTable.columns)
                 .where { createdAt.between(from, to) }
                 .andWhere { not(conversationId.isNullOrEmpty()) }
-            val totalCount = query.apply {
-                this.applyRoleServiceActionFilters(role, service, action)
-            }
-                .count()
-            val list = query.apply {
-                this.applyRoleServiceActionFilters(role, service, action)
-                if (pageable != null) {
-                    this.limit(pageable.pageSize).offset(pageable.offset)
-                    this.orderBy(createdAt, pageable.getSortOrder())
+                .apply {
+                    this.applyRoleServiceActionFilters(role, service, action)
                 }
-            }
-                .mapNotNull {
-                    Event(
-                        eventType = EventType.fromInt(it[eventTypeId]),
-                        requestId = it[requestIdColumn].toKotlinUuid(),
-                        contentId = it[contentId],
-                        messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
-                    )
-                }
-                .toList()
-            var returnPageable = pageable
-            if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
+            findByTimeIntervalQuery(query, pageable)
         }
+    }
+
+    private fun findByTimeIntervalQuery(query: Query, pageable: Pageable? = null): PageDto<Event> {
+        val totalCount = query.count()
+        val list = query.apply {
+            if (pageable != null) {
+                this.limit(pageable.pageSize).offset(pageable.offset)
+                this.orderBy(createdAt, pageable.getSortOrder())
+            }
+        }
+            .mapNotNull {
+                Event(
+                    eventType = EventType.fromInt(it[eventTypeId]),
+                    requestId = it[requestIdColumn].toKotlinUuid(),
+                    contentId = it[contentId],
+                    messageId = it[messageId],
+                    eventData = Json.encodeToString(it[eventData]),
+                    createdAt = it[createdAt],
+                    conversationId = it[conversationId]
+                )
+            }
+            .toList()
+        var returnPageable = pageable
+        if (returnPageable == null) returnPageable = Pageable(1, list.size)
+        return PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
     }
 }

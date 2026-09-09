@@ -283,7 +283,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
     }
 
-    "Should call database repository on fetching EBMS message details by Readable ID" {
+    "Should call database repository on fetching EBMS message details by Readable ID (length 25)" {
         var testDetails = buildTestEbmsMessageDetail()
         testDetails = testDetails.copy(
             readableId = testDetails.generateReadableId()
@@ -297,17 +297,54 @@ class EbmsMessageDetailServiceTest : StringSpec({
         )
 
         coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), any()) } returns testDetails
+        coEvery { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) } returns testDetails
         coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
         coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
         val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.generateReadableId())
 
-        coVerify { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), 1000) }
+        coVerify (exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(testDetails.generateReadableId(), 2) }
+        coVerify (exactly = 1) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
         coVerify { eventRepository.findByRequestId(testDetails.requestId) }
 
         readableIdInfoList.size shouldBe 1
         readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
+    }
+
+    "Should call database repository on fetching EBMS message details by Readable ID (length shorter than 25)" {
+        var testDetails = buildTestEbmsMessageDetail()
+        testDetails = testDetails.copy(
+            readableId = testDetails.generateReadableId()
+        )
+
+        val testEvent = buildTestEvent()
+        val testEventType = EventType(
+            eventTypeId = 19,
+            description = "Melding lagret i juridisk logg",
+            status = EventStatusEnum.INFORMATION
+        )
+        val readableIdPattern = testDetails.generateReadableId().drop(3).dropLast(2)
+
+        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, any()) } returns testDetails
+        coEvery { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) } returns testDetails
+        coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
+        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableIdPattern)
+
+        readableIdInfoList.size shouldBe 1
+        readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
+        readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
+
+        coVerify (exactly = 1) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
+        coVerify (exactly = 0) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
+        coVerify { eventRepository.findByRequestId(testDetails.requestId) }
+    }
+
+    "Should not call database repository on fetching EBMS message details when Readable ID length is longer than 25" {
+        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails("IN.2505081454.UNKN.a673c3.aaaa")
+        readableIdInfoList.size shouldBe 0
     }
 
     "Should find sender name from related events" {

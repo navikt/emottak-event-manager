@@ -144,9 +144,15 @@ class EbmsMessageDetailService(
         } else {
             log.info("Fetching message details by Readable ID: $id")
             // Kjør spørring med = hvis id er 25 tegn, som er hele lengden på readableId:
-            if (id.length == 25) Pair("Readable ID", ebmsMessageDetailRepository.findByReadableId(id))
-            // Ellers kjører vi med like, som er MYE tregere:
-            else Pair("Readable ID", ebmsMessageDetailRepository.findByReadableIdPattern(id, 2))
+            if (id.length == 25) {
+                Pair("Readable ID", ebmsMessageDetailRepository.findByReadableId(id))
+            } // Ellers kjører vi med like, som er MYE tregere:
+            else if (id.length < 25) {
+                Pair("Readable ID", ebmsMessageDetailRepository.findByReadableIdPattern(id, 2))
+            } else {
+                log.warn("No ReadableId's have more than 25 characters: '$id'")
+                return emptyList()
+            }
         }
 
         if (messageDetails == null) {
