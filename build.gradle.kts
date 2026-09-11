@@ -1,7 +1,7 @@
 plugins {
-    kotlin("jvm") version "2.3.21"
-    id("io.ktor.plugin") version "3.4.3"
-    kotlin("plugin.serialization") version "2.3.21"
+    kotlin("jvm") version "2.4.10"
+    id("io.ktor.plugin") version "3.5.2"
+    kotlin("plugin.serialization") version "2.4.10"
     id("org.jlleitschuh.gradle.ktlint") version "11.6.1"
 }
 
@@ -32,7 +32,9 @@ tasks {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
     compilerOptions {
-        freeCompilerArgs = listOf("-opt-in=kotlin.uuid.ExperimentalUuidApi,com.sksamuel.hoplite.ExperimentalHoplite,io.ktor.utils.io.InternalAPI")
+        optIn.add("kotlin.ExperimentalStdlibApi")
+        optIn.add("com.sksamuel.hoplite.ExperimentalHoplite")
+        optIn.add("io.ktor.utils.io.InternalAPI")
     }
 }
 
