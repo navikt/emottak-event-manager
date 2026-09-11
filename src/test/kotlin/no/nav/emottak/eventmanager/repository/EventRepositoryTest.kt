@@ -5,6 +5,7 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import kotlin.uuid.Uuid
 
@@ -228,5 +229,36 @@ class EventRepositoryTest : RepositoryTestBase({
 
         retrievedEvents.size shouldBe 1
         retrievedEvents shouldContain event2
+    }
+
+    "Should not retrieve events where conversation_id is null or blank" {
+        val actionFilter = "EgenandelForesporsel"
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(action = actionFilter)
+
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
+
+        val eventBlankConversationId = Event(
+            eventType = EventType.MESSAGE_READ_FROM_QUEUE,
+            requestId = Uuid.parse("2af3496a-8d33-4af0-ab3e-fa1da4cd193e"),
+            messageId = "2af3496a-8d33-4af0-ab3e-fa1da4cd193e",
+            eventData = "{\"queue_name\": \"team-emottak.smtp.out.ebxml.payload\"}",
+            createdAt = Instant.parse("2026-09-01T10:02:03.400Z")
+        )
+        eventRepository.insert(eventBlankConversationId)
+
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+
+        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+            Instant.parse("2026-09-01T00:00:00Z"),
+            Instant.parse("2026-09-02T00:00:00Z"),
+            action = actionFilter
+        ).content
+
+        retrievedEvents.size shouldBe 0
     }
 })

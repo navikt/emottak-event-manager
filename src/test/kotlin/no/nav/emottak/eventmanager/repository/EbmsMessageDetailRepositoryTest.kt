@@ -176,6 +176,22 @@ class EbmsMessageDetailRepositoryTest : RepositoryTestBase({
         retrievedDetails[0].requestId shouldBe messageDetailsInInterval1.requestId
     }
 
+    "findByTimeInterval should exclude records with conversationId as empty" {
+        val (messageDetailsInInterval1, _, _, _) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
+        val messageDetailsInIntervalBlankConversationId = buildTestEbmsMessageDetail().copy(
+            conversationId = "",
+            savedAt = Instant.parse("2025-04-30T12:59:00.00Z")
+        )
+        ebmsMessageDetailRepository.upsert(messageDetailsInIntervalBlankConversationId)
+        val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
+            Instant.parse("2025-04-30T12:00:00Z"),
+            Instant.parse("2025-04-30T13:00:00Z"),
+            readableIdPattern = messageDetailsInInterval1.generateReadableId()
+        ).content
+        retrievedDetails.size shouldBe 1
+        retrievedDetails[0].requestId shouldBe messageDetailsInInterval1.requestId
+    }
+
     "Should retrieve records by time interval and filtered by part of readableId string-value" {
         val (_, _, md3, md4) = buildAndInsertTestEbmsMessageDetailFindData(ebmsMessageDetailRepository)
         val retrievedDetails = ebmsMessageDetailRepository.findByTimeInterval(
