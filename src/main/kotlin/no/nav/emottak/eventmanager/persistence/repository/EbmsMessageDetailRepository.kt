@@ -31,9 +31,11 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.TextColumnType
 import org.jetbrains.exposed.sql.alias
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.castTo
 import org.jetbrains.exposed.sql.groupConcat
 import org.jetbrains.exposed.sql.lowerCase
+import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -143,26 +145,24 @@ class EbmsMessageDetailRepository(private val database: Database) {
         pageable: Pageable? = null
     ): PageDto<EbmsMessageDetail> = withContext(Dispatchers.IO) {
         transaction {
-            val totalCount = EbmsMessageDetailTable.select(savedAt).where { savedAt.between(from, to) }
+            val query = EbmsMessageDetailTable
+                .select(EbmsMessageDetailTable.columns)
+                .where { savedAt.between(from, to) }
+                .andWhere { not(EbmsMessageDetailTable.conversationId.isNullOrEmpty()) }
                 .apply {
                     this.applyEquals(conversationId, EbmsMessageDetailTable.conversationId.nullable())
                     this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
                     this.applyRoleServiceActionFilters(role, service, action)
-                }.count()
-            val list =
-                EbmsMessageDetailTable
-                    .select(EbmsMessageDetailTable.columns)
-                    .where { savedAt.between(from, to) }
-                    .apply {
-                        this.applyEquals(conversationId, EbmsMessageDetailTable.conversationId.nullable())
-                        this.applyReadableIdCpaIdMessageIdFilters(readableIdPattern, cpaIdPattern, messageIdPattern)
-                        this.applyRoleServiceActionFilters(role, service, action)
-                        this.applyPagableLimitAndOrderBy(pageable, savedAt)
-                    }
-                    .mapNotNull {
-                        toEbmsMessageDetail(it)
-                    }
-                    .toList()
+                }
+            val totalCount = query.count()
+            val list = query
+                .apply {
+                    this.applyPagableLimitAndOrderBy(pageable, savedAt)
+                }
+                .mapNotNull {
+                    toEbmsMessageDetail(it)
+                }
+                .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
             PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
@@ -308,13 +308,13 @@ private fun EbmsMessageDetail.withFallbacksFrom(existing: EbmsMessageDetail) = t
 )
 
 private fun Query.applyReadableIdCpaIdMessageIdFilters(readableIdPattern: String = "", cpaIdPattern: String = "", messageIdPattern: String = "") {
-    this.applyPatternFilter(readableIdPattern, readableId)
-    this.applyPatternFilter(cpaIdPattern, cpaId.nullable())
-    this.applyPatternFilter(messageIdPattern, messageId.nullable())
+    this.applyLike(readableIdPattern, readableId)
+    this.applyLike(cpaIdPattern, cpaId.nullable())
+    this.applyLike(messageIdPattern, messageId.nullable())
 }
 
 internal fun Query.applyRoleServiceActionFilters(role: String = "", service: String = "", action: String = "") {
-    this.applyFilter(role, EbmsMessageDetailTable.fromRole)
-    this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
-    this.applyFilter(action, EbmsMessageDetailTable.action.nullable())
+    this.applyLike(role, EbmsMessageDetailTable.fromRole)
+    this.applyLike(service, EbmsMessageDetailTable.service.nullable())
+    this.applyLike(action, EbmsMessageDetailTable.action.nullable())
 }

@@ -160,8 +160,8 @@ class ConversationStatusRepository(private val database: Database) {
             }
             .apply {
                 this.applyDatetimeFilter(createdAt, from, to) // TODO: Filtrere på createdAt eller statusAt?
-                this.applyPatternFilter(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
-                this.applyFilter(service, EbmsMessageDetailTable.service.nullable())
+                this.applyLike(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
+                this.applyLike(service, EbmsMessageDetailTable.service.nullable())
             }
             .orderBy(conversationId)
     }
