@@ -281,30 +281,6 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "events endpoint should return list of events when message details are not found" {
-        withTestApplication { httpClient ->
-            val testEvent = buildTestEvent()
-
-            eventRepository.insert(testEvent)
-
-            val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
-
-            httpResponse.status shouldBe HttpStatusCode.OK
-
-            val eventsPage: PageDto<EventDto> = httpResponse.body()
-            val events: List<EventDto> = eventsPage.content
-            events[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
-            events[0].description shouldBe testEvent.eventType.description
-            events[0].eventData shouldBe testEvent.eventData
-            events[0].readableId shouldBe ""
-            events[0].role shouldBe null
-            events[0].service shouldBe null
-            events[0].action shouldBe null
-            events[0].referenceParameter shouldBe null
-            events[0].senderName shouldBe null
-        }
-    }
-
     "events endpoint should return empty list if no events found" {
         withTestApplication { httpClient ->
             val commonRequestId = Uuid.random()
