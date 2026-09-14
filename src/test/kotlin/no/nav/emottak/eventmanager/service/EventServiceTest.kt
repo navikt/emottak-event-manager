@@ -213,7 +213,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeInterval(from, to, any()) } returns PageDto(
+        coEvery { eventRepository.findByTimeInterval(from, to, pageable = any()) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -242,7 +242,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role = roleFilter) } returns PageDto(
+        coEvery { eventRepository.findByTimeInterval(from, to, role = roleFilter) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -258,7 +258,7 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, role = roleFilter) }
+        coVerify { eventRepository.findByTimeInterval(from, to, role = roleFilter) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
@@ -271,7 +271,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, service = serviceFilter) } returns PageDto(
+        coEvery { eventRepository.findByTimeInterval(from, to, service = serviceFilter) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -287,7 +287,7 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, service = serviceFilter) }
+        coVerify { eventRepository.findByTimeInterval(from, to, service = serviceFilter) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
@@ -300,7 +300,7 @@ class EventServiceTest : StringSpec({
 
         val list = listOf(testEvent)
         val pageable = Pageable(1, list.size)
-        coEvery { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, action = actionFilter) } returns PageDto(
+        coEvery { eventRepository.findByTimeInterval(from, to, action = actionFilter) } returns PageDto(
             pageable.pageNumber,
             pageable.pageSize,
             "ASC",
@@ -316,7 +316,7 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeIntervalJoinMessageDetail(from, to, action = actionFilter) }
+        coVerify { eventRepository.findByTimeInterval(from, to, action = actionFilter) }
         coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
