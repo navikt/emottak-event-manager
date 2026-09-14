@@ -104,7 +104,7 @@ class EventService(
                     eventDescription = it.eventType.description,
                     eventId = it.eventType.value.toString(),
                     eventData = it.eventData,
-                    eventStatus = if (it.getEventStatusChangeEnum() != null) it.getEventStatusChangeEnum()!!.dbValue else EventStatusEnum.INFORMATION.dbValue
+                    eventStatus = it.getEventStatusChangeEnum()?.dbValue ?: EventStatusEnum.INFORMATION.dbValue
                 )
             }.toList()
     }
@@ -197,10 +197,9 @@ fun EventType.isErrorEvent() = this in listOf(
 )
 
 fun EventType.isCompleteEvent() = this in listOf(
-    // Skal sette conversation til complete hvis kallet skjedde synkront:
+    EventType.MESSAGE_SENT_TO_FAGSYSTEM,
     EventType.MESSAGE_SENT_VIA_HTTP,
-    // Skal sette conversation til complete hvis det er avsluttende Acknowledgement fra konsument.
-    // Denne sjekken skjer i SignalMessageService.processAcknowledgment() fra ebms-async:
+    EventType.MESSAGE_SENT_VIA_SMTP,
     EventType.MESSAGEFLOW_COMPLETED
 )
 
