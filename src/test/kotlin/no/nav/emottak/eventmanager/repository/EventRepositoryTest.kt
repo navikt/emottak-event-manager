@@ -5,6 +5,7 @@ import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import kotlin.uuid.Uuid
 
@@ -52,17 +53,23 @@ class EventRepositoryTest : RepositoryTestBase({
     }
 
     "Should find events by time interval" {
+        val messageDetails = buildTestEbmsMessageDetail()
 
         val eventInTimeInterval = buildTestEvent().copy(
+            requestId = messageDetails.requestId,
+            conversationId = messageDetails.conversationId,
             createdAt = Instant.parse("2025-04-01T14:54:45.386Z")
         )
 
         val eventOutOfTimeInterval = buildTestEvent().copy(
+            requestId = messageDetails.requestId,
+            conversationId = messageDetails.conversationId,
             createdAt = Instant.parse("2025-04-01T15:54:45.386Z")
         )
 
         eventRepository.insert(eventInTimeInterval)
         eventRepository.insert(eventOutOfTimeInterval)
+        ebmsMessageDetailRepository.upsert(messageDetails)
 
         val retrievedEvents = eventRepository.findByTimeInterval(
             Instant.parse("2025-04-01T14:00:00Z"),
@@ -74,12 +81,19 @@ class EventRepositoryTest : RepositoryTestBase({
     }
 
     "Should find events by time interval, page by page" {
+        val messageDetails = buildTestEbmsMessageDetail()
+        ebmsMessageDetailRepository.upsert(messageDetails)
 
         val events: MutableList<Event> = ArrayList()
         for (i in 1..9) {
             val id = "no$i"
             val ts = "2025-04-01T14:0$i:00.000Z"
-            val event = buildTestEvent().copy(contentId = id, createdAt = Instant.parse(ts))
+            val event = buildTestEvent().copy(
+                requestId = messageDetails.requestId,
+                conversationId = messageDetails.conversationId,
+                contentId = id,
+                createdAt = Instant.parse(ts)
+            )
             eventRepository.insert(event)
             events.add(event)
         }
@@ -87,7 +101,7 @@ class EventRepositoryTest : RepositoryTestBase({
         val page1 = Pageable(1, 4)
         val from = Instant.parse("2025-04-01T14:00:00Z")
         val to = Instant.parse("2025-04-01T15:00:00Z")
-        var retrievedEvents = eventRepository.findByTimeInterval(from, to, page1)
+        var retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page1)
         retrievedEvents.page shouldBe 1
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
@@ -98,7 +112,7 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content shouldContain events[3]
 
         val page2 = page1.next()
-        retrievedEvents = eventRepository.findByTimeInterval(from, to, page2)
+        retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page2)
         retrievedEvents.page shouldBe 2
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
@@ -109,7 +123,7 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content shouldContain events[7]
 
         val page3 = page2.next()
-        retrievedEvents = eventRepository.findByTimeInterval(from, to, page3)
+        retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page3)
         retrievedEvents.page shouldBe 3
         retrievedEvents.content.size shouldBe 1
         retrievedEvents.totalPages shouldBe 3
@@ -118,12 +132,19 @@ class EventRepositoryTest : RepositoryTestBase({
     }
 
     "Should find events by time interval, page by page, DESCENDING" {
+        val messageDetails = buildTestEbmsMessageDetail()
+        ebmsMessageDetailRepository.upsert(messageDetails)
 
         val events: MutableList<Event> = ArrayList()
         for (i in 1..9) {
             val id = "no$i"
             val ts = "2025-04-01T14:0$i:00.000Z"
-            val event = buildTestEvent().copy(contentId = id, createdAt = Instant.parse(ts))
+            val event = buildTestEvent().copy(
+                requestId = messageDetails.requestId,
+                conversationId = messageDetails.conversationId,
+                contentId = id,
+                createdAt = Instant.parse(ts)
+            )
             eventRepository.insert(event)
             events.add(event)
         }
@@ -131,7 +152,7 @@ class EventRepositoryTest : RepositoryTestBase({
         val page1 = Pageable(1, 4, "DESC")
         val from = Instant.parse("2025-04-01T14:00:00Z")
         val to = Instant.parse("2025-04-01T15:00:00Z")
-        var retrievedEvents = eventRepository.findByTimeInterval(from, to, page1)
+        var retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page1)
         retrievedEvents.page shouldBe 1
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
@@ -142,7 +163,7 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content shouldContain events[5]
 
         val page2 = page1.next()
-        retrievedEvents = eventRepository.findByTimeInterval(from, to, page2)
+        retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page2)
         retrievedEvents.page shouldBe 2
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
@@ -153,7 +174,7 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content shouldContain events[1]
 
         val page3 = page2.next()
-        retrievedEvents = eventRepository.findByTimeInterval(from, to, page3)
+        retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page3)
         retrievedEvents.page shouldBe 3
         retrievedEvents.content.size shouldBe 1
         retrievedEvents.totalPages shouldBe 3
@@ -174,7 +195,7 @@ class EventRepositoryTest : RepositoryTestBase({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+        val retrievedEvents = eventRepository.findByTimeInterval(
             Instant.parse("2025-04-01T12:00:00Z"),
             Instant.parse("2025-04-01T13:00:00Z"),
             role = roleFilter
@@ -197,7 +218,7 @@ class EventRepositoryTest : RepositoryTestBase({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+        val retrievedEvents = eventRepository.findByTimeInterval(
             Instant.parse("2025-04-01T12:00:00Z"),
             Instant.parse("2025-04-01T13:00:00Z"),
             service = serviceFilter
@@ -220,7 +241,7 @@ class EventRepositoryTest : RepositoryTestBase({
         eventRepository.insert(event1)
         eventRepository.insert(event2)
 
-        val retrievedEvents = eventRepository.findByTimeIntervalJoinMessageDetail(
+        val retrievedEvents = eventRepository.findByTimeInterval(
             Instant.parse("2025-04-01T12:00:00Z"),
             Instant.parse("2025-04-01T13:00:00Z"),
             action = actionFilter
@@ -228,5 +249,93 @@ class EventRepositoryTest : RepositoryTestBase({
 
         retrievedEvents.size shouldBe 1
         retrievedEvents shouldContain event2
+    }
+
+    "Should not retrieve events where conversation_id is null or blank" {
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(action = "EgenandelForesporsel")
+
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
+
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+
+        val eventConversationIdNull = Event(
+            eventType = EventType.MESSAGE_READ_FROM_QUEUE,
+            requestId = messageDetails1.requestId,
+            messageId = "2af3496a-8d33-4af0-ab3e-fa1da4cd193e",
+            eventData = "{\"queue_name\": \"team-emottak.smtp.out.ebxml.payload\"}",
+            createdAt = Instant.parse("2025-04-01T16:59:59.000Z")
+        )
+        eventRepository.insert(eventConversationIdNull)
+
+        val eventConversationIdBlank = eventConversationIdNull.copy(
+            requestId = messageDetails1.requestId,
+            messageId = "<L6ZTMPZR9TU4.MDI908S9AJ281@sender-97cbfdc68-p2kwl>",
+            conversationId = ""
+        )
+        eventRepository.insert(eventConversationIdBlank)
+
+        var retrievedEvents = eventRepository.findByTimeInterval(
+            from = Instant.parse("2025-04-01T00:00:00Z"),
+            to = Instant.parse("2025-04-02T00:00:00Z"),
+            pageable = Pageable(1, 25, "DESC")
+        ).content
+
+        retrievedEvents.size shouldBe 2
+        retrievedEvents[0].requestId shouldBe event2.requestId
+        retrievedEvents[1].requestId shouldBe event1.requestId
+    }
+
+    "Should not retrieve events where request_id do not exists in message details-table" {
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        eventRepository.insert(event1)
+
+        val eventConversationIdOnlyInEvents = Event(
+            eventType = EventType.MESSAGE_READ_FROM_QUEUE,
+            requestId = Uuid.random(),
+            messageId = "2af3496a-8d33-4af0-ab3e-fa1da4cd193e",
+            eventData = "{\"queue_name\": \"team-emottak.smtp.out.ebxml.payload\"}",
+            createdAt = Instant.parse("2025-04-01T16:59:59.000Z"),
+            conversationId = Uuid.random().toString()
+        )
+        eventRepository.insert(eventConversationIdOnlyInEvents)
+
+        var retrievedEvents = eventRepository.findByTimeInterval(
+            from = Instant.parse("2025-04-01T00:00:00Z"),
+            to = Instant.parse("2025-04-02T00:00:00Z"),
+            pageable = Pageable(1, 25, "DESC")
+        ).content
+
+        retrievedEvents.size shouldBe 1
+        retrievedEvents[0].requestId shouldBe event1.requestId
+    }
+
+    "Should not retrieve events where corresponding message details have blank conversationId" {
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail().copy(conversationId = "")
+
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
+
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+
+        var retrievedEvents = eventRepository.findByTimeInterval(
+            from = Instant.parse("2025-04-01T00:00:00Z"),
+            to = Instant.parse("2025-04-02T00:00:00Z"),
+            pageable = Pageable(1, 25, "DESC")
+        ).content
+
+        retrievedEvents.size shouldBe 1
+        retrievedEvents[0].requestId shouldBe event1.requestId
     }
 })
