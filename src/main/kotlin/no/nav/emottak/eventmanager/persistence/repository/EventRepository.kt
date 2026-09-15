@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.nav.emottak.eventmanager.model.Event
+import no.nav.emottak.eventmanager.model.EventWithStatus
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.Database
@@ -15,6 +16,7 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventData
 import no.nav.emottak.eventmanager.persistence.table.EventTable.eventTypeId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
+import no.nav.emottak.eventmanager.persistence.table.EventTypeTable
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.insert
@@ -78,6 +80,30 @@ class EventRepository(private val database: Database) {
                         eventData = Json.encodeToString(it[eventData]),
                         createdAt = it[createdAt],
                         conversationId = it[conversationId]
+                    )
+                }
+                .toList()
+        }
+    }
+
+    suspend fun findByRequestIdJoinEventType(requestId: Uuid): List<EventWithStatus> = withContext(Dispatchers.IO) {
+        transaction {
+            EventTable
+                .join(EventTypeTable, JoinType.INNER, eventTypeId, EventTypeTable.eventTypeId)
+                .select(EventTable.columns + EventTypeTable.status)
+                .where { requestIdColumn eq requestId.toJavaUuid() }
+                .mapNotNull {
+                    EventWithStatus(
+                        event = Event(
+                            eventType = EventType.fromInt(it[eventTypeId]),
+                            requestId = it[requestIdColumn].toKotlinUuid(),
+                            contentId = it[contentId],
+                            messageId = it[messageId],
+                            eventData = Json.encodeToString(it[eventData]),
+                            createdAt = it[createdAt],
+                            conversationId = it[conversationId]
+                        ),
+                        status = it[EventTypeTable.status]
                     )
                 }
                 .toList()

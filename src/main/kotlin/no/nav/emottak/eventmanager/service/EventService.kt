@@ -84,7 +84,7 @@ class EventService(
     suspend fun fetchMessageLogInfo(id: String): List<MessageLogDto> {
         val eventsList = if (Validation.isValidUuid(id)) {
             log.info("Fetching events by Request ID: $id")
-            eventRepository.findByRequestId(Uuid.parse(id))
+            eventRepository.findByRequestIdJoinEventType(Uuid.parse(id))
         } else {
             log.info("Fetching events by Readable ID: $id")
             val messageDetails = ebmsMessageDetailRepository.findByReadableId(id)
@@ -93,18 +93,18 @@ class EventService(
                 log.warn("No EbmsMessageDetail found for Readable ID: $id")
                 emptyList()
             } else {
-                eventRepository.findByRequestId(messageDetails.requestId)
+                eventRepository.findByRequestIdJoinEventType(messageDetails.requestId)
             }
         }
 
-        return eventsList.sortedBy { it.createdAt }
+        return eventsList.sortedBy { it.event.createdAt }
             .map {
                 MessageLogDto(
-                    eventDate = it.createdAt.toOsloZone().toString(),
-                    eventDescription = it.eventType.description,
-                    eventId = it.eventType.value.toString(),
-                    eventData = it.eventData,
-                    eventStatus = it.getEventStatusChangeEnum()?.dbValue ?: EventStatusEnum.INFORMATION.dbValue
+                    eventDate = it.event.createdAt.toOsloZone().toString(),
+                    eventDescription = it.event.eventType.description,
+                    eventId = it.event.eventType.value.toString(),
+                    eventData = it.event.eventData,
+                    eventStatus = it.status.dbValue
                 )
             }.toList()
     }
@@ -199,7 +199,6 @@ fun EventType.isErrorEvent() = this in listOf(
 fun EventType.isCompleteEvent() = this in listOf(
     EventType.MESSAGE_SENT_TO_FAGSYSTEM,
     EventType.MESSAGE_SENT_VIA_HTTP,
-    EventType.MESSAGE_SENT_VIA_SMTP,
     EventType.MESSAGEFLOW_COMPLETED
 )
 

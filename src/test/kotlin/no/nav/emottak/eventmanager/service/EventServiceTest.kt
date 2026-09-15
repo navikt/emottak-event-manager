@@ -8,6 +8,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import no.nav.emottak.eventmanager.constants.Constants.ACKNOWLEDGMENT_ACTION
 import no.nav.emottak.eventmanager.model.Event
+import no.nav.emottak.eventmanager.model.EventWithStatus
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
@@ -322,8 +323,9 @@ class EventServiceTest : StringSpec({
 
     "Should call EventRepository on fetching events related to a specific message by Request ID" {
         val testEvent = buildTestEvent()
+        val testEventWithStatus = EventWithStatus(testEvent, EventStatusEnum.INFORMATION)
 
-        coEvery { eventRepository.findByRequestId(testEvent.requestId) } returns listOf(testEvent)
+        coEvery { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) } returns listOf(testEventWithStatus)
 
         val eventsList = eventService.fetchMessageLogInfo(testEvent.requestId.toString())
 
@@ -331,15 +333,17 @@ class EventServiceTest : StringSpec({
         eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].eventDescription shouldBe testEvent.eventType.description
         eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
+        eventsList[0].eventStatus shouldBe EventStatusEnum.INFORMATION.dbValue
 
-        coVerify { eventRepository.findByRequestId(testEvent.requestId) }
+        coVerify { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) }
     }
 
     "Should call database on fetching events related to a specific message by Readable ID" {
         val testMessageDetail = buildTestEbmsMessageDetail()
         val testEvent = buildTestEvent(requestId = testMessageDetail.requestId)
+        val testEventWithStatus = EventWithStatus(testEvent, EventStatusEnum.PROCESSING_COMPLETED)
 
-        coEvery { eventRepository.findByRequestId(testEvent.requestId) } returns listOf(testEvent)
+        coEvery { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) } returns listOf(testEventWithStatus)
         coEvery { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) } returns testMessageDetail
 
         val eventsList = eventService.fetchMessageLogInfo(testMessageDetail.generateReadableId())
@@ -348,8 +352,9 @@ class EventServiceTest : StringSpec({
         eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
         eventsList[0].eventDescription shouldBe testEvent.eventType.description
         eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
+        eventsList[0].eventStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED.dbValue
 
-        coVerify { eventRepository.findByRequestId(testEvent.requestId) }
+        coVerify { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) }
         coVerify { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
     }
 
