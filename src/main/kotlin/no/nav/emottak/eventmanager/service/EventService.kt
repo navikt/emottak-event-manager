@@ -193,7 +193,6 @@ fun EventType.isErrorEvent() = this in listOf(
 )
 
 fun EventType.isCompleteEvent() = this in listOf(
-    EventType.MESSAGE_SENT_TO_FAGSYSTEM,
     EventType.MESSAGE_SENT_VIA_HTTP,
     EventType.MESSAGEFLOW_COMPLETED
 )
