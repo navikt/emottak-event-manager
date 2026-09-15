@@ -19,7 +19,10 @@ import no.nav.emottak.eventmanager.persistence.table.EventTable.messageId
 import no.nav.emottak.eventmanager.persistence.table.EventTypeTable
 import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.JoinType
+import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.andWhere
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.not
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -27,7 +30,6 @@ import java.util.UUID
 import kotlin.uuid.Uuid
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
-import no.nav.emottak.eventmanager.persistence.table.EventTable.requestId as requestIdColumn
 
 class EventRepository(private val database: Database) {
 
@@ -37,7 +39,7 @@ class EventRepository(private val database: Database) {
             EventTable.insert {
                 it[eventId] = newEventId
                 it[eventTypeId] = event.eventType.value
-                it[requestIdColumn] = event.requestId.toJavaUuid()
+                it[EventTable.requestId] = event.requestId.toJavaUuid()
                 it[contentId] = event.contentId
                 it[messageId] = event.messageId
                 it[eventData] = Json.decodeFromString<Map<String, String>>(event.eventData)
@@ -53,15 +55,7 @@ class EventRepository(private val database: Database) {
             EventTable.select(EventTable.columns)
                 .where { EventTable.eventId eq eventId.toJavaUuid() }
                 .mapNotNull {
-                    Event(
-                        eventType = EventType.fromInt(it[eventTypeId]),
-                        requestId = it[requestIdColumn].toKotlinUuid(),
-                        contentId = it[contentId],
-                        messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
-                    )
+                    toEvent(it)
                 }
                 .singleOrNull()
         }
@@ -70,17 +64,9 @@ class EventRepository(private val database: Database) {
     suspend fun findByRequestId(requestId: Uuid): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
-                .where { requestIdColumn eq requestId.toJavaUuid() }
+                .where { EventTable.requestId eq requestId.toJavaUuid() }
                 .mapNotNull {
-                    Event(
-                        eventType = EventType.fromInt(it[eventTypeId]),
-                        requestId = it[requestIdColumn].toKotlinUuid(),
-                        contentId = it[contentId],
-                        messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
-                    )
+                    toEvent(it)
                 }
                 .toList()
         }
@@ -113,53 +99,15 @@ class EventRepository(private val database: Database) {
     suspend fun findByRequestIds(requestIds: List<Uuid>): List<Event> = withContext(Dispatchers.IO) {
         transaction {
             EventTable.select(EventTable.columns)
-                .where { requestIdColumn.inList(requestIds.map { it.toJavaUuid() }) }
+                .where { EventTable.requestId.inList(requestIds.map { it.toJavaUuid() }) }
                 .mapNotNull {
-                    Event(
-                        eventType = EventType.fromInt(it[eventTypeId]),
-                        requestId = it[requestIdColumn].toKotlinUuid(),
-                        contentId = it[contentId],
-                        messageId = it[messageId],
-                        eventData = Json.encodeToString(it[eventData]),
-                        createdAt = it[createdAt],
-                        conversationId = it[conversationId]
-                    )
+                    toEvent(it)
                 }
                 .toList()
         }
     }
 
-    suspend fun findByTimeInterval(from: Instant, to: Instant, pageable: Pageable? = null): PageDto<Event> = withContext(Dispatchers.IO) {
-        transaction {
-            val totalCount = EventTable.select(createdAt).where { createdAt.between(from, to) }.count()
-            val list =
-                EventTable.select(EventTable.columns)
-                    .where { createdAt.between(from, to) }
-                    .apply {
-                        if (pageable != null) {
-                            this.limit(pageable.pageSize).offset(pageable.offset)
-                            this.orderBy(createdAt, pageable.getSortOrder())
-                        }
-                    }
-                    .mapNotNull {
-                        Event(
-                            eventType = EventType.fromInt(it[eventTypeId]),
-                            requestId = it[requestIdColumn].toKotlinUuid(),
-                            contentId = it[contentId],
-                            messageId = it[messageId],
-                            eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt],
-                            conversationId = it[conversationId]
-                        )
-                    }
-                    .toList()
-            var returnPageable = pageable
-            if (returnPageable == null) returnPageable = Pageable(1, list.size)
-            PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
-        }
-    }
-
-    suspend fun findByTimeIntervalJoinMessageDetail(
+    suspend fun findByTimeInterval(
         from: Instant,
         to: Instant,
         role: String = "",
@@ -168,39 +116,40 @@ class EventRepository(private val database: Database) {
         pageable: Pageable? = null
     ): PageDto<Event> = withContext(Dispatchers.IO) {
         transaction {
-            val totalCount = EventTable.join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
-                .select(createdAt).where { createdAt.between(from, to) }
+            val query = EventTable
+                .join(EbmsMessageDetailTable, JoinType.INNER, EventTable.requestId, EbmsMessageDetailTable.requestId)
+                .select(EventTable.columns)
+                .where { createdAt.between(from, to) }
+                .andWhere { not(conversationId.isNullOrEmpty()) }
+                .andWhere { not(EbmsMessageDetailTable.conversationId.isNullOrEmpty()) }
                 .apply {
                     this.applyRoleServiceActionFilters(role, service, action)
                 }
-                .count()
-            val list =
-                EventTable
-                    .join(EbmsMessageDetailTable, JoinType.LEFT, EventTable.requestId, EbmsMessageDetailTable.requestId)
-                    .select(EventTable.columns)
-                    .where { createdAt.between(from, to) }
-                    .apply {
-                        this.applyRoleServiceActionFilters(role, service, action)
-                        if (pageable != null) {
-                            this.limit(pageable.pageSize).offset(pageable.offset)
-                            this.orderBy(createdAt, pageable.getSortOrder())
-                        }
-                    }
-                    .mapNotNull {
-                        Event(
-                            eventType = EventType.fromInt(it[eventTypeId]),
-                            requestId = it[requestIdColumn].toKotlinUuid(),
-                            contentId = it[contentId],
-                            messageId = it[messageId],
-                            eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt],
-                            conversationId = it[conversationId]
-                        )
-                    }
-                    .toList()
+            val totalCount = query.count()
+            val list = query.apply {
+                if (pageable != null) {
+                    this.limit(pageable.pageSize).offset(pageable.offset)
+                    this.orderBy(createdAt, pageable.getSortOrder())
+                }
+            }
+                .mapNotNull {
+                    toEvent(it)
+                }
+                .toList()
             var returnPageable = pageable
             if (returnPageable == null) returnPageable = Pageable(1, list.size)
             PageDto(returnPageable.pageNumber, returnPageable.pageSize, returnPageable.sort, totalCount, list)
         }
     }
+
+    private fun toEvent(it: ResultRow) =
+        Event(
+            eventType = EventType.fromInt(it[eventTypeId]),
+            requestId = it[EventTable.requestId].toKotlinUuid(),
+            contentId = it[contentId],
+            messageId = it[messageId],
+            eventData = Json.encodeToString(it[eventData]),
+            createdAt = it[createdAt],
+            conversationId = it[conversationId]
+        )
 }
