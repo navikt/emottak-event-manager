@@ -77,12 +77,12 @@ class EventRepository(private val database: Database) {
             EventTable
                 .join(EventTypeTable, JoinType.INNER, eventTypeId, EventTypeTable.eventTypeId)
                 .select(EventTable.columns + EventTypeTable.status)
-                .where { requestIdColumn eq requestId.toJavaUuid() }
+                .where { EventTable.requestId eq requestId.toJavaUuid() }
                 .mapNotNull {
                     EventWithStatus(
                         event = Event(
                             eventType = EventType.fromInt(it[eventTypeId]),
-                            requestId = it[requestIdColumn].toKotlinUuid(),
+                            requestId = it[EventTable.requestId].toKotlinUuid(),
                             contentId = it[contentId],
                             messageId = it[messageId],
                             eventData = Json.encodeToString(it[eventData]),
