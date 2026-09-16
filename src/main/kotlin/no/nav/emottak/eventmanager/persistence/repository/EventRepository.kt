@@ -80,15 +80,7 @@ class EventRepository(private val database: Database) {
                 .where { EventTable.requestId eq requestId.toJavaUuid() }
                 .mapNotNull {
                     EventWithStatus(
-                        event = Event(
-                            eventType = EventType.fromInt(it[eventTypeId]),
-                            requestId = it[EventTable.requestId].toKotlinUuid(),
-                            contentId = it[contentId],
-                            messageId = it[messageId],
-                            eventData = Json.encodeToString(it[eventData]),
-                            createdAt = it[createdAt],
-                            conversationId = it[conversationId]
-                        ),
+                        event = toEvent(it),
                         status = it[EventTypeTable.status]
                     )
                 }
