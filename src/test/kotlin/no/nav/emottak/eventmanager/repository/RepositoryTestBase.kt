@@ -17,7 +17,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepos
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
-import no.nav.emottak.eventmanager.service.getEventStatusChangeEnum
+import no.nav.emottak.eventmanager.service.getConversationStatusChangeEnum
 import no.nav.emottak.utils.common.zoneOslo
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
@@ -267,7 +267,7 @@ suspend fun buildAndInsertTestEventsForConversationStatus(
     eventRepository.insert(event3)
     eventRepository.insert(event4)
 
-    val eventStatus = event4.getEventStatusChangeEnum()
+    val eventStatus = event4.getConversationStatusChangeEnum()
     if (eventStatus != null) {
         statusRepository.update(event4.conversationId!!, eventStatus, event4.createdAt)
     }
@@ -328,5 +328,5 @@ fun buildTestConversationStatusData(messageDetail: EbmsMessageDetail, latestEven
     service = messageDetail.service,
     cpaId = messageDetail.cpaId,
     statusAt = messageDetail.savedAt.plusMillis(1000),
-    latestStatus = latestEvent.getEventStatusChangeEnum() ?: EventStatusEnum.INFORMATION
+    latestStatus = latestEvent.getConversationStatusChangeEnum() ?: EventStatusEnum.INFORMATION
 )

@@ -144,7 +144,7 @@ class EventService(
     }
 
     private suspend fun updateConversationStatus(event: Event) {
-        val eventStatus = event.getEventStatusChangeEnum()
+        val eventStatus = event.getConversationStatusChangeEnum()
         if (eventStatus != null) {
             val conversationId = event.conversationId ?: ebmsMessageDetailRepository.findByRequestId(event.requestId)?.conversationId
             if (conversationId == null) {
@@ -192,14 +192,14 @@ fun EventType.isErrorEvent() = this in listOf(
     EventType.UNKNOWN_ERROR_OCCURRED
 )
 
-fun EventType.isCompleteEvent() = this in listOf(
+fun EventType.isConversationCompleteEvent() = this in listOf(
     EventType.MESSAGE_SENT_VIA_HTTP,
     EventType.MESSAGEFLOW_COMPLETED
 )
 
-fun Event.getEventStatusChangeEnum() = if (this.eventType == EventType.RETRY_TRIGGED) {
+fun Event.getConversationStatusChangeEnum() = if (this.eventType == EventType.RETRY_TRIGGED) {
     EventStatusEnum.INFORMATION
-} else if (this.eventType.isCompleteEvent()) {
+} else if (this.eventType.isConversationCompleteEvent()) {
     EventStatusEnum.PROCESSING_COMPLETED
 } else if (this.eventType.isErrorEvent()) {
     EventStatusEnum.ERROR
