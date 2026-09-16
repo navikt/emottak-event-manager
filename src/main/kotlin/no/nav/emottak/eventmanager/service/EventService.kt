@@ -80,7 +80,7 @@ class EventService(
     suspend fun fetchMessageLogInfo(id: String): List<MessageLogDto> {
         val eventsList = if (Validation.isValidUuid(id)) {
             log.info("Fetching events by Request ID: $id")
-            eventRepository.findByRequestId(Uuid.parse(id))
+            eventRepository.findByRequestIdJoinEventType(Uuid.parse(id))
         } else {
             log.info("Fetching events by Readable ID: $id")
             val messageDetails = ebmsMessageDetailRepository.findByReadableId(id)
@@ -89,18 +89,18 @@ class EventService(
                 log.warn("No EbmsMessageDetail found for Readable ID: $id")
                 emptyList()
             } else {
-                eventRepository.findByRequestId(messageDetails.requestId)
+                eventRepository.findByRequestIdJoinEventType(messageDetails.requestId)
             }
         }
 
-        return eventsList.sortedBy { it.createdAt }
+        return eventsList.sortedBy { it.event.createdAt }
             .map {
                 MessageLogDto(
-                    eventDate = it.createdAt.toOsloZone().toString(),
-                    eventDescription = it.eventType.description,
-                    eventId = it.eventType.value.toString(),
-                    eventData = it.eventData,
-                    eventStatus = if (it.getEventStatusChangeEnum() != null) it.getEventStatusChangeEnum()!!.dbValue else EventStatusEnum.INFORMATION.dbValue
+                    eventDate = it.event.createdAt.toOsloZone().toString(),
+                    eventDescription = it.event.eventType.description,
+                    eventId = it.event.eventType.value.toString(),
+                    eventData = it.event.eventData,
+                    eventStatus = it.status.dbValue
                 )
             }.toList()
     }
@@ -144,7 +144,7 @@ class EventService(
     }
 
     private suspend fun updateConversationStatus(event: Event) {
-        val eventStatus = event.getEventStatusChangeEnum()
+        val eventStatus = event.getConversationStatusChangeEnum()
         if (eventStatus != null) {
             val conversationId = event.conversationId ?: ebmsMessageDetailRepository.findByRequestId(event.requestId)?.conversationId
             if (conversationId == null) {
@@ -192,17 +192,14 @@ fun EventType.isErrorEvent() = this in listOf(
     EventType.UNKNOWN_ERROR_OCCURRED
 )
 
-fun EventType.isCompleteEvent() = this in listOf(
-    // Skal sette conversation til complete hvis kallet skjedde synkront:
+fun EventType.isConversationCompleteEvent() = this in listOf(
     EventType.MESSAGE_SENT_VIA_HTTP,
-    // Skal sette conversation til complete hvis det er avsluttende Acknowledgement fra konsument.
-    // Denne sjekken skjer i SignalMessageService.processAcknowledgment() fra ebms-async:
     EventType.MESSAGEFLOW_COMPLETED
 )
 
-fun Event.getEventStatusChangeEnum() = if (this.eventType == EventType.RETRY_TRIGGED) {
+fun Event.getConversationStatusChangeEnum() = if (this.eventType == EventType.RETRY_TRIGGED) {
     EventStatusEnum.INFORMATION
-} else if (this.eventType.isCompleteEvent()) {
+} else if (this.eventType.isConversationCompleteEvent()) {
     EventStatusEnum.PROCESSING_COMPLETED
 } else if (this.eventType.isErrorEvent()) {
     EventStatusEnum.ERROR

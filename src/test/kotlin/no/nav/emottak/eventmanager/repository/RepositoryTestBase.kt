@@ -17,7 +17,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepos
 import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
-import no.nav.emottak.eventmanager.service.getEventStatusChangeEnum
+import no.nav.emottak.eventmanager.service.getConversationStatusChangeEnum
 import no.nav.emottak.utils.common.zoneOslo
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
@@ -217,7 +217,7 @@ suspend fun buildAndInsertTestEbmsMessageDetailsForConversation(
 
     val events1 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c1md1)
     val events2 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c1md2)
-    val events3 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c2md1)
+    val events3 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c2md1, KafkaEventType.MESSAGE_VALIDATED_AGAINST_CPA)
     val events4 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c1md3, KafkaEventType.UNKNOWN_ERROR_OCCURRED)
     val events5 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c3md1, KafkaEventType.MESSAGE_SENT_VIA_HTTP)
 
@@ -267,7 +267,7 @@ suspend fun buildAndInsertTestEventsForConversationStatus(
     eventRepository.insert(event3)
     eventRepository.insert(event4)
 
-    val eventStatus = event4.getEventStatusChangeEnum()
+    val eventStatus = event4.getConversationStatusChangeEnum()
     if (eventStatus != null) {
         statusRepository.update(event4.conversationId!!, eventStatus, event4.createdAt)
     }
@@ -310,11 +310,12 @@ fun buildTestEventsForConversationStatus(
     c1md3: EbmsMessageDetail,
     c3md1: EbmsMessageDetail,
     c1LastEventType: KafkaEventType = KafkaEventType.UNKNOWN_ERROR_OCCURRED,
+    c2LastEventType: KafkaEventType = KafkaEventType.MESSAGE_VALIDATED_AGAINST_CPA,
     c3LastEventType: KafkaEventType = KafkaEventType.MESSAGE_SENT_VIA_HTTP
 ): List<List<Event>> {
     val events1 = buildTestEventsForMessageDetailForConversationStatus(c1md1)
     val events2 = buildTestEventsForMessageDetailForConversationStatus(c1md2)
-    val events3 = buildTestEventsForMessageDetailForConversationStatus(c2md1)
+    val events3 = buildTestEventsForMessageDetailForConversationStatus(c2md1, c2LastEventType)
     val events4 = buildTestEventsForMessageDetailForConversationStatus(c1md3, c1LastEventType)
     val events5 = buildTestEventsForMessageDetailForConversationStatus(c3md1, c3LastEventType)
     return listOf(events1, events2, events3, events4, events5)
@@ -327,5 +328,5 @@ fun buildTestConversationStatusData(messageDetail: EbmsMessageDetail, latestEven
     service = messageDetail.service,
     cpaId = messageDetail.cpaId,
     statusAt = messageDetail.savedAt.plusMillis(1000),
-    latestStatus = latestEvent.getEventStatusChangeEnum() ?: EventStatusEnum.INFORMATION
+    latestStatus = latestEvent.getConversationStatusChangeEnum() ?: EventStatusEnum.INFORMATION
 )
