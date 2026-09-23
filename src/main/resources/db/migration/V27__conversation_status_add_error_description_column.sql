@@ -1,0 +1,1 @@
+ALTER TABLE "conversation_status" ADD COLUMN "error_description" VARCHAR(256);

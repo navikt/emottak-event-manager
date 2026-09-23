@@ -10,6 +10,7 @@ import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.conversationId
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.createdAt
+import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.errorDescription
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.latestStatus
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.nullable
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.statusAt
@@ -20,6 +21,7 @@ import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
 import no.nav.emottak.utils.common.nowOsloToInstant
+import no.nav.emottak.utils.kafka.model.EventType
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.Query
 import org.jetbrains.exposed.sql.SortOrder
@@ -49,14 +51,17 @@ class ConversationStatusRepository(private val database: Database) {
     suspend fun update(
         id: String,
         status: EventStatusEnum,
+        eventType: EventType,
         datetime: Instant = nowOsloToInstant().truncatedTo(ChronoUnit.MICROS)
     ): Boolean = withContext(Dispatchers.IO) {
         transaction(database.db) {
+            val description = if (status in listOf(ERROR, EventStatusEnum.FATAL_ERROR)) eventType.description else null
             val updatedRows = ConversationStatusTable.update({
                 conversationId eq id
             }) {
                 it[latestStatus] = status
                 it[statusAt] = datetime
+                it[errorDescription] = description
             }
             updatedRows == 1
         }
@@ -65,14 +70,16 @@ class ConversationStatusRepository(private val database: Database) {
     suspend fun get(id: String): ConversationStatus? = withContext(Dispatchers.IO) {
         transaction(database.db) {
             ConversationStatusTable
-                .select(conversationId, createdAt, latestStatus, statusAt)
+                .select(conversationId, createdAt, latestStatus, statusAt, errorDescription)
+                // .select(ConversationStatusTable.columns) // ERROR: missing FROM-clause entry for table "ebms_message_details"
                 .where { conversationId eq id }
                 .mapNotNull {
                     ConversationStatus(
                         conversationId = it[conversationId],
                         createdAt = it[createdAt],
                         latestStatus = it[latestStatus],
-                        statusAt = it[statusAt]
+                        statusAt = it[statusAt],
+                        errorDescription = it[errorDescription]
                     )
                 }
                 .singleOrNull()
@@ -109,18 +116,20 @@ class ConversationStatusRepository(private val database: Database) {
                     subqueryAlias[createdAt],
                     subqueryAlias[latestStatus],
                     subqueryAlias[statusAt],
+                    subqueryAlias[errorDescription],
                     subqueryAlias[EbmsMessageDetailTable.cpaId],
                     subqueryAlias[EbmsMessageDetailTable.service],
                     relatedReadableIdsColumn
                 )
                 .apply {
-                    this.applyPagableLimitAndOrderBy(pageable, subqueryAlias[createdAt]) // TODO: Sortere på createdAt eller statusAt?
+                    this.applyPagableLimitAndOrderBy(pageable, subqueryAlias[createdAt])
                 }
                 .groupBy(
                     subqueryAlias[conversationId],
                     subqueryAlias[createdAt],
                     subqueryAlias[latestStatus],
                     subqueryAlias[statusAt],
+                    subqueryAlias[errorDescription],
                     subqueryAlias[EbmsMessageDetailTable.cpaId],
                     subqueryAlias[EbmsMessageDetailTable.service]
                 )
@@ -132,7 +141,8 @@ class ConversationStatusRepository(private val database: Database) {
                         statusAt = it[subqueryAlias[statusAt]],
                         readableIdList = it[relatedReadableIdsColumn],
                         service = it[subqueryAlias[EbmsMessageDetailTable.service]],
-                        cpaId = it[subqueryAlias[EbmsMessageDetailTable.cpaId]]
+                        cpaId = it[subqueryAlias[EbmsMessageDetailTable.cpaId]],
+                        errorDescription = it[subqueryAlias[errorDescription]]
                     )
                 }
                 .toList()
@@ -148,7 +158,7 @@ class ConversationStatusRepository(private val database: Database) {
         to: Instant? = null,
         cpaIdPattern: String = "",
         service: String = "",
-        statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED)
+        statuses: List<EventStatusEnum>
     ): Query {
         return ConversationStatusTable
             .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = conversationId, otherColumn = EbmsMessageDetailTable.conversationId)
@@ -159,7 +169,7 @@ class ConversationStatusRepository(private val database: Database) {
                     .inList(statuses.map { it.toString() })
             }
             .apply {
-                this.applyDatetimeFilter(createdAt, from, to) // TODO: Filtrere på createdAt eller statusAt?
+                this.applyDatetimeFilter(createdAt, from, to)
                 this.applyLike(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
                 this.applyLike(service, EbmsMessageDetailTable.service.nullable())
             }

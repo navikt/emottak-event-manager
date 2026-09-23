@@ -156,7 +156,8 @@ class EventService(
             }
             val success = conversationStatusRepository.update(
                 id = conversationId,
-                status = eventStatus
+                status = eventStatus,
+                eventType = event.eventType
             )
             if (!success) {
                 log.warn(
