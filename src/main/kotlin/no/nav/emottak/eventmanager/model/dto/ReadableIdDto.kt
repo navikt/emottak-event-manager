@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 data class ReadableIdDto(
     val receivedDate: String,
     val readableId: String,
+    val requestId: String,
+    val messageId: String,
     val role: String? = null,
     val service: String? = null,
     val action: String? = null,
