@@ -106,11 +106,12 @@ class EventRepository(private val database: Database) {
         service: String = "",
         action: String = "",
         pageable: Pageable? = null
-    ): PageDto<Event> = withContext(Dispatchers.IO) {
+    ): PageDto<EventWithStatus> = withContext(Dispatchers.IO) {
         transaction {
             val query = EventTable
                 .join(EbmsMessageDetailTable, JoinType.INNER, EventTable.requestId, EbmsMessageDetailTable.requestId)
-                .select(EventTable.columns)
+                .join(EventTypeTable, JoinType.INNER, eventTypeId, EventTypeTable.eventTypeId)
+                .select(EventTable.columns + EventTypeTable.status)
                 .where { createdAt.between(from, to) }
                 .andWhere { not(conversationId.isNullOrEmpty()) }
                 .andWhere { not(EbmsMessageDetailTable.conversationId.isNullOrEmpty()) }
@@ -125,7 +126,10 @@ class EventRepository(private val database: Database) {
                 }
             }
                 .mapNotNull {
-                    toEvent(it)
+                    EventWithStatus(
+                        event = toEvent(it),
+                        status = it[EventTypeTable.status]
+                    )
                 }
                 .toList()
             var returnPageable = pageable

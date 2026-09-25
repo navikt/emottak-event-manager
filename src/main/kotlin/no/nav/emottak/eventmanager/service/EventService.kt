@@ -53,17 +53,18 @@ class EventService(
     ): PageDto<EventDto> {
         val eventsPage = eventRepository.findByTimeInterval(from, to, role, service, action, pageable)
         val eventsList = eventsPage.content
-        val requestIds = eventsList.map { it.requestId }.distinct()
+        val requestIds = eventsList.map { it.event.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")
         val messageDetailsMap = ebmsMessageDetailRepository.findByRequestIds(requestIds)
         var numberOfRequestIdsNotFound = 0
         val resultList = eventsList.map {
-            val ebmsMessageDetail = messageDetailsMap[it.requestId]
+            val ebmsMessageDetail = messageDetailsMap[it.event.requestId]
             if (ebmsMessageDetail == null) numberOfRequestIdsNotFound++
             EventDto(
-                eventDate = it.createdAt.toOsloZone().toString(),
-                description = it.eventType.description,
-                eventData = it.eventData,
+                eventDate = it.event.createdAt.toOsloZone().toString(),
+                description = it.event.eventType.description,
+                status = it.status.dbValue,
+                eventData = it.event.eventData,
                 readableId = ebmsMessageDetail?.readableId ?: "",
                 role = ebmsMessageDetail?.fromRole,
                 service = ebmsMessageDetail?.service,

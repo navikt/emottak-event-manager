@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class EventDto(
     val eventDate: String,
     val description: String,
+    val status: String,
     val eventData: String,
     val readableId: String,
     val role: String? = null,
