@@ -41,7 +41,7 @@ class EventServiceTest : StringSpec({
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
     }
 
     "Should update message detail on EventType.MESSAGE_VALIDATED_AGAINST_CPA event" {
@@ -58,7 +58,7 @@ class EventServiceTest : StringSpec({
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
         coVerify(exactly = 1) { ebmsMessageDetailRepository.update(any()) }
     }
@@ -76,57 +76,126 @@ class EventServiceTest : StringSpec({
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
         coVerify(exactly = 0) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
         coVerify(exactly = 0) { ebmsMessageDetailRepository.update(any()) }
     }
 
-    "Should update conversation status on error event" {
+    "Should update conversation status to ERROR on an error event" {
         val testTransportEvent = buildTestTransportEvent().copy(
             eventType = EventType.MESSAGE_ENCRYPTION_FAILED
         )
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.ERROR, any()) } returns true
+        coEvery {
+            conversationStatusRepository.update(
+                id = testEvent.conversationId!!,
+                status = EventStatusEnum.ERROR,
+                eventType = EventType.MESSAGE_ENCRYPTION_FAILED,
+                datetime = any()
+            )
+        } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.ERROR, any()) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) {
+            conversationStatusRepository.update(
+                id = testEvent.conversationId!!,
+                status = EventStatusEnum.ERROR,
+                eventType = EventType.MESSAGE_ENCRYPTION_FAILED,
+                datetime = any()
+            )
+        }
     }
 
-    "Should update conversation status on retry event" {
+    "Should update conversation status to INFORMATION on retry event" {
         val testTransportEvent = buildTestTransportEvent().copy(
             eventType = EventType.RETRY_TRIGGED
         )
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.INFORMATION, any()) } returns true
+        coEvery {
+            conversationStatusRepository.update(
+                id = testEvent.conversationId!!,
+                status = EventStatusEnum.INFORMATION,
+                eventType = EventType.RETRY_TRIGGED,
+                datetime = any()
+            )
+        } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.INFORMATION, any()) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) {
+            conversationStatusRepository.update(
+                id = testEvent.conversationId!!,
+                status = EventStatusEnum.INFORMATION,
+                eventType = EventType.RETRY_TRIGGED,
+                datetime = any()
+            )
+        }
     }
 
-    "Should update conversation status to complete on MESSAGE_SENT_VIA_HTTP event" {
+    "Should not update conversation status on other INFORMATION events" {
+        val testTransportEvent1 = buildTestTransportEvent().copy(eventType = EventType.MESSAGE_ENCRYPTED)
+        val testEvent1 = Event.fromTransportModel(testTransportEvent1)
+
+        val testTransportEvent2 = buildTestTransportEvent().copy(eventType = EventType.MESSAGE_VALIDATED_AGAINST_CPA)
+        val testEvent2 = Event.fromTransportModel(testTransportEvent2)
+
+        val testTransportEvent3 = buildTestTransportEvent().copy(eventType = EventType.REFERENCE_RETRIEVED)
+        val testEvent3 = Event.fromTransportModel(testTransportEvent3)
+
+        coEvery { eventRepository.insert(testEvent1) } returns testEvent1.requestId
+        coEvery { eventRepository.insert(testEvent2) } returns testEvent2.requestId
+        coEvery { eventRepository.insert(testEvent3) } returns testEvent3.requestId
+        coEvery {
+            conversationStatusRepository.update(any(), any(), any(), any())
+        } returns true
+
+        eventService.process(testTransportEvent1.toByteArray())
+        eventService.process(testTransportEvent2.toByteArray())
+        eventService.process(testTransportEvent3.toByteArray())
+
+        coVerify(exactly = 3) { eventRepository.insert(any()) }
+        coVerify(exactly = 0) {
+            conversationStatusRepository.update(any(), any(), any(), any())
+        }
+    }
+
+    "Should update conversation status to PROCESSING_COMPLETED on MESSAGE_SENT_VIA_HTTP event" {
         val testTransportEvent = buildTestTransportEvent().copy(
             eventType = EventType.MESSAGE_SENT_VIA_HTTP
         )
         val testEvent = Event.fromTransportModel(testTransportEvent)
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
-        coEvery { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
+        coEvery {
+            conversationStatusRepository.update(
+                id = testEvent.conversationId!!,
+                status = EventStatusEnum.PROCESSING_COMPLETED,
+                eventType = EventType.MESSAGE_SENT_VIA_HTTP,
+                datetime = any()
+            )
+        } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testEvent.conversationId!!, EventStatusEnum.PROCESSING_COMPLETED, any()) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) {
+            conversationStatusRepository.update(
+                id = testEvent.conversationId!!,
+                status = EventStatusEnum.PROCESSING_COMPLETED,
+                eventType = EventType.MESSAGE_SENT_VIA_HTTP,
+                datetime = any()
+            )
+        }
     }
 
-    "Should update conversation status to complete on MESSAGEFLOW_COMPLETED event" {
+    "Should update conversation status to PROCESSING_COMPLETED on MESSAGEFLOW_COMPLETED event" {
         val testTransportEvent = buildTestTransportEvent().copy(
             eventType = EventType.MESSAGEFLOW_COMPLETED,
             conversationId = "my-conversation-id"
@@ -140,13 +209,27 @@ class EventServiceTest : StringSpec({
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
         coEvery { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) } returns testMessageDetail
-        coEvery { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
+        coEvery {
+            conversationStatusRepository.update(
+                id = testMessageDetail.conversationId,
+                status = EventStatusEnum.PROCESSING_COMPLETED,
+                eventType = EventType.MESSAGEFLOW_COMPLETED,
+                datetime = any()
+            )
+        } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
         coVerify(exactly = 0) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) }
+        coVerify(exactly = 1) {
+            conversationStatusRepository.update(
+                id = testMessageDetail.conversationId,
+                status = EventStatusEnum.PROCESSING_COMPLETED,
+                eventType = EventType.MESSAGEFLOW_COMPLETED,
+                datetime = any()
+            )
+        }
     }
 
     "Should call ebmsMessageDetailRepository.findByRequestId when conversationId is null when update conversation status is needed" {
@@ -163,17 +246,30 @@ class EventServiceTest : StringSpec({
 
         coEvery { eventRepository.insert(testEvent) } returns testEvent.requestId
         coEvery { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) } returns testMessageDetail
-        coEvery { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) } returns true
+        coEvery {
+            conversationStatusRepository.update(
+                id = testMessageDetail.conversationId,
+                status = EventStatusEnum.PROCESSING_COMPLETED,
+                eventType = EventType.MESSAGEFLOW_COMPLETED,
+                datetime = any()
+            )
+        } returns true
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
-        coVerify(exactly = 1) { conversationStatusRepository.update(testMessageDetail.conversationId, EventStatusEnum.PROCESSING_COMPLETED, any()) }
         coVerify(exactly = 1) { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
+        coVerify(exactly = 1) {
+            conversationStatusRepository.update(
+                id = testMessageDetail.conversationId,
+                status = EventStatusEnum.PROCESSING_COMPLETED,
+                eventType = EventType.MESSAGEFLOW_COMPLETED,
+                datetime = any()
+            )
+        }
     }
 
-    "Should continue inserting event even if ebmsMessageDetailRepository.findByRequestId does not find the corresponding message detail" {
+    "Should not abort inserting event when ebmsMessageDetailRepository.findByRequestId does not find the corresponding message detail" {
         val testTransportEvent = buildTestTransportEvent().copy(
             eventType = EventType.MESSAGEFLOW_COMPLETED,
             conversationId = null
@@ -186,7 +282,7 @@ class EventServiceTest : StringSpec({
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestId(testEvent.requestId) }
         coVerify(exactly = 0) { conversationStatusRepository.update(any(), EventStatusEnum.PROCESSING_COMPLETED, any()) }
         coVerify(exactly = 1) { eventRepository.insert(testEvent) }
@@ -202,8 +298,8 @@ class EventServiceTest : StringSpec({
 
         eventService.process(testTransportEvent.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
-        coVerify(exactly = 0) { conversationStatusRepository.update(any(), any()) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
+        coVerify(exactly = 0) { conversationStatusRepository.update(any(), any(), any()) }
     }
 
     "Should call EventRepository and EbmsMessageDetailRepository on fetching events" {
@@ -230,8 +326,8 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to) }
-        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+        coVerify(exactly = 1) { eventRepository.findByTimeInterval(from, to) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
     "Should call database repository on fetching events by time interval and filtered by Role" {
@@ -259,8 +355,8 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to, role = roleFilter) }
-        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+        coVerify(exactly = 1) { eventRepository.findByTimeInterval(from, to, role = roleFilter) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
     "Should call database repository on fetching events by time interval and filtered by Service" {
@@ -288,8 +384,8 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to, service = serviceFilter) }
-        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+        coVerify(exactly = 1) { eventRepository.findByTimeInterval(from, to, service = serviceFilter) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
     "Should call database repository on fetching events by time interval and filtered by Action" {
@@ -317,8 +413,8 @@ class EventServiceTest : StringSpec({
         eventsList[0].description shouldBe testEvent.eventType.description
         eventsList[0].eventData shouldBe testEvent.eventData
 
-        coVerify { eventRepository.findByTimeInterval(from, to, action = actionFilter) }
-        coVerify { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+        coVerify(exactly = 1) { eventRepository.findByTimeInterval(from, to, action = actionFilter) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
     "Should call EventRepository on fetching events related to a specific message by Request ID" {
@@ -335,7 +431,7 @@ class EventServiceTest : StringSpec({
         eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
         eventsList[0].eventStatus shouldBe EventStatusEnum.INFORMATION.dbValue
 
-        coVerify { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) }
+        coVerify(exactly = 1) { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) }
     }
 
     "Should call database on fetching events related to a specific message by Readable ID" {
@@ -354,8 +450,8 @@ class EventServiceTest : StringSpec({
         eventsList[0].eventId shouldBe testEvent.eventType.value.toString()
         eventsList[0].eventStatus shouldBe EventStatusEnum.PROCESSING_COMPLETED.dbValue
 
-        coVerify { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) }
-        coVerify { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
+        coVerify(exactly = 1) { eventRepository.findByRequestIdJoinEventType(testEvent.requestId) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
     }
 
     "fetchMessageLogInfo should return empty list if message is not found by Readable ID" {
@@ -367,7 +463,7 @@ class EventServiceTest : StringSpec({
 
         eventsList.size shouldBe 0
 
-        coVerify { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
+        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(testMessageDetail.generateReadableId()) }
     }
 
     "Should ignore unknown keys for event" {
@@ -383,6 +479,6 @@ class EventServiceTest : StringSpec({
         )
         eventService.process(byteArrayAsString.toByteArray())
 
-        coVerify { eventRepository.insert(testEvent) }
+        coVerify(exactly = 1) { eventRepository.insert(testEvent) }
     }
 })

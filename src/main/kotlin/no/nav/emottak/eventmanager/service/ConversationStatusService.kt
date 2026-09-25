@@ -32,7 +32,8 @@ class ConversationStatusService(private val conversationStatusRepository: Conver
                 service = conversationStatus.service,
                 cpaId = conversationStatus.cpaId,
                 statusAt = conversationStatus.statusAt.toOsloZone().toString(),
-                latestStatus = conversationStatus.latestStatus.dbValue
+                latestStatus = conversationStatus.latestStatus.dbValue,
+                errorDescription = conversationStatus.errorDescription
             )
         }
         return PageDto(result.page, result.size, result.sort, result.totalElements, resultList)

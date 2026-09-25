@@ -9,5 +9,6 @@ data class ConversationStatusDto(
     val service: String,
     val cpaId: String,
     val statusAt: String,
-    val latestStatus: String
+    val latestStatus: String,
+    var errorDescription: String?
 )
