@@ -170,6 +170,8 @@ class EbmsMessageDetailService(
             ReadableIdDto(
                 receivedDate = messageDetails.savedAt.toOsloZone().toString(),
                 readableId = messageDetails.readableId ?: "",
+                requestId = messageDetails.requestId.toString(),
+                messageId = messageDetails.messageId,
                 cpaId = messageDetails.cpaId,
                 role = messageDetails.fromRole,
                 service = messageDetails.service,

@@ -280,6 +280,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         readableIdInfoList.size shouldBe 1
         readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
+        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+        readableIdInfoList[0].messageId shouldBe testDetails.messageId
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
     }
 
@@ -312,6 +314,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         readableIdInfoList.size shouldBe 1
         readableIdInfoList[0].readableId shouldBe readableId
+        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+        readableIdInfoList[0].messageId shouldBe testDetails.messageId
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
     }
 
@@ -344,6 +348,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         readableIdInfoList.size shouldBe 1
         readableIdInfoList[0].readableId shouldBe readableId
+        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+        readableIdInfoList[0].messageId shouldBe testDetails.messageId
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
     }
 
@@ -370,6 +376,8 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
         readableIdInfoList.size shouldBe 1
         readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
+        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+        readableIdInfoList[0].messageId shouldBe testDetails.messageId
         readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
 
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
@@ -586,10 +594,7 @@ class EbmsMessageDetailServiceTest : StringSpec({
 
     "Should call addIfAbsent during process()" {
         val testTransportMessageDetail = buildTestTransportMessageDetail()
-        val testDetailsJson = Json.encodeToString(
-            no.nav.emottak.utils.kafka.model.EbmsMessageDetail.serializer(),
-            testTransportMessageDetail
-        )
+        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
         val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
         coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true

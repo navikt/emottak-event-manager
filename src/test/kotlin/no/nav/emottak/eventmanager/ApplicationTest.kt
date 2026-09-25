@@ -684,6 +684,8 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<ReadableIdDto> = httpResponse.body()
+            messageInfoList[0].requestId shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].messageId shouldBe messageDetails.messageId
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
@@ -710,6 +712,8 @@ class ApplicationTest : StringSpec({
             httpResponse.status shouldBe HttpStatusCode.OK
 
             val messageInfoList: List<ReadableIdDto> = httpResponse.body()
+            messageInfoList[0].requestId shouldBe messageDetails.requestId.toString()
+            messageInfoList[0].messageId shouldBe messageDetails.messageId
             messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
             messageInfoList[0].receivedDate shouldBe messageDetails.savedAt.toOsloZone().toString()
             messageInfoList[0].role shouldBe messageDetails.fromRole
@@ -731,19 +735,20 @@ class ApplicationTest : StringSpec({
             ebmsMessageDetailRepository.upsert(messageDetails)
             eventRepository.insert(testEvent)
 
+            val readableId = messageDetails.generateReadableId()
             forAll(
-                row("/message-details/${messageDetails.generateReadableId().substring(0, 6)}"),
-                row("/message-details/${messageDetails.generateReadableId().substring(0, 6).lowercase()}"),
-                row("/message-details/${messageDetails.generateReadableId().substring(0, 6).uppercase()}"),
-                row("/message-details/${messageDetails.generateReadableId().takeLast(6)}"),
-                row("/message-details/${messageDetails.generateReadableId().substring(6, 12)}")
+                row("/message-details/${readableId.substring(0, 6)}"),
+                row("/message-details/${readableId.substring(0, 6).lowercase()}"),
+                row("/message-details/${readableId.substring(0, 6).uppercase()}"),
+                row("/message-details/${readableId.takeLast(6)}"),
+                row("/message-details/${readableId.substring(6, 12)}")
             ) { url ->
                 val httpResponse = httpClient.getWithAuth(url, getToken)
 
                 httpResponse.status shouldBe HttpStatusCode.OK
 
                 val messageInfoList: List<ReadableIdDto> = httpResponse.body()
-                messageInfoList[0].readableId shouldBe messageDetails.generateReadableId()
+                messageInfoList[0].readableId shouldBe readableId
                 messageInfoList[0].conversationId shouldBe messageDetails.conversationId
             }
         }
