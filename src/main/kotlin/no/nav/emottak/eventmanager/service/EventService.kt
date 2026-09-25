@@ -65,6 +65,7 @@ class EventService(
                 description = it.event.eventType.description,
                 status = it.status.dbValue,
                 eventData = it.event.eventData,
+                requestId = it.event.requestId.toString(),
                 readableId = ebmsMessageDetail?.readableId ?: "",
                 role = ebmsMessageDetail?.fromRole,
                 service = ebmsMessageDetail?.service,

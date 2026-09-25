@@ -253,6 +253,45 @@ class ApplicationTest : DescribeSpec({
             }
         }
 
+        it("should return list of events with correct status and requestId") {
+            withTestApplication { httpClient ->
+                val savedAt = Instant.parse("2025-05-08T12:54:45.386Z")
+
+                val requestIdInfo = Uuid.random()
+                val eventInfo = buildTestEvent().copy(requestId = requestIdInfo, eventType = KafkaEventType.MESSAGE_DECRYPTED)
+                val messageDetailsInfo = buildTestEbmsMessageDetail().copy(requestId = requestIdInfo, savedAt = savedAt.plusSeconds(1))
+
+                val requestIdError = Uuid.random()
+                val eventError = buildTestEvent().copy(requestId = requestIdError, eventType = KafkaEventType.MESSAGE_DECRYPTION_FAILED)
+                val messageDetailsError = buildTestEbmsMessageDetail().copy(requestId = requestIdError, savedAt = savedAt.plusSeconds(2))
+
+                val requestIdFerdig = Uuid.random()
+                val eventFerdig = buildTestEvent().copy(requestId = requestIdFerdig, eventType = KafkaEventType.MESSAGE_SENT_TO_FAGSYSTEM)
+                val messageDetailsFerdig = buildTestEbmsMessageDetail().copy(requestId = requestIdFerdig, savedAt = savedAt.plusSeconds(3))
+
+                eventRepository.insert(eventInfo)
+                ebmsMessageDetailRepository.upsert(messageDetailsInfo)
+                eventRepository.insert(eventError)
+                ebmsMessageDetailRepository.upsert(messageDetailsError)
+                eventRepository.insert(eventFerdig)
+                ebmsMessageDetailRepository.upsert(messageDetailsFerdig)
+
+                val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00", getToken)
+
+                httpResponse.status shouldBe HttpStatusCode.OK
+
+                val eventsPage: PageDto<EventDto> = httpResponse.body()
+                val events: List<EventDto> = eventsPage.content
+                events.size shouldBe 3
+                events[0].status shouldBe "Ferdigbehandlet"
+                events[1].status shouldBe "Feil"
+                events[2].status shouldBe "Informasjon"
+                events[0].requestId shouldBe requestIdFerdig.toString()
+                events[1].requestId shouldBe requestIdError.toString()
+                events[2].requestId shouldBe requestIdInfo.toString()
+            }
+        }
+
         it("should return list of events page by page") {
             withTestApplication { httpClient ->
                 val events: MutableList<Event> = ArrayList()
