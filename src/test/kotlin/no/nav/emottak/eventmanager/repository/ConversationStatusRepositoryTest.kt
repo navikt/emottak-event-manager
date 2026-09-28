@@ -10,6 +10,9 @@ import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.INFORMATION
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.PROCESSING_COMPLETED
+import no.nav.emottak.utils.common.nowOsloToInstant
+import no.nav.emottak.utils.kafka.model.EventType
+import java.time.temporal.ChronoUnit
 import kotlin.uuid.Uuid
 
 class ConversationStatusRepositoryTest : RepositoryTestBase({
@@ -56,8 +59,9 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         conversationStatus!!.conversationId shouldBe conversationId
         conversationStatus.latestStatus shouldBe INFORMATION
         conversationStatus.createdAt shouldBe conversationStatus.statusAt
+        conversationStatus.errorDescription shouldBe null
 
-        val updated = conversationStatusRepository.update(conversationId, PROCESSING_COMPLETED)
+        val updated = conversationStatusRepository.update(conversationId, PROCESSING_COMPLETED, EventType.MESSAGE_SENT_VIA_HTTP)
         updated shouldBe true
 
         val updatedConversationStatus = conversationStatusRepository.get(conversationId)
@@ -65,11 +69,74 @@ class ConversationStatusRepositoryTest : RepositoryTestBase({
         updatedConversationStatus!!.conversationId shouldBe conversationId
         updatedConversationStatus.latestStatus shouldBe PROCESSING_COMPLETED
         updatedConversationStatus.createdAt shouldBeLessThan updatedConversationStatus.statusAt
+        updatedConversationStatus.errorDescription shouldBe null
+    }
+
+    "Should update errorDescription when error-status occurs" {
+        val datetime = nowOsloToInstant().truncatedTo(ChronoUnit.MICROS)
+        val conversationId = Uuid.random().toString()
+
+        val success = conversationStatusRepository.insert(conversationId, datetime)
+        success shouldBe true
+
+        // Normal INFORMATION-event:
+        var updatedDatetime = datetime.plusSeconds(1)
+        var updated = conversationStatusRepository.update(
+            id = conversationId,
+            status = INFORMATION,
+            eventType = EventType.PAYLOAD_READ_FROM_DATABASE,
+            datetime = updatedDatetime
+        )
+        updated shouldBe true
+
+        var updatedConversationStatus = conversationStatusRepository.get(conversationId)
+        updatedConversationStatus shouldNotBe null
+        updatedConversationStatus!!.conversationId shouldBe conversationId
+        updatedConversationStatus.latestStatus shouldBe INFORMATION
+        updatedConversationStatus.createdAt shouldBe datetime
+        updatedConversationStatus.statusAt shouldBe updatedDatetime
+        updatedConversationStatus.errorDescription shouldBe null
+
+        // ERROR-event occurs:
+        updatedDatetime = datetime.plusSeconds(1)
+        updated = conversationStatusRepository.update(
+            id = conversationId,
+            status = ERROR,
+            eventType = EventType.ERROR_WHILE_SENDING_MESSAGE_TO_FAGSYSTEM,
+            datetime = updatedDatetime
+        )
+        updated shouldBe true
+
+        updatedConversationStatus = conversationStatusRepository.get(conversationId)
+        updatedConversationStatus shouldNotBe null
+        updatedConversationStatus!!.conversationId shouldBe conversationId
+        updatedConversationStatus.latestStatus shouldBe ERROR
+        updatedConversationStatus.createdAt shouldBe datetime
+        updatedConversationStatus.statusAt shouldBe updatedDatetime
+        updatedConversationStatus.errorDescription shouldBe EventType.ERROR_WHILE_SENDING_MESSAGE_TO_FAGSYSTEM.description
+
+        // Retry trigged (INFORMATION-event, errorDescription set to null again):
+        updatedDatetime = datetime.plusSeconds(1)
+        updated = conversationStatusRepository.update(
+            id = conversationId,
+            status = INFORMATION,
+            eventType = EventType.RETRY_TRIGGED,
+            datetime = updatedDatetime
+        )
+        updated shouldBe true
+
+        updatedConversationStatus = conversationStatusRepository.get(conversationId)
+        updatedConversationStatus shouldNotBe null
+        updatedConversationStatus!!.conversationId shouldBe conversationId
+        updatedConversationStatus.latestStatus shouldBe INFORMATION
+        updatedConversationStatus.createdAt shouldBe datetime
+        updatedConversationStatus.statusAt shouldBe updatedDatetime
+        updatedConversationStatus.errorDescription shouldBe null
     }
 
     "Update should return false if conversationId not found" {
         val conversationId = Uuid.random().toString()
-        val updated = conversationStatusRepository.update(conversationId, ERROR)
+        val updated = conversationStatusRepository.update(conversationId, ERROR, EventType.ERROR_WHILE_READING_MESSAGE_FROM_QUEUE)
         updated shouldBe false
     }
 

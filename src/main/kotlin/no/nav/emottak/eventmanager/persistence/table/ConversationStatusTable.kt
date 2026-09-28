@@ -11,6 +11,7 @@ object ConversationStatusTable : Table("conversation_status") {
     val latestStatus: Column<EventStatusEnum> = eventStatusEnumeration("latest_status")
     val statusAt: Column<java.time.Instant> = timestamp("status_at")
         .defaultExpression(org.jetbrains.exposed.sql.javatime.CurrentTimestamp)
+    val errorDescription: Column<String?> = varchar("error_description", 256).nullable()
 
     override val primaryKey = PrimaryKey(conversationId)
 }

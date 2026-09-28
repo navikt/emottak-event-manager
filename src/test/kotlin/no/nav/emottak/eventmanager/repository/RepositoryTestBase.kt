@@ -18,6 +18,7 @@ import no.nav.emottak.eventmanager.persistence.repository.EventRepository
 import no.nav.emottak.eventmanager.persistence.repository.EventTypeRepository
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.service.getConversationStatusChangeEnum
+import no.nav.emottak.eventmanager.service.isErrorEvent
 import no.nav.emottak.utils.common.zoneOslo
 import org.testcontainers.containers.PostgreSQLContainer
 import java.time.Instant
@@ -269,7 +270,7 @@ suspend fun buildAndInsertTestEventsForConversationStatus(
 
     val eventStatus = event4.getConversationStatusChangeEnum()
     if (eventStatus != null) {
-        statusRepository.update(event4.conversationId!!, eventStatus, event4.createdAt)
+        statusRepository.update(event4.conversationId!!, eventStatus, event4.eventType, event4.createdAt)
     }
 
     return listOf(event1, event2, event3, event4)
@@ -328,5 +329,6 @@ fun buildTestConversationStatusData(messageDetail: EbmsMessageDetail, latestEven
     service = messageDetail.service,
     cpaId = messageDetail.cpaId,
     statusAt = messageDetail.savedAt.plusMillis(1000),
-    latestStatus = latestEvent.getConversationStatusChangeEnum() ?: EventStatusEnum.INFORMATION
+    latestStatus = latestEvent.getConversationStatusChangeEnum() ?: EventStatusEnum.INFORMATION,
+    errorDescription = if (latestEvent.eventType.isErrorEvent()) latestEvent.eventType.description else null
 )

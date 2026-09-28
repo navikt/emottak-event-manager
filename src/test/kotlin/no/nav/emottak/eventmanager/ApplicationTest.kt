@@ -1032,9 +1032,11 @@ class ApplicationTest : DescribeSpec({
                 conversations.size shouldBe 2
                 // Latest message in Conversation 1 have failed, even though the first two messages have status ferdigbehandlet:
                 assertConversationStatus(conversations[1], c1md1, c1Events3.last().createdAt, ERROR)
+                conversations[1].errorDescription shouldBe KafkaEventType.UNKNOWN_ERROR_OCCURRED.description
                 conversations[1].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
                 // Latest message in Conversation 2 have status information, while the first message have status ferdigbehandlet (which is not interesting):
                 assertConversationStatus(conversations[0], c2md1, c2md1.savedAt, INFORMATION)
+                conversations[0].errorDescription shouldBe null
                 conversations[0].readableIdList shouldBe "%s,%s".format(c2md1.generateReadableId(), c2md2.generateReadableId())
                 // Conversation 3 is completed, and therefore not returned.
             }

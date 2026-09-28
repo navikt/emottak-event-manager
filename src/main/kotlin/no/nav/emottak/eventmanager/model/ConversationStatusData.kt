@@ -10,5 +10,6 @@ data class ConversationStatusData(
     val service: String,
     val cpaId: String,
     val statusAt: Instant,
-    val latestStatus: EventStatusEnum
+    val latestStatus: EventStatusEnum,
+    val errorDescription: String?
 )

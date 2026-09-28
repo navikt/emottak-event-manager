@@ -7,5 +7,6 @@ data class ConversationStatus(
     val conversationId: String,
     val createdAt: Instant,
     val latestStatus: EventStatusEnum,
-    val statusAt: Instant
+    val statusAt: Instant,
+    val errorDescription: String?
 )
