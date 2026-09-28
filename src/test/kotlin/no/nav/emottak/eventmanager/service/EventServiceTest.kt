@@ -211,8 +211,10 @@ class EventServiceTest : StringSpec({
         val testRequestIds = listOf(testEvent.requestId)
         val from = Instant.now()
         val to = from.plusSeconds(60)
+        val status = EventStatusEnum.INFORMATION
+        val eventWithStatus = EventWithStatus(testEvent, status)
 
-        val list = listOf(testEvent)
+        val list = listOf(eventWithStatus)
         val pageable = Pageable(1, list.size)
         coEvery { eventRepository.findByTimeInterval(from, to, pageable = any()) } returns PageDto(
             pageable.pageNumber,
@@ -240,8 +242,10 @@ class EventServiceTest : StringSpec({
         val testRequestIds = listOf(testEvent.requestId)
         val from = Instant.now()
         val to = from.plusSeconds(60)
+        val status = EventStatusEnum.INFORMATION
+        val eventWithStatus = EventWithStatus(testEvent, status)
 
-        val list = listOf(testEvent)
+        val list = listOf(eventWithStatus)
         val pageable = Pageable(1, list.size)
         coEvery { eventRepository.findByTimeInterval(from, to, role = roleFilter) } returns PageDto(
             pageable.pageNumber,
@@ -269,8 +273,10 @@ class EventServiceTest : StringSpec({
         val testRequestIds = listOf(testEvent.requestId)
         val from = Instant.now()
         val to = from.plusSeconds(60)
+        val status = EventStatusEnum.INFORMATION
+        val eventWithStatus = EventWithStatus(testEvent, status)
 
-        val list = listOf(testEvent)
+        val list = listOf(eventWithStatus)
         val pageable = Pageable(1, list.size)
         coEvery { eventRepository.findByTimeInterval(from, to, service = serviceFilter) } returns PageDto(
             pageable.pageNumber,
@@ -298,8 +304,10 @@ class EventServiceTest : StringSpec({
         val testRequestIds = listOf(testEvent.requestId)
         val from = Instant.now()
         val to = from.plusSeconds(60)
+        val status = EventStatusEnum.INFORMATION
+        val eventWithStatus = EventWithStatus(testEvent, status)
 
-        val list = listOf(testEvent)
+        val list = listOf(eventWithStatus)
         val pageable = Pageable(1, list.size)
         coEvery { eventRepository.findByTimeInterval(from, to, action = actionFilter) } returns PageDto(
             pageable.pageNumber,
