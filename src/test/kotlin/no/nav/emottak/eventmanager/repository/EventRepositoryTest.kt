@@ -1,10 +1,10 @@
 package no.nav.emottak.eventmanager.repository
 
-import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.utils.kafka.model.EventType
 import java.time.Instant
 import kotlin.uuid.Uuid
@@ -77,7 +77,8 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 1
-        retrievedEvents shouldContain eventInTimeInterval
+        retrievedEvents[0].event shouldBe eventInTimeInterval
+        retrievedEvents[0].status shouldBe EventStatusEnum.INFORMATION
     }
 
     "Should find events by time interval, page by page" {
@@ -106,10 +107,10 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
-        retrievedEvents.content shouldContain events[0]
-        retrievedEvents.content shouldContain events[1]
-        retrievedEvents.content shouldContain events[2]
-        retrievedEvents.content shouldContain events[3]
+        retrievedEvents.content[0].event shouldBe events[0]
+        retrievedEvents.content[1].event shouldBe events[1]
+        retrievedEvents.content[2].event shouldBe events[2]
+        retrievedEvents.content[3].event shouldBe events[3]
 
         val page2 = page1.next()
         retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page2)
@@ -117,10 +118,10 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
-        retrievedEvents.content shouldContain events[4]
-        retrievedEvents.content shouldContain events[5]
-        retrievedEvents.content shouldContain events[6]
-        retrievedEvents.content shouldContain events[7]
+        retrievedEvents.content[0].event shouldBe events[4]
+        retrievedEvents.content[1].event shouldBe events[5]
+        retrievedEvents.content[2].event shouldBe events[6]
+        retrievedEvents.content[3].event shouldBe events[7]
 
         val page3 = page2.next()
         retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page3)
@@ -128,7 +129,7 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content.size shouldBe 1
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
-        retrievedEvents.content shouldContain events[8]
+        retrievedEvents.content[0].event shouldBe events[8]
     }
 
     "Should find events by time interval, page by page, DESCENDING" {
@@ -157,10 +158,10 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
-        retrievedEvents.content shouldContain events[8]
-        retrievedEvents.content shouldContain events[7]
-        retrievedEvents.content shouldContain events[6]
-        retrievedEvents.content shouldContain events[5]
+        retrievedEvents.content[0].event shouldBe events[8]
+        retrievedEvents.content[1].event shouldBe events[7]
+        retrievedEvents.content[2].event shouldBe events[6]
+        retrievedEvents.content[3].event shouldBe events[5]
 
         val page2 = page1.next()
         retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page2)
@@ -168,10 +169,10 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content.size shouldBe 4
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
-        retrievedEvents.content shouldContain events[4]
-        retrievedEvents.content shouldContain events[3]
-        retrievedEvents.content shouldContain events[2]
-        retrievedEvents.content shouldContain events[1]
+        retrievedEvents.content[0].event shouldBe events[4]
+        retrievedEvents.content[1].event shouldBe events[3]
+        retrievedEvents.content[2].event shouldBe events[2]
+        retrievedEvents.content[3].event shouldBe events[1]
 
         val page3 = page2.next()
         retrievedEvents = eventRepository.findByTimeInterval(from, to, pageable = page3)
@@ -179,7 +180,7 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.content.size shouldBe 1
         retrievedEvents.totalPages shouldBe 3
         retrievedEvents.totalElements shouldBe 9
-        retrievedEvents.content shouldContain events[0]
+        retrievedEvents.content[0].event shouldBe events[0]
     }
 
     "Should retrieve events by time interval and filtered by Role" {
@@ -188,7 +189,10 @@ class EventRepositoryTest : RepositoryTestBase({
         val messageDetails2 = buildTestEbmsMessageDetail().copy(fromRole = roleFilter)
 
         val event1 = buildTestEvent(requestId = messageDetails1.requestId)
-        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
+        val event2 = buildTestEvent().copy(
+            requestId = messageDetails2.requestId,
+            eventType = EventType.MESSAGE_SENT_VIA_HTTP
+        )
 
         ebmsMessageDetailRepository.upsert(messageDetails1)
         ebmsMessageDetailRepository.upsert(messageDetails2)
@@ -202,7 +206,8 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 1
-        retrievedEvents shouldContain event2
+        retrievedEvents[0].event shouldBe event2
+        retrievedEvents[0].status shouldBe EventStatusEnum.PROCESSING_COMPLETED
     }
 
     "Should retrieve events by time interval and filtered by Service" {
@@ -211,7 +216,10 @@ class EventRepositoryTest : RepositoryTestBase({
         val messageDetails2 = buildTestEbmsMessageDetail().copy(service = serviceFilter)
 
         val event1 = buildTestEvent(requestId = messageDetails1.requestId)
-        val event2 = buildTestEvent(requestId = messageDetails2.requestId)
+        val event2 = buildTestEvent().copy(
+            requestId = messageDetails2.requestId,
+            eventType = EventType.ERROR_WHILE_SENDING_MESSAGE_TO_FAGSYSTEM
+        )
 
         ebmsMessageDetailRepository.upsert(messageDetails1)
         ebmsMessageDetailRepository.upsert(messageDetails2)
@@ -225,7 +233,8 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 1
-        retrievedEvents shouldContain event2
+        retrievedEvents[0].event shouldBe event2
+        retrievedEvents[0].status shouldBe EventStatusEnum.ERROR
     }
 
     "Should retrieve events by time interval and filtered by Action" {
@@ -248,7 +257,8 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 1
-        retrievedEvents shouldContain event2
+        retrievedEvents[0].event shouldBe event2
+        retrievedEvents[0].status shouldBe EventStatusEnum.INFORMATION
     }
 
     "Should not retrieve events where conversation_id is null or blank" {
@@ -286,8 +296,8 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 2
-        retrievedEvents[0].requestId shouldBe event2.requestId
-        retrievedEvents[1].requestId shouldBe event1.requestId
+        retrievedEvents[0].event.requestId shouldBe event2.requestId
+        retrievedEvents[1].event.requestId shouldBe event1.requestId
     }
 
     "Should not retrieve events where request_id do not exists in message details-table" {
@@ -314,7 +324,7 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 1
-        retrievedEvents[0].requestId shouldBe event1.requestId
+        retrievedEvents[0].event.requestId shouldBe event1.requestId
     }
 
     "Should not retrieve events where corresponding message details have blank conversationId" {
@@ -336,6 +346,6 @@ class EventRepositoryTest : RepositoryTestBase({
         ).content
 
         retrievedEvents.size shouldBe 1
-        retrievedEvents[0].requestId shouldBe event1.requestId
+        retrievedEvents[0].event.requestId shouldBe event1.requestId
     }
 })
