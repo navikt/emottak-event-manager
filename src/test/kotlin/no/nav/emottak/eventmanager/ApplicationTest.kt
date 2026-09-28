@@ -932,64 +932,6 @@ class ApplicationTest : DescribeSpec({
                 conversations[2].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
             }
         }
-    }
-
-    "conversation-status endpoint should filter on status Feil and Informasjon, and show correct conversation statuses" {
-        withTestApplication { httpClient ->
-            val (c1md1, c1md2, c2md1, c1md3, c3md1) = buildTestEbmsMessageDetailsForConversationStatus()
-            val c2md2 = c2md1.copy(
-                requestId = Uuid.random(),
-                savedAt = LocalDateTime.parse("2025-04-30T12:56:55.000").atZone(zoneOslo()).toInstant()
-            )
-
-            ebmsMessageDetailRepository.upsert(c1md1)
-            ebmsMessageDetailRepository.upsert(c1md2)
-            ebmsMessageDetailRepository.upsert(c1md3)
-            ebmsMessageDetailRepository.upsert(c2md1)
-            ebmsMessageDetailRepository.upsert(c2md2)
-            ebmsMessageDetailRepository.upsert(c3md1)
-
-            conversationStatusRepository.insert(c1md1.conversationId, c1md1.savedAt)
-            conversationStatusRepository.insert(c2md1.conversationId, c2md1.savedAt)
-            conversationStatusRepository.insert(c3md1.conversationId, c3md1.savedAt)
-
-            // Conversation 1:
-            buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c1md1, KafkaEventType.MESSAGE_SENT_TO_FAGSYSTEM) // Ferdigbehandlet
-            buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c1md2, KafkaEventType.MESSAGE_SENT_VIA_SMTP) // Ferdigbehandlet
-            val c1Events3 = buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c1md3, KafkaEventType.UNKNOWN_ERROR_OCCURRED) // Feil
-            // Conversation 2:
-            buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c2md1, KafkaEventType.MESSAGE_SENT_TO_FAGSYSTEM) // Ferdigbehandlet
-            buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c2md2, KafkaEventType.MESSAGE_ENCRYPTED) // Informasjon
-            // Conversation 3:
-            buildAndInsertTestEventsForConversationStatus(eventRepository, conversationStatusRepository, c3md1, KafkaEventType.MESSAGE_SENT_VIA_HTTP) // Ferdigbehandlet
-
-            val httpResponse = httpClient.getWithAuth("/conversation-status?statuses=Feil,Informasjon", getToken)
-
-            httpResponse.status shouldBe HttpStatusCode.OK
-
-            val conversationsPage: PageDto<ConversationStatusDto> = httpResponse.body()
-            conversationsPage.size shouldBe 50
-            conversationsPage.totalElements shouldBe 2
-
-            val conversations = conversationsPage.content
-            conversations.size shouldBe 2
-            // Latest message in Conversation 1 have failed, even though the first two messages have status ferdigbehandlet:
-            assertConversationStatus(conversations[1], c1md1, c1Events3.last().createdAt, ERROR)
-            conversations[1].readableIdList shouldBe "%s,%s,%s".format(c1md1.generateReadableId(), c1md2.generateReadableId(), c1md3.generateReadableId())
-            conversations[1].errorDescription shouldBe KafkaEventType.UNKNOWN_ERROR_OCCURRED.description
-            // Latest message in Conversation 2 have status information, while the first message have status ferdigbehandlet (which is not interesting):
-            assertConversationStatus(conversations[0], c2md1, c2md1.savedAt, INFORMATION)
-            conversations[0].readableIdList shouldBe "%s,%s".format(c2md1.generateReadableId(), c2md2.generateReadableId())
-            conversations[0].errorDescription shouldBe null
-            // Conversation 3 is completed, and therefore not returned.
-        }
-    }
-
-    "conversation-status endpoint should not fail when fromDate or toDate is blank" {
-        withTestApplication { httpClient ->
-            val (messageDetails, events) = buildAndInsertTestEbmsMessageDetailsForConversation(ebmsMessageDetailRepository, eventRepository, conversationStatusRepository)
-            val (c1md1, c1md2, c2md1, c1md3, c3md1) = messageDetails
-            val (_, _, _, c1md3EventsList, c3md1EventsList) = events
 
         it("should not fail when fromDate or toDate is blank") {
             withTestApplication { httpClient ->
