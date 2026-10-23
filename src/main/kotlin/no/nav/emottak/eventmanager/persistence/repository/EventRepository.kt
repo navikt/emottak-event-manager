@@ -9,6 +9,7 @@ import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
+import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.persistence.table.EventTable
 import no.nav.emottak.eventmanager.persistence.table.EventTable.contentId
 import no.nav.emottak.eventmanager.persistence.table.EventTable.conversationId
@@ -105,6 +106,7 @@ class EventRepository(private val database: Database) {
         role: String = "",
         service: String = "",
         action: String = "",
+        status: EventStatusEnum? = null,
         pageable: Pageable? = null
     ): PageDto<EventWithStatus> = withContext(Dispatchers.IO) {
         transaction {
@@ -117,6 +119,9 @@ class EventRepository(private val database: Database) {
                 .andWhere { not(EbmsMessageDetailTable.conversationId.isNullOrEmpty()) }
                 .apply {
                     this.applyRoleServiceActionFilters(role, service, action)
+                    if (status != null) {
+                        this.andWhere { EventTypeTable.status eq status }
+                    }
                 }
             val totalCount = query.count()
             val list = query.apply {

@@ -15,5 +15,6 @@ object QueryConstants {
     const val PAGE_NUMBER = "page"
     const val PAGE_SIZE = "size"
     const val SORT = "sort"
+    const val STATUS = "status"
     const val STATUSES = "statuses"
 }

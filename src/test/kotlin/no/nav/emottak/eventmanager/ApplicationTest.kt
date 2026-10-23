@@ -31,6 +31,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.FROM_DATE
 import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
+import no.nav.emottak.eventmanager.constants.QueryConstants.STATUS
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
@@ -376,6 +377,41 @@ class ApplicationTest : DescribeSpec({
                     val httpResponse = httpClient.getWithAuth(url, getToken)
                     httpResponse.status shouldBe HttpStatusCode.BadRequest
                 }
+            }
+        }
+
+        it("should return BadRequest if invalid status") {
+            withTestApplication { httpClient ->
+                val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-02T14:00&$TO_DATE=2025-04-02T15:00&$STATUS=info", getToken)
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+                httpResponse.bodyAsText() shouldBe "Unknown event status: info"
+            }
+        }
+
+        it("should return list of events filtered on status case insensitive") {
+            withTestApplication { httpClient ->
+                val commonRequestId1 = Uuid.random()
+                val commonRequestId2 = Uuid.random()
+                val testEvent1 = buildTestEvent().copy(requestId = commonRequestId1)
+                val testEvent2 = buildTestEvent().copy(requestId = commonRequestId2, eventType = KafkaEventType.UNKNOWN_ERROR_OCCURRED)
+                val testMessageDetails1 = buildTestEbmsMessageDetail().copy(requestId = commonRequestId1, service = "MyService")
+                val testMessageDetails2 = buildTestEbmsMessageDetail().copy(requestId = commonRequestId2, service = "YourService")
+
+                ebmsMessageDetailRepository.upsert(testMessageDetails1)
+                ebmsMessageDetailRepository.upsert(testMessageDetails2)
+                eventRepository.insert(testEvent1)
+                eventRepository.insert(testEvent2)
+
+                val httpResponse = httpClient.getWithAuth("/events?$FROM_DATE=2025-04-01T14:00&$TO_DATE=2025-04-01T15:00&$STATUS=inFORmasjON", getToken)
+
+                httpResponse.status shouldBe HttpStatusCode.OK
+
+                val eventsPage: PageDto<EventDto> = httpResponse.body()
+                val events: List<EventDto> = eventsPage.content
+                events.size shouldBe 1
+                events[0].service shouldBe testMessageDetails1.service
+                events[0].requestId shouldBe commonRequestId1.toString()
+                events[0].status shouldBe INFORMATION.dbValue
             }
         }
 

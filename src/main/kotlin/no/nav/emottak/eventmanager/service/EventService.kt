@@ -49,9 +49,10 @@ class EventService(
         role: String = "",
         service: String = "",
         action: String = "",
+        status: EventStatusEnum? = null,
         pageable: Pageable? = null
     ): PageDto<EventDto> {
-        val eventsPage = eventRepository.findByTimeInterval(from, to, role, service, action, pageable)
+        val eventsPage = eventRepository.findByTimeInterval(from, to, role, service, action, status, pageable)
         val eventsList = eventsPage.content
         val requestIds = eventsList.map { it.event.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")

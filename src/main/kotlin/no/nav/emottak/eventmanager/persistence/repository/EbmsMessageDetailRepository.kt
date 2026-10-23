@@ -314,6 +314,7 @@ private fun Query.applyReadableIdCpaIdMessageIdFilters(readableIdPattern: String
 }
 
 internal fun Query.applyRoleServiceActionFilters(role: String = "", service: String = "", action: String = "") {
+    // TODO: Hvorfor applyLike og ikke applyEquals?
     this.applyLike(role, EbmsMessageDetailTable.fromRole)
     this.applyLike(service, EbmsMessageDetailTable.service.nullable())
     this.applyLike(action, EbmsMessageDetailTable.action.nullable())
