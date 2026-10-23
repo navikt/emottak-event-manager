@@ -11,7 +11,7 @@ enum class EventStatusEnum(val dbValue: String, val description: String) {
 
     companion object {
         fun fromDbValue(value: String): EventStatusEnum {
-            return entries.find { it.dbValue == value }
+            return entries.find { it.dbValue.equals(value, ignoreCase = true) }
                 ?: throw IllegalArgumentException("Unknown event status: $value")
         }
     }

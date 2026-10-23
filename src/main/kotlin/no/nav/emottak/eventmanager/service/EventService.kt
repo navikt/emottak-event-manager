@@ -49,9 +49,11 @@ class EventService(
         role: String = "",
         service: String = "",
         action: String = "",
+        status: String = "",
         pageable: Pageable? = null
     ): PageDto<EventDto> {
-        val eventsPage = eventRepository.findByTimeInterval(from, to, role, service, action, pageable)
+        val statusEnum = try { EventStatusEnum.fromDbValue(status) } catch (_: IllegalArgumentException) { null }
+        val eventsPage = eventRepository.findByTimeInterval(from, to, role, service, action, statusEnum, pageable)
         val eventsList = eventsPage.content
         val requestIds = eventsList.map { it.event.requestId }.distinct()
         log.debug("Number of different Request IDs: ${requestIds.size}")

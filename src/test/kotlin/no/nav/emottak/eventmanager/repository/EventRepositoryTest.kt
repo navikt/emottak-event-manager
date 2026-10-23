@@ -348,4 +348,57 @@ class EventRepositoryTest : RepositoryTestBase({
         retrievedEvents.size shouldBe 1
         retrievedEvents[0].event.requestId shouldBe event1.requestId
     }
+
+    "Should filter on status (EventStatusEnum)" {
+        val messageDetails1 = buildTestEbmsMessageDetail()
+        val messageDetails2 = buildTestEbmsMessageDetail()
+        val messageDetails3 = buildTestEbmsMessageDetail()
+
+        val event1 = buildTestEvent(requestId = messageDetails1.requestId)
+        val event2 = buildTestEvent().copy(
+            requestId = messageDetails2.requestId,
+            eventType = EventType.MESSAGEFLOW_COMPLETED
+        )
+        val event3 = buildTestEvent().copy(
+            requestId = messageDetails3.requestId,
+            eventType = EventType.ERROR_WHILE_SENDING_MESSAGE_TO_FAGSYSTEM
+        )
+
+        ebmsMessageDetailRepository.upsert(messageDetails1)
+        ebmsMessageDetailRepository.upsert(messageDetails2)
+        ebmsMessageDetailRepository.upsert(messageDetails3)
+        eventRepository.insert(event1)
+        eventRepository.insert(event2)
+        eventRepository.insert(event3)
+
+        // INFORMATION (event1)
+        var retrievedEvents = eventRepository.findByTimeInterval(
+            Instant.parse("2025-04-01T12:00:00Z"),
+            Instant.parse("2025-04-01T13:00:00Z"),
+            status = EventStatusEnum.INFORMATION
+        ).content
+        retrievedEvents.size shouldBe 1
+        retrievedEvents[0].event shouldBe event1
+        retrievedEvents[0].status shouldBe EventStatusEnum.INFORMATION
+
+        // PROCESSING_COMPLETED (event2)
+        retrievedEvents = eventRepository.findByTimeInterval(
+            Instant.parse("2025-04-01T12:00:00Z"),
+            Instant.parse("2025-04-01T13:00:00Z"),
+            status = EventStatusEnum.PROCESSING_COMPLETED
+        ).content
+        retrievedEvents.size shouldBe 1
+        retrievedEvents[0].event shouldBe event2
+        retrievedEvents[0].status shouldBe EventStatusEnum.PROCESSING_COMPLETED
+
+        // ERROR (event3)
+        retrievedEvents = eventRepository.findByTimeInterval(
+            Instant.parse("2025-04-01T12:00:00Z"),
+            Instant.parse("2025-04-01T13:00:00Z"),
+            status = EventStatusEnum.ERROR
+        ).content
+        retrievedEvents.size shouldBe 1
+        retrievedEvents[0].event shouldBe event3
+        retrievedEvents[0].status shouldBe EventStatusEnum.ERROR
+    }
 })

@@ -425,6 +425,43 @@ class EventServiceTest : StringSpec({
         coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
     }
 
+    "Should call database repository on fetching events by time interval and filtered by Status" {
+        val testEvent = buildTestEvent()
+        val testRequestIds = listOf(testEvent.requestId)
+        val from = Instant.now()
+        val to = from.plusSeconds(60)
+        val status = EventStatusEnum.INFORMATION
+        val eventWithStatus = EventWithStatus(testEvent, status)
+
+        val list = listOf(eventWithStatus)
+        val pageable = Pageable(1, list.size)
+        coEvery { eventRepository.findByTimeInterval(from, to, status = EventStatusEnum.INFORMATION) } returns PageDto(
+            pageable.pageNumber,
+            pageable.pageSize,
+            "ASC",
+            list.size.toLong(),
+            list
+        )
+        coEvery { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) } returns mapOf()
+
+        var eventsPage = eventService.fetchEvents(from, to, status = "Informasjon")
+        var eventsList = eventsPage.content
+        eventsList.size shouldBe 1
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
+        eventsList[0].description shouldBe testEvent.eventType.description
+        eventsList[0].eventData shouldBe testEvent.eventData
+
+        eventsPage = eventService.fetchEvents(from, to, status = "inFORmasjon") // Case insensitive
+        eventsList = eventsPage.content
+        eventsList.size shouldBe 1
+        eventsList[0].eventDate shouldBe testEvent.createdAt.toOsloZone().toString()
+        eventsList[0].description shouldBe testEvent.eventType.description
+        eventsList[0].eventData shouldBe testEvent.eventData
+
+        coVerify(exactly = 2) { eventRepository.findByTimeInterval(from, to, status = EventStatusEnum.INFORMATION) }
+        coVerify(exactly = 2) { ebmsMessageDetailRepository.findByRequestIds(testRequestIds) }
+    }
+
     "Should call EventRepository on fetching events related to a specific message by Request ID" {
         val testEvent = buildTestEvent()
         val testEventWithStatus = EventWithStatus(testEvent, EventStatusEnum.INFORMATION)

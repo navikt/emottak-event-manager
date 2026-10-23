@@ -18,6 +18,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.READABLE_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.ROLE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SERVICE
 import no.nav.emottak.eventmanager.constants.QueryConstants.SORT
+import no.nav.emottak.eventmanager.constants.QueryConstants.STATUS
 import no.nav.emottak.eventmanager.constants.QueryConstants.STATUSES
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.Pageable
@@ -49,10 +50,11 @@ fun Route.eventManagerRoutes(
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
 
         val (role, service, action) = getRoleServiceActionParameters(call)
+        val status = call.request.queryParameters[STATUS] ?: ""
         val pageable = getPagableParameters(call) ?: return@get
 
         log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
-        val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, pageable)
+        val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, status, pageable)
         val events = eventsPage.content
         log.debug("Events retrieved: ${events.size} of total ${eventsPage.totalElements}")
         log.debug("The last event: {}", events.lastOrNull())
