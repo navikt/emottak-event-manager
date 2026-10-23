@@ -50,11 +50,17 @@ fun Route.eventManagerRoutes(
         val toDate = Validation.parseDate(call.request.queryParameters[TO_DATE]!!)
 
         val (role, service, action) = getRoleServiceActionParameters(call)
-        val status = call.request.queryParameters[STATUS] ?: ""
+        val statusStr = call.request.queryParameters[STATUS] ?: ""
+        val statusEnum = try {
+            if (statusStr.isBlank()) null else EventStatusEnum.fromDbValue(statusStr)
+        } catch (e: IllegalArgumentException) {
+            call.respond(HttpStatusCode.BadRequest, e.message ?: "Invalid status code: $statusStr")
+            return@get
+        }
         val pageable = getPagableParameters(call) ?: return@get
 
         log.debug("Retrieving events from database, page ${pageable.pageNumber} with size ${pageable.pageSize} and sort order ${pageable.sort}")
-        val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, status, pageable)
+        val eventsPage = eventService.fetchEvents(fromDate, toDate, role, service, action, statusEnum, pageable)
         val events = eventsPage.content
         log.debug("Events retrieved: ${events.size} of total ${eventsPage.totalElements}")
         log.debug("The last event: {}", events.lastOrNull())
