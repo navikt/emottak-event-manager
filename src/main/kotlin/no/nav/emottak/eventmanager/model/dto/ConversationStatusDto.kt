@@ -7,6 +7,7 @@ data class ConversationStatusDto(
     val createdAt: String,
     val readableIdList: String,
     val service: String,
+    val action: String,
     val cpaId: String,
     val statusAt: String,
     val latestStatus: String,
