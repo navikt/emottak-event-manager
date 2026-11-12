@@ -136,10 +136,11 @@ fun Route.eventManagerRoutes(
         }
         val cpaIdPattern = call.request.queryParameters[CPA_ID] ?: ""
         val service = call.request.queryParameters[SERVICE] ?: ""
+        val action = call.request.queryParameters[ACTION] ?: ""
         val statuses = parseStatuses(call) ?: return@get
         val pageable = getPagableParameters(call) ?: return@get
-        debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
-        val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
+        debugConversationStatusInput(fromDate, toDate, cpaIdPattern, service, action, statuses, pageable)
+        val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, action, statuses, pageable)
         log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
         call.respond(conversationPage)
     }
@@ -184,9 +185,9 @@ private suspend fun parseStatuses(call: RoutingCall): List<EventStatusEnum>? {
     }
 }
 
-private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, statuses: List<EventStatusEnum>, pageable: Pageable?) {
+private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, cpaIdPattern: String, service: String, action: String, statuses: List<EventStatusEnum>, pageable: Pageable?) {
     var msg = "Retrieving conversation statuses with filters: "
-    if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && statuses.isEmpty()) {
+    if (fromDate == null && toDate == null && cpaIdPattern == "" && service == "" && action == "" && statuses.isEmpty()) {
         log.debug("Retrieving conversation statuses without filters")
         return
     }
@@ -194,6 +195,7 @@ private fun debugConversationStatusInput(fromDate: Instant?, toDate: Instant?, c
     if (toDate != null) msg += "toDate: '$toDate', "
     if (cpaIdPattern != "") msg += "cpaIdPattern: '$cpaIdPattern', "
     if (service != "") msg += "service: '$service', "
+    if (action != "") msg += "action: '$action', "
     if (statuses.isNotEmpty()) msg += "statuses: '$statuses', "
     if (pageable != null) msg += "page: '${pageable.pageNumber}', pageSize: '${pageable.pageSize}', sort: '${pageable.sort}', "
     log.debug(msg.dropLast(2))

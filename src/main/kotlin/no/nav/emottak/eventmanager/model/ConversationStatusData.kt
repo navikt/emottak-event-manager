@@ -8,6 +8,7 @@ data class ConversationStatusData(
     val createdAt: Instant,
     val readableIdList: String,
     val service: String,
+    val action: String,
     val cpaId: String,
     val statusAt: Instant,
     val latestStatus: EventStatusEnum,

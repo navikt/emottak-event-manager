@@ -97,6 +97,7 @@ private fun assertConversationStatus(
     actualConversationStatusDto.readableIdList shouldBe expectedMessageDetail.generateReadableId()
     actualConversationStatusDto.cpaId shouldBe expectedMessageDetail.cpaId
     actualConversationStatusDto.service shouldBe expectedMessageDetail.service
+    actualConversationStatusDto.action shouldBe expectedMessageDetail.action
     actualConversationStatusDto.statusAt shouldBe expectedMessageDetail.savedAt.plusMillis(1000).toOsloZone().toString()
     actualConversationStatusDto.latestStatus shouldBe expectedStatus.dbValue
 }

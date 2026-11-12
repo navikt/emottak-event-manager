@@ -327,6 +327,7 @@ fun buildTestConversationStatusData(messageDetail: EbmsMessageDetail, latestEven
     createdAt = messageDetail.savedAt,
     readableIdList = messageDetail.generateReadableId(),
     service = messageDetail.service,
+    action = messageDetail.action,
     cpaId = messageDetail.cpaId,
     statusAt = messageDetail.savedAt.plusMillis(1000),
     latestStatus = latestEvent.getConversationStatusChangeEnum() ?: EventStatusEnum.INFORMATION,
