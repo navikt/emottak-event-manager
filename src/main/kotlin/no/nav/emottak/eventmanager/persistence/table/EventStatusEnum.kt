@@ -4,7 +4,7 @@ enum class EventStatusEnum(val dbValue: String, val description: String) {
     CREATED("Opprettet", "*Statusen er ikke i bruk nå"),
     INFORMATION("Informasjon", "Meldingen er under behandling"),
     MANUAL_PROCESSING("Manuell behandling", "*Statusen er ikke i bruk nå"),
-    WARNING("Advarsel", "*Statusen er ikke i bruk nå"),
+    WARNING("Advarsel", "Advarsel under behandling av meldingen"),
     ERROR("Feil", "Meldingen feilet under behandling"),
     FATAL_ERROR("Fatal feil", "*Statusen er ikke i bruk nå"),
     PROCESSING_COMPLETED("Ferdigbehandlet", "Meldingen er ferdigbehandlet") ;
