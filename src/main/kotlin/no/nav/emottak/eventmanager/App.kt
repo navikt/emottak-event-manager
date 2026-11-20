@@ -9,10 +9,12 @@ import io.ktor.server.application.Application
 import io.ktor.server.netty.Netty
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import no.nav.emottak.eventmanager.configuration.RestConfig
@@ -41,8 +43,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.ensureActive
 
 private val log: Logger = LoggerFactory.getLogger("no.nav.emottak.eventmanager.App")
 
