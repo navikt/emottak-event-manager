@@ -1250,6 +1250,39 @@ class ApplicationTest : DescribeSpec({
                 response.invalidIds.size shouldBe 0
             }
         }
+
+        it("should return HTTP 200 OK when ids contains duplicates, and all ids are found") {
+            withTestApplication { httpClient ->
+                val testMessageDetails1 = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails1)
+                val testMessageDetails2 = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails2)
+
+                val request = FindByUuidRequestDto(
+                    ids = listOf(
+                        testMessageDetails1.requestId.toString(),
+                        testMessageDetails2.requestId.toString(),
+                        testMessageDetails1.requestId.toString()
+                    )
+                )
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.OK
+                val response: FindByUuidResponseDto<ReadableIdDto> = httpResponse.body()
+                response.content.size shouldBe 2
+                response.content.containsKey(testMessageDetails1.requestId) shouldBe true
+                response.content[testMessageDetails1.requestId].shouldBeEqualsTo(testMessageDetails1)
+                response.content[testMessageDetails2.requestId].shouldBeEqualsTo(testMessageDetails2)
+                response.invalidIds.size shouldBe 0
+            }
+        }
     }
 })
 

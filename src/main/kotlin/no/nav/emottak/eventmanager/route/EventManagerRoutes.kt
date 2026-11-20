@@ -155,12 +155,13 @@ fun Route.eventManagerRoutes(
         } catch (e: ContentTransformationException) {
             throw BadRequestException("Invalid post data", e)
         }
-        val response = ebmsMessageDetailService.findByRequestIds(request.ids)
+        val distinctIds = request.ids.distinct()
+        val response = ebmsMessageDetailService.findByRequestIds(distinctIds)
         if (response == null) {
             throw BadRequestException("Id's must be UUID")
         } else if (response.invalidIds.isNotEmpty()) {
             call.respond(HttpStatusCode.PartialContent, response)
-        } else if (response.content.keys.size != request.ids.size) {
+        } else if (response.content.keys.size != distinctIds.size) {
             call.respond(HttpStatusCode.PartialContent, response)
         } else {
             call.respond(response)
