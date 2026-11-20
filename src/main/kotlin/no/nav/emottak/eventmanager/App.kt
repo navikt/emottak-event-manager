@@ -41,6 +41,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 
 private val log: Logger = LoggerFactory.getLogger("no.nav.emottak.eventmanager.App")
 
@@ -145,6 +147,9 @@ suspend fun runSequentialDelayedTasks(
                 }
                 log.info("Task completed: '$jobName'")
             } catch (e: Exception) {
+                if (e is CancellationException) {
+                    ensureActive()
+                }
                 log.error("Task failed: '$jobName'", e)
             }
         }
