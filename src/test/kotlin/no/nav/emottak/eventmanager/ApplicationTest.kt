@@ -1122,6 +1122,7 @@ private fun assertConversationStatus(
     actualConversationStatusDto.createdAt shouldBe expectedMessageDetail.savedAt.toOsloZone().toString()
     actualConversationStatusDto.cpaId shouldBe expectedMessageDetail.cpaId
     actualConversationStatusDto.service shouldBe expectedMessageDetail.service
+    actualConversationStatusDto.action shouldBe expectedMessageDetail.action
     actualConversationStatusDto.statusAt shouldBe expectedStatusAt.toOsloZone().toString()
     actualConversationStatusDto.latestStatus shouldBe expectedStatus.dbValue
 }

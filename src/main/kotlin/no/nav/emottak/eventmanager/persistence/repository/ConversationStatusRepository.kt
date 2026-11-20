@@ -12,9 +12,9 @@ import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.con
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.createdAt
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.errorDescription
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.latestStatus
-import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.nullable
 import no.nav.emottak.eventmanager.persistence.table.ConversationStatusTable.statusAt
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable
+import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.nullable
 import no.nav.emottak.eventmanager.persistence.table.EbmsMessageDetailTable.readableId
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum.ERROR
@@ -91,12 +91,13 @@ class ConversationStatusRepository(private val database: Database) {
         to: Instant? = null,
         cpaIdPattern: String = "",
         service: String = "",
+        action: String = "",
         statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED),
         pageable: Pageable? = null
     ): PageDto<ConversationStatusData> = withContext(Dispatchers.IO) {
         transaction(database.db) {
             val matchStatuses = statuses.ifEmpty { listOf(ERROR, INFORMATION, PROCESSING_COMPLETED) }
-            val subqueryAlias = getConversationsQuery(from, to, cpaIdPattern, service, matchStatuses)
+            val subqueryAlias = getConversationsQuery(from, to, cpaIdPattern, service, action, matchStatuses)
                 .alias("conversations_matching_filters")
 
             // Tell antall rader:
@@ -119,6 +120,7 @@ class ConversationStatusRepository(private val database: Database) {
                     subqueryAlias[errorDescription],
                     subqueryAlias[EbmsMessageDetailTable.cpaId],
                     subqueryAlias[EbmsMessageDetailTable.service],
+                    subqueryAlias[EbmsMessageDetailTable.action],
                     relatedReadableIdsColumn
                 )
                 .apply {
@@ -131,7 +133,8 @@ class ConversationStatusRepository(private val database: Database) {
                     subqueryAlias[statusAt],
                     subqueryAlias[errorDescription],
                     subqueryAlias[EbmsMessageDetailTable.cpaId],
-                    subqueryAlias[EbmsMessageDetailTable.service]
+                    subqueryAlias[EbmsMessageDetailTable.service],
+                    subqueryAlias[EbmsMessageDetailTable.action]
                 )
                 .mapNotNull {
                     ConversationStatusData(
@@ -141,6 +144,7 @@ class ConversationStatusRepository(private val database: Database) {
                         statusAt = it[subqueryAlias[statusAt]],
                         readableIdList = it[relatedReadableIdsColumn],
                         service = it[subqueryAlias[EbmsMessageDetailTable.service]],
+                        action = it[subqueryAlias[EbmsMessageDetailTable.action]],
                         cpaId = it[subqueryAlias[EbmsMessageDetailTable.cpaId]],
                         errorDescription = it[subqueryAlias[errorDescription]]
                     )
@@ -158,11 +162,18 @@ class ConversationStatusRepository(private val database: Database) {
         to: Instant? = null,
         cpaIdPattern: String = "",
         service: String = "",
+        action: String = "",
         statuses: List<EventStatusEnum>
     ): Query {
         return ConversationStatusTable
             .join(EbmsMessageDetailTable, JoinType.INNER, onColumn = conversationId, otherColumn = EbmsMessageDetailTable.conversationId)
-            .select(ConversationStatusTable.columns)
+            .select(
+                ConversationStatusTable.columns + listOf(
+                    EbmsMessageDetailTable.cpaId,
+                    EbmsMessageDetailTable.service,
+                    EbmsMessageDetailTable.action
+                )
+            )
             .withDistinctOn(conversationId)
             .where {
                 latestStatus.castTo<String>(VarCharColumnType())
@@ -172,6 +183,7 @@ class ConversationStatusRepository(private val database: Database) {
                 this.applyDatetimeFilter(createdAt, from, to)
                 this.applyLike(cpaIdPattern, EbmsMessageDetailTable.cpaId.nullable())
                 this.applyLike(service, EbmsMessageDetailTable.service.nullable())
+                this.applyLike(action, EbmsMessageDetailTable.action.nullable())
             }
             .orderBy(conversationId)
     }

@@ -20,16 +20,18 @@ class ConversationStatusService(private val conversationStatusRepository: Conver
         to: Instant? = null,
         cpaIdPattern: String = "",
         service: String = "",
+        action: String = "",
         statuses: List<EventStatusEnum> = listOf(ERROR, INFORMATION, PROCESSING_COMPLETED),
         pageable: Pageable? = null
     ): PageDto<ConversationStatusDto> {
         log.debug("Finding ConversationStatus by filters...")
-        val result = conversationStatusRepository.findByFilters(from, to, cpaIdPattern, service, statuses, pageable)
+        val result = conversationStatusRepository.findByFilters(from, to, cpaIdPattern, service, action, statuses, pageable)
         val resultList = result.content.map { conversationStatus ->
             ConversationStatusDto(
                 createdAt = conversationStatus.createdAt.toOsloZone().toString(),
                 readableIdList = conversationStatus.readableIdList,
                 service = conversationStatus.service,
+                action = conversationStatus.action,
                 cpaId = conversationStatus.cpaId,
                 statusAt = conversationStatus.statusAt.toOsloZone().toString(),
                 latestStatus = conversationStatus.latestStatus.dbValue,
