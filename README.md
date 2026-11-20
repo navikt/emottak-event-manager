@@ -12,13 +12,14 @@ Tjeneste for hendelsesbehandling i eMottak økosystemet.
 
 ## REST-API
 | Metode | Endepunkt | Beskrivelse                                                                                                                                                    |
-|---|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|---|---|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GET` | `/filter-values` | Benyttes av `emottak-monitor` til å hente verdier til dropdowns for å kunne filtrere meldinger/hendelser på rolle/service/action.                              |
 | `GET` | `/events` | Benyttes av `emottak-monitor` til å hente hendelser fra nye emottak, med filtreringsmuligheter.                                                                |
 | `GET` | `/message-details` | Benyttes av `emottak-monitor` til å hente meldinger fra nye emottak, med filtreringsmuligheter.                                                                |
 | `GET` | `/message-details/{$ID}` | Benyttes av `emottak-monitor` til å finne en bestemt MessageDetail. Støtter `requestId` og `mottakId` som input-`ID`.                                          |
 | `GET` | `/message-details/{$ID}/events` | Benyttes av `emottak-monitor` til å hente alle hendelsene tilknyttet en MessageDetail (når du klikker på en `mottakId` i en meldinger- eller hendelser-liste). |
 | `GET` | `/conversation-status` | Benyttes av `emottak-monitor` til `Conversation-status ebms`-viewet, for å vise siste status pr conversation.                                                  |
+| `GET` | `/find/message-details/uuids` | Benyttes av `emottak-monitor` til `Retry-kø ebms`-viewet, for å vise meldinger som ligger på retry-køen. Maks antall ID'er (UUID som String) man kan spørre om defineres av FIND_BY_UUID_LIMIT. |
 | `GET` | `/internal/health/liveness` | Liveness-sjekk                                                                                                                                                 |
 | `GET` | `/internal/health/readiness` | Readiness-sjekk                                                                                                                                                |
 | `GET` | `/prometheus` | Prometheus-metrikker                                                                                                                                           |
