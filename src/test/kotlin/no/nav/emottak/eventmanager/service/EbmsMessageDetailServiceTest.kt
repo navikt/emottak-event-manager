@@ -1,7 +1,8 @@
 package no.nav.emottak.eventmanager.service
 
-import io.kotest.core.spec.style.StringSpec
+import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -16,6 +17,7 @@ import no.nav.emottak.eventmanager.model.EventType
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
 import no.nav.emottak.eventmanager.model.dto.PageDto
+import no.nav.emottak.eventmanager.model.dto.shouldBeEqualsTo
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
 import no.nav.emottak.eventmanager.persistence.repository.EbmsMessageDetailRepository
@@ -31,7 +33,7 @@ import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EbmsMessageDetail as TransportEbmsMessageDetail
 import no.nav.emottak.utils.kafka.model.EventType as EventTypeEnum
 
-class EbmsMessageDetailServiceTest : StringSpec({
+class EbmsMessageDetailServiceTest : DescribeSpec({
 
     val eventRepository = mockk<EventRepository>()
     val ebmsMessageDetailRepository = mockk<EbmsMessageDetailRepository>()
@@ -50,608 +52,695 @@ class EbmsMessageDetailServiceTest : StringSpec({
         clearAllMocks()
     }
 
-    "Should call database repository on processing EBMS message details" {
-        val testTransportMessageDetail = buildTestTransportMessageDetail()
-        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+    describe("Test of process") {
 
-        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
+        it("Should call database repository on processing EBMS message details") {
+            val testTransportMessageDetail = buildTestTransportMessageDetail()
+            val testDetailsJson =
+                Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
 
-        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
-        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
+            val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+            coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
+            coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
 
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.upsert(testDetails) }
-        coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
-    }
+            ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-    "Should upsert and tolerate duplicate EBMS message details" {
-        val testTransportMessageDetail = buildTestTransportMessageDetail()
-        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.upsert(testDetails) }
+            coVerify(exactly = 1) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
+        }
 
-        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
+        it("Should upsert and tolerate duplicate EBMS message details") {
+            val testTransportMessageDetail = buildTestTransportMessageDetail()
+            val testDetailsJson =
+                Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
 
-        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returnsMany listOf(true, false)
-        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returnsMany listOf(true, false)
+            val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
-        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
-
-        coVerify(exactly = 2) { ebmsMessageDetailRepository.upsert(testDetails) }
-        coVerify(exactly = 2) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
-    }
-
-    "Should not insert conversation status when refToMessageId is set" {
-        val testTransportMessageDetail = buildTestTransportMessageDetail().copy(refToMessageId = "another-msg-id")
-        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
-
-        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
-
-        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
-
-        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
-
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.upsert(testDetails) }
-        coVerify(exactly = 0) { conversationStatusRepository.insert(any()) }
-    }
-
-    "Should call database repository on fetching EBMS message details by time interval" {
-        val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent(testDetails.requestId)
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val list = listOf(testDetails)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
-
-        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, cpaId = testDetails.cpaId)
-        val messageInfoList = messageInfoPage.content
-
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) }
-        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
-
-        messageInfoList.size shouldBe 1
-        messageInfoList[0].readableIdList shouldBe testDetails.generateReadableId()
-        messageInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by time interval and filtered by readableId" {
-        val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent(testDetails.requestId)
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-        val readableId = testDetails.generateReadableId()
-
-        val list = listOf(testDetails)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
-
-        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, readableId = readableId)
-        val messageInfoList = messageInfoPage.content
-
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) }
-        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
-
-        messageInfoList.size shouldBe 1
-        messageInfoList[0].readableIdList shouldBe readableId
-        messageInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by time interval and filtered by messageId" {
-        val testDetails = buildTestEbmsMessageDetail()
-        val testEvent = buildTestEvent(testDetails.requestId)
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val list = listOf(testDetails)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
-
-        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, messageId = testDetails.messageId)
-        val messageInfoList = messageInfoPage.content
-
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) }
-        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
-
-        messageInfoList.size shouldBe 1
-        messageInfoList[0].readableIdList shouldBe testDetails.generateReadableId()
-        messageInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by time interval and filtered by conversationId" {
-        val testDetails1 = buildTestEbmsMessageDetail()
-        val testEvent1 = buildTestEvent(testDetails1.requestId)
-        val testEventType1 = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-        val testDetails2 = buildTestEbmsMessageDetail().copy(service = "another-service")
-        val testEvent2 = buildTestEvent(testDetails2.requestId)
-        val testEventType2 = EventType(
-            eventTypeId = 20,
-            description = "Feil ved lagring melding i juridisk logg",
-            status = EventStatusEnum.ERROR
-        )
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val list = listOf(testDetails1, testDetails2)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, conversationId = testDetails1.conversationId) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent1.eventType.value)) } returns listOf(testEventType1)
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent2.eventType.value)) } returns listOf(testEventType2)
-
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId)) } returns listOf(testEvent1, testEvent2)
-
-        val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, conversationId = testDetails1.conversationId)
-        val messageInfoList = messageInfoPage.content
-
-        coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, conversationId = testDetails1.conversationId) }
-        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent1.eventType.value)) }
-        coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent2.eventType.value)) }
-        coVerify(exactly = 0) { ebmsMessageDetailRepository.findRelatedReadableIds(any(), any()) }
-
-        messageInfoList.size shouldBe 2
-        messageInfoList[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
-        messageInfoList[0].cpaId shouldBe testDetails1.cpaId
-        messageInfoList[0].service shouldBe testDetails1.service
-        messageInfoList[1].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
-        messageInfoList[1].cpaId shouldBe testDetails2.cpaId
-        messageInfoList[1].service shouldBe testDetails2.service
-    }
-
-    "Should call database repository on fetching EBMS message details by Request ID" {
-        var testDetails = buildTestEbmsMessageDetail()
-        testDetails = testDetails.copy(
-            readableId = testDetails.generateReadableId()
-        )
-
-        val testEvent = buildTestEvent()
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-
-        coEvery { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) } returns testDetails
-        coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.requestId.toString())
-
-        coVerify { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) }
-        coVerify { eventRepository.findByRequestId(testDetails.requestId) }
-
-        readableIdInfoList.size shouldBe 1
-        readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
-        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
-        readableIdInfoList[0].messageId shouldBe testDetails.messageId
-        readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by Readable ID (length 25)" {
-        var testDetails = buildTestEbmsMessageDetail()
-        testDetails = testDetails.copy(
-            readableId = testDetails.generateReadableId()
-        )
-
-        val testEvent = buildTestEvent()
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-
-        val readableId = testDetails.generateReadableId()
-        readableId.length shouldBe 25
-
-        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, any()) } returns testDetails
-        coEvery { ebmsMessageDetailRepository.findByReadableId(readableId) } returns testDetails
-        coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableId)
-
-        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, 2) }
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(readableId) }
-        coVerify { eventRepository.findByRequestId(testDetails.requestId) }
-
-        readableIdInfoList.size shouldBe 1
-        readableIdInfoList[0].readableId shouldBe readableId
-        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
-        readableIdInfoList[0].messageId shouldBe testDetails.messageId
-        readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by Readable ID (length 26)" {
-        var testDetails = buildTestEbmsMessageDetail().copy(fromPartyId = "commonname:ARBEIDS OG VELFERDSETATEN")
-        testDetails = testDetails.copy(
-            readableId = testDetails.generateReadableId()
-        )
-
-        val testEvent = buildTestEvent()
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-
-        val readableId = testDetails.generateReadableId()
-        readableId.length shouldBe 26
-
-        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, any()) } returns testDetails
-        coEvery { ebmsMessageDetailRepository.findByReadableId(readableId) } returns testDetails
-        coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableId)
-
-        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, 2) }
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(readableId) }
-        coVerify { eventRepository.findByRequestId(testDetails.requestId) }
-
-        readableIdInfoList.size shouldBe 1
-        readableIdInfoList[0].readableId shouldBe readableId
-        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
-        readableIdInfoList[0].messageId shouldBe testDetails.messageId
-        readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
-    }
-
-    "Should call database repository on fetching EBMS message details by Readable ID (length shorter than 25)" {
-        var testDetails = buildTestEbmsMessageDetail()
-        testDetails = testDetails.copy(
-            readableId = testDetails.generateReadableId()
-        )
-
-        val testEvent = buildTestEvent()
-        val testEventType = EventType(
-            eventTypeId = 19,
-            description = "Melding lagret i juridisk logg",
-            status = EventStatusEnum.INFORMATION
-        )
-        val readableIdPattern = testDetails.generateReadableId().drop(3).dropLast(2)
-
-        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, any()) } returns testDetails
-        coEvery { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) } returns testDetails
-        coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
-        coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
-
-        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableIdPattern)
-
-        readableIdInfoList.size shouldBe 1
-        readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
-        readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
-        readableIdInfoList[0].messageId shouldBe testDetails.messageId
-        readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
-
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
-        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
-        coVerify { eventRepository.findByRequestId(testDetails.requestId) }
-    }
-
-    "Should not call database repository on fetching EBMS message details when Readable ID length is longer than 26 characters" {
-        var readableIdPattern = "IN.2505081454.UNKN.a673c3.aaaa"
-        coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, any()) } returns mockk(relaxed = true)
-        val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableIdPattern)
-        coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
-        readableIdInfoList.size shouldBe 0
-    }
-
-    "Should find sender name from related events" {
-        val testDetails = buildTestEbmsMessageDetail().copy(senderName = null)
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val relatedEvents = listOf(
-            buildTestEvent(),
-            buildTestEvent().copy(
-                eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
-                requestId = testDetails.requestId,
-                eventData = Json.encodeToString(mapOf(EventDataType.SENDER_NAME.value to "Test EPJ AS"))
+            coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returnsMany listOf(true, false)
+            coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returnsMany listOf(
+                true,
+                false
             )
-        )
 
-        val list = listOf(testDetails)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
+            ebmsMessageDetailService.process(testDetailsJson.toByteArray())
+            ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+            coVerify(exactly = 2) { ebmsMessageDetailRepository.upsert(testDetails) }
+            coVerify(exactly = 2) { conversationStatusRepository.insert(testDetails.conversationId, any()) }
+        }
 
-        result.content.first().senderName shouldBe "Test EPJ AS"
-    }
+        it("Should not insert conversation status when refToMessageId is set") {
+            val testTransportMessageDetail = buildTestTransportMessageDetail().copy(refToMessageId = "another-msg-id")
+            val testDetailsJson =
+                Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
 
-    "Should call eventTypeRepository.findEventTypesByIds() once pr page" {
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
+            val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        val testDetails1 = buildTestEbmsMessageDetail()
-        val testDetails2 = buildTestEbmsMessageDetail().copy(
-            cpaId = "test-cpa-id-2",
-            conversationId = "test-conversation-id-2",
-            savedAt = Instant.parse("2025-05-08T12:55:00.000Z")
-        )
+            coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
 
-        val relatedEvents = listOf(
-            buildTestEvent(testDetails1.requestId),
-            buildTestEvent().copy(
-                eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
-                requestId = testDetails1.requestId
-            ),
-            buildTestEvent(testDetails2.requestId),
-            buildTestEvent().copy(
-                eventType = EventTypeEnum.VALIDATION_AGAINST_CPA_FAILED,
-                requestId = testDetails2.requestId
-            )
-        )
-        val testEventTypes = listOf(
-            EventType(
-                eventTypeId = 19,
-                description = "Melding lagret i juridisk logg",
-                status = EventStatusEnum.INFORMATION
-            ),
-            EventType(
-                eventTypeId = 37,
-                description = "Melding validert mot CPA",
-                status = EventStatusEnum.INFORMATION
-            ),
-            EventType(
-                eventTypeId = 38,
-                description = "Validering mot CPA mislykket",
-                status = EventStatusEnum.ERROR
-            )
-        )
+            ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        val list = listOf(testDetails1, testDetails2)
-        val pageable = Pageable(1, list.size)
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.upsert(testDetails) }
+            coVerify(exactly = 0) { conversationStatusRepository.insert(any()) }
+        }
 
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
+        it("Should call addIfAbsent during process()") {
+            val testTransportMessageDetail = buildTestTransportMessageDetail()
+            val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
+            val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
 
-        coEvery {
-            ebmsMessageDetailRepository.findRelatedReadableIds(
-                conversationIds = listOf(testDetails1.conversationId, testDetails2.conversationId),
-                requestIds = listOf(testDetails1.requestId, testDetails2.requestId)
-            )
-        } returns
-            mapOf(testDetails2.requestId to testDetails2.generateReadableId())
+            coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
+            coEvery { distinctRolesServicesActionsRepository.addIfAbsent(any(), any(), any()) } just Runs
+            coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
 
-        coEvery {
-            eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId))
-        } returns relatedEvents
+            ebmsMessageDetailService.process(testDetailsJson.toByteArray())
 
-        coEvery { eventTypeRepository.findEventTypesByIds(any()) } returns testEventTypes
-
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
-
-        result.content.size shouldBe 2
-        result.content.first().cpaId shouldBe testDetails1.cpaId
-        result.content.last().cpaId shouldBe testDetails2.cpaId
-
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) }
-        coVerify(exactly = 1) { ebmsMessageDetailRepository.findRelatedReadableIds(any(), any()) }
-        coVerify(exactly = 1) { eventRepository.findByRequestIds(any()) }
-        coVerify(exactly = 1) { eventTypeRepository.findEventTypesByIds(any()) }
-    }
-
-    "Should find reference parameter from related events" {
-        val reference = "abcd1234"
-        val testDetails = buildTestEbmsMessageDetail().copy(refParam = null)
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val relatedEvents = listOf(
-            buildTestEvent(),
-            buildTestEvent().copy(
-                eventType = EventTypeEnum.REFERENCE_RETRIEVED,
-                requestId = testDetails.requestId,
-                eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE_PARAMETER.value to reference))
-            )
-        )
-
-        val list = listOf(testDetails)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
-            mapOf(testDetails.requestId to testDetails.generateReadableId())
-        coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
-
-        val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
-
-        result.content.first().referenceParameter shouldBe reference
-    }
-
-    "Should find related messages" {
-        val commonReferenceId = "commonRef123"
-        val from = Instant.now()
-        val to = from.plusSeconds(60)
-
-        val testDetails1 = buildTestEbmsMessageDetail().copy(conversationId = commonReferenceId)
-        val testDetails2 = buildTestEbmsMessageDetail().copy(conversationId = commonReferenceId)
-        val testDetails3 = buildTestEbmsMessageDetail().copy(conversationId = "differentRef456")
-
-        val list = listOf(testDetails1, testDetails2, testDetails3)
-        val pageable = Pageable(1, list.size)
-        coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
-            pageable.pageNumber,
-            pageable.pageSize,
-            "ASC",
-            list.size.toLong(),
-            list
-        )
-        coEvery {
-            ebmsMessageDetailRepository.findRelatedReadableIds(
-                listOf(testDetails1.conversationId, testDetails2.conversationId, testDetails3.conversationId),
-                listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
-            )
-        } returns
-            mapOf(
-                testDetails1.requestId to "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}",
-                testDetails2.requestId to "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}",
-                testDetails3.requestId to testDetails3.generateReadableId()
-            )
-        coEvery {
-            eventRepository.findByRequestIds(
-                listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
-            )
-        } returns listOf()
-
-        val resultPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
-        val result = resultPage.content
-
-        result.size shouldBe 3
-        result[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
-        result[1].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
-        result[2].readableIdList shouldBe testDetails3.generateReadableId()
-    }
-
-    "Should retrieve filter-values via getAll()" {
-        val filters = DistinctRolesServicesActionsDto(
-            roles = listOf("roleA", "roleB"),
-            services = listOf("servicesA", "servicesB"),
-            actions = listOf("actionA", "actionB")
-        )
-        every { distinctRolesServicesActionsRepository.getAll() } returns filters
-        val reply = ebmsMessageDetailService.getDistinctRolesServicesActions()
-        verify(exactly = 1) { distinctRolesServicesActionsRepository.getAll() }
-        reply shouldBe filters
-    }
-
-    "Should call addIfAbsent during process()" {
-        val testTransportMessageDetail = buildTestTransportMessageDetail()
-        val testDetailsJson = Json.encodeToString(TransportEbmsMessageDetail.serializer(), testTransportMessageDetail)
-        val testDetails = EbmsMessageDetail.fromTransportModel(testTransportMessageDetail)
-
-        coEvery { ebmsMessageDetailRepository.upsert(testDetails) } returns true
-        coEvery { distinctRolesServicesActionsRepository.addIfAbsent(any(), any(), any()) } just Runs
-        coEvery { conversationStatusRepository.insert(testDetails.conversationId, any()) } returns true
-
-        ebmsMessageDetailService.process(testDetailsJson.toByteArray())
-
-        coVerify(exactly = 1) {
-            distinctRolesServicesActionsRepository.addIfAbsent(
-                testDetails.fromRole,
-                testDetails.service,
-                testDetails.action
-            )
+            coVerify(exactly = 1) {
+                distinctRolesServicesActionsRepository.addIfAbsent(
+                    testDetails.fromRole,
+                    testDetails.service,
+                    testDetails.action
+                )
+            }
         }
     }
 
-    "isDuplicate should return true when message is a duplicate" {
-        val testMessageDetails = buildTestEbmsMessageDetail()
-        val testMessageDetailsDuplicate = testMessageDetails.copy(
-            requestId = Uuid.random()
-        )
+    describe("Test of fetchEbmsMessageDetails") {
 
-        coEvery {
-            ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
-                testMessageDetails.messageId,
-                testMessageDetails.conversationId,
-                testMessageDetails.cpaId
+        it("Should call database repository on fetching EBMS message details by time interval") {
+            val testDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent(testDetails.requestId)
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
             )
-        } returns listOf(testMessageDetailsDuplicate)
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
 
-        val result = ebmsMessageDetailService.isDuplicate(
-            testMessageDetails.messageId,
-            testMessageDetails.conversationId,
-            testMessageDetails.cpaId
-        )
+            val list = listOf(testDetails)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
 
-        result shouldBe true
+            coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
+                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
+
+            val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, cpaId = testDetails.cpaId)
+            val messageInfoList = messageInfoPage.content
+
+            coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, cpaIdPattern = testDetails.cpaId) }
+            coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
+
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].readableIdList shouldBe testDetails.generateReadableId()
+            messageInfoList[0].cpaId shouldBe testDetails.cpaId
+        }
+
+        it("Should call database repository on fetching EBMS message details by time interval and filtered by readableId") {
+            val testDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent(testDetails.requestId)
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+            val readableId = testDetails.generateReadableId()
+
+            val list = listOf(testDetails)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+            coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
+                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
+
+            val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, readableId = readableId)
+            val messageInfoList = messageInfoPage.content
+
+            coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, readableIdPattern = readableId) }
+            coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
+
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].readableIdList shouldBe readableId
+            messageInfoList[0].cpaId shouldBe testDetails.cpaId
+        }
+
+        it("Should call database repository on fetching EBMS message details by time interval and filtered by messageId") {
+            val testDetails = buildTestEbmsMessageDetail()
+            val testEvent = buildTestEvent(testDetails.requestId)
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+
+            val list = listOf(testDetails)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+            coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
+                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns listOf(testEvent)
+
+            val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, messageId = testDetails.messageId)
+            val messageInfoList = messageInfoPage.content
+
+            coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, messageIdPattern = testDetails.messageId) }
+            coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) }
+
+            messageInfoList.size shouldBe 1
+            messageInfoList[0].readableIdList shouldBe testDetails.generateReadableId()
+            messageInfoList[0].cpaId shouldBe testDetails.cpaId
+        }
+
+        it("Should call database repository on fetching EBMS message details by time interval and filtered by conversationId") {
+            val testDetails1 = buildTestEbmsMessageDetail()
+            val testEvent1 = buildTestEvent(testDetails1.requestId)
+            val testEventType1 = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+            val testDetails2 = buildTestEbmsMessageDetail().copy(service = "another-service")
+            val testEvent2 = buildTestEvent(testDetails2.requestId)
+            val testEventType2 = EventType(
+                eventTypeId = 20,
+                description = "Feil ved lagring melding i juridisk logg",
+                status = EventStatusEnum.ERROR
+            )
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+
+            val list = listOf(testDetails1, testDetails2)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, conversationId = testDetails1.conversationId) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent1.eventType.value)) } returns listOf(testEventType1)
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent2.eventType.value)) } returns listOf(testEventType2)
+
+            coEvery { eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId)) } returns listOf(testEvent1, testEvent2)
+
+            val messageInfoPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to, conversationId = testDetails1.conversationId)
+            val messageInfoList = messageInfoPage.content
+
+            coVerify { ebmsMessageDetailRepository.findByTimeInterval(from, to, conversationId = testDetails1.conversationId) }
+            coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent1.eventType.value)) }
+            coVerify { eventTypeRepository.findEventTypesByIds(listOf(testEvent2.eventType.value)) }
+            coVerify(exactly = 0) { ebmsMessageDetailRepository.findRelatedReadableIds(any(), any()) }
+
+            messageInfoList.size shouldBe 2
+            messageInfoList[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
+            messageInfoList[0].cpaId shouldBe testDetails1.cpaId
+            messageInfoList[0].service shouldBe testDetails1.service
+            messageInfoList[1].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
+            messageInfoList[1].cpaId shouldBe testDetails2.cpaId
+            messageInfoList[1].service shouldBe testDetails2.service
+        }
+
+        it("Should call database repository on fetching EBMS message details by Request ID") {
+            var testDetails = buildTestEbmsMessageDetail()
+            testDetails = testDetails.copy(
+                readableId = testDetails.generateReadableId()
+            )
+
+            val testEvent = buildTestEvent()
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+
+            coEvery { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) } returns testDetails
+            coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+            val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(testDetails.requestId.toString())
+
+            coVerify { ebmsMessageDetailRepository.findByRequestId(testDetails.requestId) }
+            coVerify { eventRepository.findByRequestId(testDetails.requestId) }
+
+            readableIdInfoList.size shouldBe 1
+            readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
+            readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+            readableIdInfoList[0].messageId shouldBe testDetails.messageId
+            readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
+        }
+
+        it("Should call database repository on fetching EBMS message details by Readable ID (length 25)") {
+            var testDetails = buildTestEbmsMessageDetail()
+            testDetails = testDetails.copy(
+                readableId = testDetails.generateReadableId()
+            )
+
+            val testEvent = buildTestEvent()
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+
+            val readableId = testDetails.generateReadableId()
+            readableId.length shouldBe 25
+
+            coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, any()) } returns testDetails
+            coEvery { ebmsMessageDetailRepository.findByReadableId(readableId) } returns testDetails
+            coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+            val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableId)
+
+            coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, 2) }
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(readableId) }
+            coVerify { eventRepository.findByRequestId(testDetails.requestId) }
+
+            readableIdInfoList.size shouldBe 1
+            readableIdInfoList[0].readableId shouldBe readableId
+            readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+            readableIdInfoList[0].messageId shouldBe testDetails.messageId
+            readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
+        }
+
+        it("Should call database repository on fetching EBMS message details by Readable ID (length 26)") {
+            var testDetails = buildTestEbmsMessageDetail().copy(fromPartyId = "commonname:ARBEIDS OG VELFERDSETATEN")
+            testDetails = testDetails.copy(
+                readableId = testDetails.generateReadableId()
+            )
+
+            val testEvent = buildTestEvent()
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+
+            val readableId = testDetails.generateReadableId()
+            readableId.length shouldBe 26
+
+            coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, any()) } returns testDetails
+            coEvery { ebmsMessageDetailRepository.findByReadableId(readableId) } returns testDetails
+            coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+            val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableId)
+
+            coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(readableId, 2) }
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableId(readableId) }
+            coVerify { eventRepository.findByRequestId(testDetails.requestId) }
+
+            readableIdInfoList.size shouldBe 1
+            readableIdInfoList[0].readableId shouldBe readableId
+            readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+            readableIdInfoList[0].messageId shouldBe testDetails.messageId
+            readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
+        }
+
+        it("Should call database repository on fetching EBMS message details by Readable ID (length shorter than 25)") {
+            var testDetails = buildTestEbmsMessageDetail()
+            testDetails = testDetails.copy(
+                readableId = testDetails.generateReadableId()
+            )
+
+            val testEvent = buildTestEvent()
+            val testEventType = EventType(
+                eventTypeId = 19,
+                description = "Melding lagret i juridisk logg",
+                status = EventStatusEnum.INFORMATION
+            )
+            val readableIdPattern = testDetails.generateReadableId().drop(3).dropLast(2)
+
+            coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, any()) } returns testDetails
+            coEvery { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) } returns testDetails
+            coEvery { eventRepository.findByRequestId(testDetails.requestId) } returns listOf(testEvent)
+            coEvery { eventTypeRepository.findEventTypesByIds(listOf(testEvent.eventType.value)) } returns listOf(testEventType)
+
+            val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableIdPattern)
+
+            readableIdInfoList.size shouldBe 1
+            readableIdInfoList[0].readableId shouldBe testDetails.generateReadableId()
+            readableIdInfoList[0].requestId shouldBe testDetails.requestId.toString()
+            readableIdInfoList[0].messageId shouldBe testDetails.messageId
+            readableIdInfoList[0].cpaId shouldBe testDetails.cpaId
+
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
+            coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableId(testDetails.generateReadableId()) }
+            coVerify { eventRepository.findByRequestId(testDetails.requestId) }
+        }
+
+        it("Should not call database repository on fetching EBMS message details when Readable ID length is longer than 26 characters") {
+            var readableIdPattern = "IN.2505081454.UNKN.a673c3.aaaa"
+            coEvery { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, any()) } returns mockk(relaxed = true)
+            val readableIdInfoList = ebmsMessageDetailService.fetchEbmsMessageDetails(readableIdPattern)
+            coVerify(exactly = 0) { ebmsMessageDetailRepository.findByReadableIdPattern(readableIdPattern, 2) }
+            readableIdInfoList.size shouldBe 0
+        }
+
+        it("Should find sender name from related events") {
+            val testDetails = buildTestEbmsMessageDetail().copy(senderName = null)
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+
+            val relatedEvents = listOf(
+                buildTestEvent(),
+                buildTestEvent().copy(
+                    eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
+                    requestId = testDetails.requestId,
+                    eventData = Json.encodeToString(mapOf(EventDataType.SENDER_NAME.value to "Test EPJ AS"))
+                )
+            )
+
+            val list = listOf(testDetails)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
+                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
+
+            val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+
+            result.content.first().senderName shouldBe "Test EPJ AS"
+        }
+
+        it("Should call eventTypeRepository.findEventTypesByIds() once pr page") {
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+
+            val testDetails1 = buildTestEbmsMessageDetail()
+            val testDetails2 = buildTestEbmsMessageDetail().copy(
+                cpaId = "test-cpa-id-2",
+                conversationId = "test-conversation-id-2",
+                savedAt = Instant.parse("2025-05-08T12:55:00.000Z")
+            )
+
+            val relatedEvents = listOf(
+                buildTestEvent(testDetails1.requestId),
+                buildTestEvent().copy(
+                    eventType = EventTypeEnum.MESSAGE_VALIDATED_AGAINST_CPA,
+                    requestId = testDetails1.requestId
+                ),
+                buildTestEvent(testDetails2.requestId),
+                buildTestEvent().copy(
+                    eventType = EventTypeEnum.VALIDATION_AGAINST_CPA_FAILED,
+                    requestId = testDetails2.requestId
+                )
+            )
+            val testEventTypes = listOf(
+                EventType(
+                    eventTypeId = 19,
+                    description = "Melding lagret i juridisk logg",
+                    status = EventStatusEnum.INFORMATION
+                ),
+                EventType(
+                    eventTypeId = 37,
+                    description = "Melding validert mot CPA",
+                    status = EventStatusEnum.INFORMATION
+                ),
+                EventType(
+                    eventTypeId = 38,
+                    description = "Validering mot CPA mislykket",
+                    status = EventStatusEnum.ERROR
+                )
+            )
+
+            val list = listOf(testDetails1, testDetails2)
+            val pageable = Pageable(1, list.size)
+
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+
+            coEvery {
+                ebmsMessageDetailRepository.findRelatedReadableIds(
+                    conversationIds = listOf(testDetails1.conversationId, testDetails2.conversationId),
+                    requestIds = listOf(testDetails1.requestId, testDetails2.requestId)
+                )
+            } returns
+                mapOf(testDetails2.requestId to testDetails2.generateReadableId())
+
+            coEvery {
+                eventRepository.findByRequestIds(listOf(testDetails1.requestId, testDetails2.requestId))
+            } returns relatedEvents
+
+            coEvery { eventTypeRepository.findEventTypesByIds(any()) } returns testEventTypes
+
+            val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+
+            result.content.size shouldBe 2
+            result.content.first().cpaId shouldBe testDetails1.cpaId
+            result.content.last().cpaId shouldBe testDetails2.cpaId
+
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) }
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findRelatedReadableIds(any(), any()) }
+            coVerify(exactly = 1) { eventRepository.findByRequestIds(any()) }
+            coVerify(exactly = 1) { eventTypeRepository.findEventTypesByIds(any()) }
+        }
+
+        it("Should find reference parameter from related events") {
+            val reference = "abcd1234"
+            val testDetails = buildTestEbmsMessageDetail().copy(refParam = null)
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+
+            val relatedEvents = listOf(
+                buildTestEvent(),
+                buildTestEvent().copy(
+                    eventType = EventTypeEnum.REFERENCE_RETRIEVED,
+                    requestId = testDetails.requestId,
+                    eventData = Json.encodeToString(mapOf(EventDataType.REFERENCE_PARAMETER.value to reference))
+                )
+            )
+
+            val list = listOf(testDetails)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery { ebmsMessageDetailRepository.findRelatedReadableIds(listOf(testDetails.conversationId), listOf(testDetails.requestId)) } returns
+                mapOf(testDetails.requestId to testDetails.generateReadableId())
+            coEvery { eventRepository.findByRequestIds(listOf(testDetails.requestId)) } returns relatedEvents
+
+            val result = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+
+            result.content.first().referenceParameter shouldBe reference
+        }
+
+        it("Should find related messages") {
+            val commonReferenceId = "commonRef123"
+            val from = Instant.now()
+            val to = from.plusSeconds(60)
+
+            val testDetails1 = buildTestEbmsMessageDetail().copy(conversationId = commonReferenceId)
+            val testDetails2 = buildTestEbmsMessageDetail().copy(conversationId = commonReferenceId)
+            val testDetails3 = buildTestEbmsMessageDetail().copy(conversationId = "differentRef456")
+
+            val list = listOf(testDetails1, testDetails2, testDetails3)
+            val pageable = Pageable(1, list.size)
+            coEvery { ebmsMessageDetailRepository.findByTimeInterval(from, to, any()) } returns PageDto(
+                pageable.pageNumber,
+                pageable.pageSize,
+                "ASC",
+                list.size.toLong(),
+                list
+            )
+            coEvery {
+                ebmsMessageDetailRepository.findRelatedReadableIds(
+                    listOf(testDetails1.conversationId, testDetails2.conversationId, testDetails3.conversationId),
+                    listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
+                )
+            } returns
+                mapOf(
+                    testDetails1.requestId to "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}",
+                    testDetails2.requestId to "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}",
+                    testDetails3.requestId to testDetails3.generateReadableId()
+                )
+            coEvery {
+                eventRepository.findByRequestIds(
+                    listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
+                )
+            } returns listOf()
+
+            val resultPage = ebmsMessageDetailService.fetchEbmsMessageDetails(from, to)
+            val result = resultPage.content
+
+            result.size shouldBe 3
+            result[0].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
+            result[1].readableIdList shouldBe "${testDetails1.generateReadableId()},${testDetails2.generateReadableId()}"
+            result[2].readableIdList shouldBe testDetails3.generateReadableId()
+        }
     }
 
-    "isDuplicate should return false when message is not a duplicate" {
-        val testMessageDetails = buildTestEbmsMessageDetail()
+    describe("Test of getDistinctRolesServicesActions") {
 
-        coEvery {
-            ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
+        it("Should retrieve filter-values via getAll()") {
+            val filters = DistinctRolesServicesActionsDto(
+                roles = listOf("roleA", "roleB"),
+                services = listOf("servicesA", "servicesB"),
+                actions = listOf("actionA", "actionB")
+            )
+            every { distinctRolesServicesActionsRepository.getAll() } returns filters
+            val reply = ebmsMessageDetailService.getDistinctRolesServicesActions()
+            verify(exactly = 1) { distinctRolesServicesActionsRepository.getAll() }
+            reply shouldBe filters
+        }
+    }
+
+    describe("Test of isDuplicate") {
+
+        it("isDuplicate should return true when message is a duplicate") {
+            val testMessageDetails = buildTestEbmsMessageDetail()
+            val testMessageDetailsDuplicate = testMessageDetails.copy(
+                requestId = Uuid.random()
+            )
+
+            coEvery {
+                ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
+                    testMessageDetails.messageId,
+                    testMessageDetails.conversationId,
+                    testMessageDetails.cpaId
+                )
+            } returns listOf(testMessageDetailsDuplicate)
+
+            val result = ebmsMessageDetailService.isDuplicate(
                 testMessageDetails.messageId,
                 testMessageDetails.conversationId,
                 testMessageDetails.cpaId
             )
-        } returns listOf()
 
-        val result = ebmsMessageDetailService.isDuplicate(
-            testMessageDetails.messageId,
-            testMessageDetails.conversationId,
-            testMessageDetails.cpaId
-        )
+            result shouldBe true
+        }
 
-        result shouldBe false
+        it("isDuplicate should return false when message is not a duplicate") {
+            val testMessageDetails = buildTestEbmsMessageDetail()
+
+            coEvery {
+                ebmsMessageDetailRepository.findByMessageIdConversationIdAndCpaId(
+                    testMessageDetails.messageId,
+                    testMessageDetails.conversationId,
+                    testMessageDetails.cpaId
+                )
+            } returns listOf()
+
+            val result = ebmsMessageDetailService.isDuplicate(
+                testMessageDetails.messageId,
+                testMessageDetails.conversationId,
+                testMessageDetails.cpaId
+            )
+
+            result shouldBe false
+        }
+    }
+
+    describe("Test of findByRequestIds") {
+
+        it("Should return a FindByUuidResponseDto<ReadableIdDto> with content when requestIds has match") {
+            val testDetails1 = buildTestEbmsMessageDetail()
+            val testDetails2 = buildTestEbmsMessageDetail()
+            val testDetails3 = buildTestEbmsMessageDetail()
+            val ids = listOf(testDetails1.requestId, testDetails2.requestId, testDetails3.requestId)
+            coEvery { ebmsMessageDetailRepository.findByRequestIds(ids) } returns mapOf(
+                testDetails1.requestId to testDetails1,
+                testDetails2.requestId to testDetails2,
+                testDetails3.requestId to testDetails3
+            )
+
+            val result = ebmsMessageDetailService.findByRequestIds(ids.map { it.toString() })
+
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(ids) }
+            result shouldNotBe null
+            result!!.content.size shouldBe 3
+            result.content.containsKey(testDetails1.requestId) shouldBe true
+            var resultDetail = result.content[testDetails1.requestId]
+            resultDetail.shouldBeEqualsTo(testDetails1)
+            result.content.containsKey(testDetails2.requestId) shouldBe true
+            resultDetail = result.content[testDetails2.requestId]
+            resultDetail.shouldBeEqualsTo(testDetails2)
+            result.content.containsKey(testDetails3.requestId) shouldBe true
+            resultDetail = result.content[testDetails3.requestId]
+            resultDetail.shouldBeEqualsTo(testDetails3)
+            result.invalidIds.size shouldBe 0
+        }
+
+        it("Should return a FindByUuidResponseDto with empty content when requestIds has no matches") {
+            coEvery { ebmsMessageDetailRepository.findByRequestIds(any()) } returns emptyMap()
+
+            val result = ebmsMessageDetailService.findByRequestIds(listOf(Uuid.random().toString()))
+
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(any()) }
+            result shouldNotBe null
+            result!!.content.size shouldBe 0
+            result.invalidIds.size shouldBe 0
+        }
+
+        it("Should return null when uuids is empty") {
+            coEvery { ebmsMessageDetailRepository.findByRequestIds(any()) } returns emptyMap()
+
+            val result = ebmsMessageDetailService.findByRequestIds(listOf("not-uuid"))
+
+            coVerify(exactly = 0) { ebmsMessageDetailRepository.findByRequestIds(any()) }
+            result shouldBe null
+        }
+
+        it("Should return FindByUuidResponseDto with invalidIds populated when requestIds contains non-uuids") {
+            val testDetails = buildTestEbmsMessageDetail()
+            val ids = listOf(testDetails.requestId)
+            val invalidId = "not-uuid"
+            coEvery { ebmsMessageDetailRepository.findByRequestIds(ids) } returns mapOf(testDetails.requestId to testDetails)
+
+            val result = ebmsMessageDetailService.findByRequestIds(listOf(testDetails.requestId.toString(), invalidId))
+
+            coVerify(exactly = 1) { ebmsMessageDetailRepository.findByRequestIds(ids) }
+            result shouldNotBe null
+            result!!.content.size shouldBe 1
+            result.content.containsKey(testDetails.requestId) shouldBe true
+            val resultDetail = result.content[testDetails.requestId]
+            resultDetail.shouldBeEqualsTo(testDetails)
+            result.invalidIds.size shouldBe 1
+            result.invalidIds[0] shouldBe invalidId
+        }
     }
 })

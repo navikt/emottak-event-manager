@@ -6,6 +6,7 @@ import no.nav.emottak.eventmanager.model.EbmsMessageDetail
 import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.Pageable
 import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
+import no.nav.emottak.eventmanager.model.dto.FindByUuidResponseDto
 import no.nav.emottak.eventmanager.model.dto.MessageDto
 import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.model.dto.ReadableIdDto
@@ -198,6 +199,24 @@ class EbmsMessageDetailService(
         return distinctRolesServicesActionsRepository.getAll()
     }
 
+    suspend fun findByRequestIds(requestIds: List<String>): FindByUuidResponseDto<ReadableIdDto>? {
+        val uuids = mutableListOf<Uuid>()
+        val invalidIds = mutableListOf<String>()
+        requestIds.forEach { requestId ->
+            if (Validation.isValidUuid(requestId)) {
+                uuids.add(Uuid.parse(requestId))
+            } else {
+                invalidIds.add(requestId)
+            }
+        }
+        if (uuids.isEmpty()) return null
+        val map = ebmsMessageDetailRepository.findByRequestIds(uuids)
+        return FindByUuidResponseDto<ReadableIdDto>(
+            content = map.toReadableIdDtoMap(),
+            invalidIds = invalidIds
+        )
+    }
+
     private fun findSenderName(events: List<Event>): String {
         events.firstOrNull {
             it.eventType == EventType.MESSAGE_VALIDATED_AGAINST_CPA
@@ -276,5 +295,23 @@ class EbmsMessageDetailService(
             filters.add("pageNumber:'${pageable.pageNumber}'")
         }
         return filters.joinToString(", ")
+    }
+}
+
+private fun Map<Uuid, EbmsMessageDetail>.toReadableIdDtoMap(): Map<Uuid, ReadableIdDto> {
+    return mapValues { (_, messageDetails) ->
+        ReadableIdDto(
+            requestId = messageDetails.requestId.toString(),
+            readableId = messageDetails.readableId ?: "",
+            receivedDate = messageDetails.savedAt.toOsloZone().toString(),
+            messageId = messageDetails.messageId,
+            role = messageDetails.fromRole,
+            service = messageDetails.service,
+            action = messageDetails.action,
+            referenceParameter = messageDetails.refParam,
+            senderName = messageDetails.getReadableSenderName(),
+            cpaId = messageDetails.cpaId,
+            conversationId = messageDetails.conversationId
+        )
     }
 }

@@ -38,10 +38,13 @@ import no.nav.emottak.eventmanager.model.Event
 import no.nav.emottak.eventmanager.model.dto.ConversationStatusDto
 import no.nav.emottak.eventmanager.model.dto.DistinctRolesServicesActionsDto
 import no.nav.emottak.eventmanager.model.dto.EventDto
+import no.nav.emottak.eventmanager.model.dto.FindByUuidRequestDto
+import no.nav.emottak.eventmanager.model.dto.FindByUuidResponseDto
 import no.nav.emottak.eventmanager.model.dto.MessageDto
 import no.nav.emottak.eventmanager.model.dto.MessageLogDto
 import no.nav.emottak.eventmanager.model.dto.PageDto
 import no.nav.emottak.eventmanager.model.dto.ReadableIdDto
+import no.nav.emottak.eventmanager.model.dto.shouldBeEqualsTo
 import no.nav.emottak.eventmanager.persistence.Database
 import no.nav.emottak.eventmanager.persistence.repository.ConversationStatusRepository
 import no.nav.emottak.eventmanager.persistence.repository.DistinctRolesServicesActionsRepository
@@ -1095,6 +1098,156 @@ class ApplicationTest : DescribeSpec({
                 conversationsPage.totalElements shouldBe 3
                 val conversations = conversationsPage.content
                 conversations.size shouldBe 1
+            }
+        }
+    }
+
+    describe("Tests of '/find/message-details/uuids'-endpoint") {
+
+        it("should return Unauthorized if access token is missing") {
+            withTestApplication { httpClient ->
+                val httpResponse = httpClient.post("/find/message-details/uuids")
+                httpResponse.status shouldBe HttpStatusCode.Unauthorized
+            }
+        }
+
+        it("should return Unauthorized if access token is invalid") {
+            withTestApplication { httpClient ->
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(invalidAudience).serialize()}"
+                    )
+                }
+                httpResponse.status shouldBe HttpStatusCode.Unauthorized
+            }
+        }
+
+        it("should return HTTP 400 Bad Request if no post-data") {
+            withTestApplication { httpClient ->
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+                httpResponse.bodyAsText() shouldBe "Invalid post data"
+            }
+        }
+
+        it("should return HTTP 400 Bad Request if post-data has no UUIDs") {
+            withTestApplication { httpClient ->
+                val request = FindByUuidRequestDto(ids = listOf("not-uuid", "another-not-uuid"))
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+                httpResponse.bodyAsText() shouldBe "Id's must be UUID"
+            }
+        }
+
+        it("should return map of ReadableIdDto with requested UUIDs") {
+            withTestApplication { httpClient ->
+                val testMessageDetails1 = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails1)
+                val testMessageDetails2 = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails2)
+
+                val request = FindByUuidRequestDto(
+                    ids = listOf(
+                        testMessageDetails1.requestId.toString(),
+                        testMessageDetails2.requestId.toString()
+                    )
+                )
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.OK
+                val response: FindByUuidResponseDto<ReadableIdDto> = httpResponse.body()
+                response.content.size shouldBe 2
+                response.content.containsKey(testMessageDetails1.requestId) shouldBe true
+                response.content[testMessageDetails1.requestId].shouldBeEqualsTo(testMessageDetails1)
+                response.content[testMessageDetails2.requestId].shouldBeEqualsTo(testMessageDetails2)
+                response.invalidIds.size shouldBe 0
+            }
+        }
+
+        it("should return HTTP 206 Partial Content when not all id's where UUIDs") {
+            withTestApplication { httpClient ->
+                val testMessageDetails1 = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails1)
+                val testMessageDetails2 = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails2)
+
+                val request = FindByUuidRequestDto(
+                    ids = listOf(
+                        testMessageDetails1.requestId.toString(),
+                        "not-uuid",
+                        testMessageDetails2.requestId.toString(),
+                        "yet-another-invalid-id"
+                    )
+                )
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.PartialContent
+                val response: FindByUuidResponseDto<ReadableIdDto> = httpResponse.body()
+                response.content.size shouldBe 2
+                response.content.containsKey(testMessageDetails1.requestId) shouldBe true
+                response.content[testMessageDetails1.requestId].shouldBeEqualsTo(testMessageDetails1)
+                response.content[testMessageDetails2.requestId].shouldBeEqualsTo(testMessageDetails2)
+                response.invalidIds.size shouldBe 2
+                response.invalidIds shouldContain "not-uuid"
+                response.invalidIds shouldContain "yet-another-invalid-id"
+            }
+        }
+
+        it("should return HTTP 206 Partial Content when not all id's where found") {
+            withTestApplication { httpClient ->
+                val testMessageDetails = buildTestEbmsMessageDetail()
+                ebmsMessageDetailRepository.upsert(testMessageDetails)
+
+                val request = FindByUuidRequestDto(
+                    ids = listOf(
+                        Uuid.random().toString(),
+                        testMessageDetails.requestId.toString()
+                    )
+                )
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.PartialContent
+                val response: FindByUuidResponseDto<ReadableIdDto> = httpResponse.body()
+                response.content.size shouldBe 1
+                response.content.containsKey(testMessageDetails.requestId) shouldBe true
+                response.content[testMessageDetails.requestId].shouldBeEqualsTo(testMessageDetails)
+                response.invalidIds.size shouldBe 0
             }
         }
     }
