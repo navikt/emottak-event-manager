@@ -10,6 +10,7 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.util.logging.error
+import no.nav.emottak.eventmanager.configuration.RestConfig
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
@@ -41,7 +42,8 @@ private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.Eve
 fun Route.eventManagerRoutes(
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService,
-    conversationStatusService: ConversationStatusService
+    conversationStatusService: ConversationStatusService,
+    restConfig: RestConfig
 ) {
     get("/filter-values") {
         val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
@@ -156,6 +158,9 @@ fun Route.eventManagerRoutes(
             throw BadRequestException("Invalid post data", e)
         }
         val distinctIds = request.ids.distinct()
+        if (distinctIds.size > restConfig.findByUuidLimit) {
+            throw BadRequestException("Maximum number of id's to request is: ${restConfig.findByUuidLimit}")
+        }
         val response = ebmsMessageDetailService.findByRequestIds(distinctIds)
         if (response == null) {
             throw BadRequestException("Id's must be UUID")

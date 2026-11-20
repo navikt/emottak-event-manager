@@ -15,6 +15,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import no.nav.emottak.eventmanager.configuration.RestConfig
 import no.nav.emottak.eventmanager.configuration.config
 import no.nav.emottak.eventmanager.kafka.startEventReceiver
 import no.nav.emottak.eventmanager.model.ProcedureArgs
@@ -77,7 +78,7 @@ suspend fun ResourceScope.runServer() {
         factory = Netty,
         port = serverConfig.port.value,
         preWait = serverConfig.preWait,
-        module = eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, prometheusMeterRegistry)
+        module = eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, config.restConfig, prometheusMeterRegistry)
     )
 
     log.debug("Configuration: {}", config)
@@ -111,13 +112,14 @@ fun eventManagerModule(
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService,
     conversationStatusService: ConversationStatusService,
+    restConfig: RestConfig,
     prometheusMeterRegistry: PrometheusMeterRegistry
 ): Application.() -> Unit {
     return {
         configureMetrics(prometheusMeterRegistry)
         configureContentNegotiation()
         configureAuthentication()
-        configureRoutes(eventService, ebmsMessageDetailService, conversationStatusService, prometheusMeterRegistry)
+        configureRoutes(eventService, ebmsMessageDetailService, conversationStatusService, restConfig, prometheusMeterRegistry)
     }
 }
 

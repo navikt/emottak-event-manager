@@ -18,6 +18,7 @@ data class Config(
     val eventConsumer: EventConsumer,
     val server: Server,
     val delayedJobs: DelayedJobs,
+    val restConfig: RestConfig,
     private val navPartyIds: String
 ) {
     val navPartyIdsList: List<String> = navPartyIds.split("|")
@@ -43,6 +44,10 @@ data class EventConsumer(
 
 data class DelayedJobs(
     val delayInMinutes: Int
+)
+
+data class RestConfig(
+    val findByUuidLimit: Int
 )
 
 @JvmInline

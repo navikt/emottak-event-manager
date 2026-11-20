@@ -6,6 +6,7 @@ import io.kotest.data.forAll
 import io.kotest.data.row
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -24,6 +25,7 @@ import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
 import no.nav.emottak.eventmanager.auth.AuthConfig
+import no.nav.emottak.eventmanager.configuration.RestConfig
 import no.nav.emottak.eventmanager.constants.Constants.READABLE_SENDER_NAME_NAV_MOTTAK
 import no.nav.emottak.eventmanager.constants.Constants.UNKNOWN
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
@@ -76,6 +78,8 @@ import java.time.LocalDateTime
 import kotlin.uuid.Uuid
 import no.nav.emottak.utils.kafka.model.EventType as KafkaEventType
 
+const val FIND_BY_UUID_LIMIT = 4
+
 class ApplicationTest : DescribeSpec({
 
     lateinit var dbContainer: PostgreSQLContainer<Nothing>
@@ -93,6 +97,8 @@ class ApplicationTest : DescribeSpec({
     lateinit var ebmsMessageDetailService: EbmsMessageDetailService
     lateinit var conversationStatusService: ConversationStatusService
 
+    val restConfig = RestConfig(findByUuidLimit = FIND_BY_UUID_LIMIT)
+
     val getToken: (String) -> SignedJWT = { audience: String ->
         mockOAuth2Server.issueToken(
             issuerId = AZURE_AD_AUTH,
@@ -107,7 +113,7 @@ class ApplicationTest : DescribeSpec({
             val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 
             application(
-                eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, meterRegistry)
+                eventManagerModule(eventService, ebmsMessageDetailService, conversationStatusService, restConfig, meterRegistry)
             )
 
             val httpClient = createClient {
@@ -1281,6 +1287,49 @@ class ApplicationTest : DescribeSpec({
                 response.content[testMessageDetails1.requestId].shouldBeEqualsTo(testMessageDetails1)
                 response.content[testMessageDetails2.requestId].shouldBeEqualsTo(testMessageDetails2)
                 response.invalidIds.size shouldBe 0
+            }
+        }
+
+        it("should return HTTP 400 Bad Request if number of requested id's exceeds the limit") {
+            withTestApplication { httpClient ->
+                val request = FindByUuidRequestDto(
+                    ids = List(FIND_BY_UUID_LIMIT + 1) { Uuid.random().toString() }
+                )
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldBe HttpStatusCode.BadRequest
+                httpResponse.bodyAsText() shouldBe "Maximum number of id's to request is: $FIND_BY_UUID_LIMIT"
+            }
+        }
+
+        it("should not return HTTP 400 if number of requested id's exceeds the limit while unique id's are same as limit or below") {
+            withTestApplication { httpClient ->
+                val duplicateUuid = Uuid.random().toString()
+                val ids = List(FIND_BY_UUID_LIMIT - 1) { Uuid.random().toString() }
+                val request = FindByUuidRequestDto(
+                    ids = buildList {
+                        add(duplicateUuid)
+                        addAll(ids)
+                        add(duplicateUuid)
+                    }
+                )
+                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                    header(
+                        "Authorization",
+                        "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
+                    )
+                    setBody(request)
+                    contentType(ContentType.Application.Json)
+                }
+
+                httpResponse.status shouldNotBe HttpStatusCode.BadRequest
             }
         }
     }
