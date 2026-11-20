@@ -7,6 +7,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import no.nav.emottak.eventmanager.auth.AZURE_AD_AUTH
+import no.nav.emottak.eventmanager.configuration.RestConfig
 import no.nav.emottak.eventmanager.route.eventManagerRoutes
 import no.nav.emottak.eventmanager.route.naisRoutes
 import no.nav.emottak.eventmanager.service.ConversationStatusService
@@ -17,6 +18,7 @@ fun Application.configureRoutes(
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService,
     conversationStatusService: ConversationStatusService,
+    restConfig: RestConfig,
     prometheusMeterRegistry: PrometheusMeterRegistry
 ) {
     routing {
@@ -25,7 +27,7 @@ fun Application.configureRoutes(
             call.respondText("Event Manager running properly")
         }
         authenticate(AZURE_AD_AUTH) {
-            eventManagerRoutes(eventService, ebmsMessageDetailService, conversationStatusService)
+            eventManagerRoutes(eventService, ebmsMessageDetailService, conversationStatusService, restConfig)
         }
     }
 }
