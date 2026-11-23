@@ -1,11 +1,16 @@
 package no.nav.emottak.eventmanager.route
 
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.request.ContentTransformationException
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.util.logging.error
+import no.nav.emottak.eventmanager.configuration.RestConfig
 import no.nav.emottak.eventmanager.constants.QueryConstants.ACTION
 import no.nav.emottak.eventmanager.constants.QueryConstants.CONVERSATION_ID
 import no.nav.emottak.eventmanager.constants.QueryConstants.CPA_ID
@@ -22,6 +27,7 @@ import no.nav.emottak.eventmanager.constants.QueryConstants.STATUS
 import no.nav.emottak.eventmanager.constants.QueryConstants.STATUSES
 import no.nav.emottak.eventmanager.constants.QueryConstants.TO_DATE
 import no.nav.emottak.eventmanager.model.Pageable
+import no.nav.emottak.eventmanager.model.dto.FindByUuidRequestDto
 import no.nav.emottak.eventmanager.persistence.table.EventStatusEnum
 import no.nav.emottak.eventmanager.route.validation.Validation
 import no.nav.emottak.eventmanager.service.ConversationStatusService
@@ -36,7 +42,8 @@ private val log = LoggerFactory.getLogger("no.nav.emottak.eventmanager.route.Eve
 fun Route.eventManagerRoutes(
     eventService: EventService,
     ebmsMessageDetailService: EbmsMessageDetailService,
-    conversationStatusService: ConversationStatusService
+    conversationStatusService: ConversationStatusService,
+    restConfig: RestConfig
 ) {
     get("/filter-values") {
         val filterValues = ebmsMessageDetailService.getDistinctRolesServicesActions()
@@ -142,6 +149,28 @@ fun Route.eventManagerRoutes(
         val conversationPage = conversationStatusService.findByFilters(fromDate, toDate, cpaIdPattern, service, statuses, pageable)
         log.debug("{} conversation statuses retrieved (out of a total of: {})", conversationPage.content.size, conversationPage.totalElements)
         call.respond(conversationPage)
+    }
+
+    post("/message-details/bulk") {
+        val request = try {
+            call.receive(FindByUuidRequestDto::class)
+        } catch (e: ContentTransformationException) {
+            throw BadRequestException("Invalid post data", e)
+        }
+        val distinctIds = request.ids.distinct()
+        if (distinctIds.size > restConfig.findByUuidLimit) {
+            throw BadRequestException("Maximum number of id's to request is: ${restConfig.findByUuidLimit}")
+        }
+        val response = ebmsMessageDetailService.findByRequestIds(distinctIds)
+        if (response == null) {
+            throw BadRequestException("Id's must be UUID")
+        } else if (response.invalidIds.isNotEmpty()) {
+            call.respond(HttpStatusCode.PartialContent, response)
+        } else if (response.content.keys.size != distinctIds.size) {
+            call.respond(HttpStatusCode.PartialContent, response)
+        } else {
+            call.respond(response)
+        }
     }
 }
 
