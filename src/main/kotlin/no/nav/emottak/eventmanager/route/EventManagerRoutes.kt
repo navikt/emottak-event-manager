@@ -151,7 +151,7 @@ fun Route.eventManagerRoutes(
         call.respond(conversationPage)
     }
 
-    post("/find/message-details/uuids") {
+    post("/message-details/bulk") {
         val request = try {
             call.receive(FindByUuidRequestDto::class)
         } catch (e: ContentTransformationException) {

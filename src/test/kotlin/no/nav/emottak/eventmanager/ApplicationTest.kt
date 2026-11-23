@@ -1108,18 +1108,18 @@ class ApplicationTest : DescribeSpec({
         }
     }
 
-    describe("Tests of '/find/message-details/uuids'-endpoint") {
+    describe("Tests of '/message-details/bulk'-endpoint") {
 
         it("should return Unauthorized if access token is missing") {
             withTestApplication { httpClient ->
-                val httpResponse = httpClient.post("/find/message-details/uuids")
+                val httpResponse = httpClient.post("/message-details/bulk")
                 httpResponse.status shouldBe HttpStatusCode.Unauthorized
             }
         }
 
         it("should return Unauthorized if access token is invalid") {
             withTestApplication { httpClient ->
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(invalidAudience).serialize()}"
@@ -1131,7 +1131,7 @@ class ApplicationTest : DescribeSpec({
 
         it("should return HTTP 400 Bad Request if no post-data") {
             withTestApplication { httpClient ->
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1146,7 +1146,7 @@ class ApplicationTest : DescribeSpec({
         it("should return HTTP 400 Bad Request if post-data has no UUIDs") {
             withTestApplication { httpClient ->
                 val request = FindByUuidRequestDto(ids = listOf("not-uuid", "another-not-uuid"))
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1173,7 +1173,7 @@ class ApplicationTest : DescribeSpec({
                         testMessageDetails2.requestId.toString()
                     )
                 )
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1207,7 +1207,7 @@ class ApplicationTest : DescribeSpec({
                         "yet-another-invalid-id"
                     )
                 )
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1239,7 +1239,7 @@ class ApplicationTest : DescribeSpec({
                         testMessageDetails.requestId.toString()
                     )
                 )
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1271,7 +1271,7 @@ class ApplicationTest : DescribeSpec({
                         testMessageDetails1.requestId.toString()
                     )
                 )
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1295,7 +1295,7 @@ class ApplicationTest : DescribeSpec({
                 val request = FindByUuidRequestDto(
                     ids = List(FIND_BY_UUID_LIMIT + 1) { Uuid.random().toString() }
                 )
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
@@ -1320,7 +1320,7 @@ class ApplicationTest : DescribeSpec({
                         add(duplicateUuid)
                     }
                 )
-                val httpResponse = httpClient.post("/find/message-details/uuids") {
+                val httpResponse = httpClient.post("/message-details/bulk") {
                     header(
                         "Authorization",
                         "Bearer ${getToken(AuthConfig.getScope()).serialize()}"
